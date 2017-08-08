@@ -1,0 +1,57 @@
+Records a videofile when motion is detected via a camera.
+This camera can be locally attached to your Linux system or be accessed via MJPEG.
+
+Supports:
+  input:
+   - video4linux
+   - mjpeg cameras
+   - jpeg cameras
+
+  output:
+   - avi file(s)
+   - http streaming
+   - video4linux loopback device
+
+  motion detection
+
+  filters:
+   - add generic text
+   - boost contrast
+   - convert to grayscale
+   - add box around movement
+   - mirror vertical and/or horizontal
+   - neighbour average noise filter
+
+
+This program is beta.
+
+
+Required:
+- libcurl
+- libjansson
+- libjpeg
+- libpng
+- libgwavi - from https://github.com/Rolinh/libgwavi.git
+
+
+The program supports cameras that generate YUYV, JPEG, RGB or YUV420 output.
+If your camera emits something different, e.g. P207 (PAC207) then you can use libv4l (by Hans de Goede).
+E.g.:
+LD_PRELOAD=/usr/lib/arm-linux-gnueabihf/libv4l/v4l2convert.so ./constatus -c constatus-v4l.conf (on the raspberry pi)
+or
+LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libv4lconvert.so ./constatus -c constatus-v4l.conf         (on x64)
+
+
+The program is configured with a json-formatted file.
+Take a look at the exampless: constatus-jpeg.conf constatus-mjpeg.conf constatus-v4l.conf constatus-v4l-loopback.conf
+
+Each configuration has 1 source. So if you want to monitor multiple cameras, then you need to start multiple instances of constatus. The idea is that if anything crashes, that you won't loose all cameras.
+
+A configuration can have 0 or more (yes) motion-triggers. Same for the stream-to-file backend. The outputs and triggers can also all be combined. The only drawback is that it uses more cpu.
+Having multiple cpus/cores/threads is an advantag for constatus.
+
+Most outputs (http, files, etc) and the motion-trigger can have 0 or more filters. Filters are executed in the order in which they are found on the configuration-file. You can also have multiple instances of the same filter for an output/motion-trigger.
+
+
+(C) 2017 by Folkert van Heusden, released under AGPL v3.0
+mail@vanheusden.com
