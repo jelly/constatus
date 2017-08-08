@@ -21,6 +21,7 @@ Supports:
    - add box around movement
    - mirror vertical and/or horizontal
    - neighbour average noise filter
+   - picture overlay (with alpha blending)
 
 
 This program is beta.

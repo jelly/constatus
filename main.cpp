@@ -24,6 +24,7 @@
 #include "filter_boost_contrast.h"
 #include "filter_marker_simple.h"
 #include "push_to_vloopback.h"
+#include "filter_overlay.h"
 
 const char *json_str(const json_t *const in, const char *const key, const char *const descr)
 {
@@ -101,6 +102,11 @@ std::vector<filter *> *load_filters(const json_t *const in)
 		}
 		else if (strcasecmp(s_type, "boost-contrast") == 0)
 			filters -> push_back(new filter_boost_contrast());
+		else if (strcasecmp(s_type, "overlay") == 0) {
+			const char *s_pic = json_str(ae, "picture", "PNG to overlay (with alpha channel!)");
+
+			filters -> push_back(new filter_overlay(s_pic));
+		}
 		else if (strcasecmp(s_type, "text") == 0) {
 			const char *s_text = json_str(ae, "text", "what text to show");
 			const char *s_position = json_str(ae, "position", "where to put it, e.g. upper-left, lower-center, center-right");
