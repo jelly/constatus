@@ -27,15 +27,24 @@ void filter_overlay::apply(const uint64_t ts, const int w, const int h, const ui
 {
 	memcpy(out, in, w * h * 3);
 
-	int cw = std::min(this -> w - this -> x, w);
-	int ch = std::min(this -> h - this -> y, h);
+	int cw = std::min(this -> w, w);
+	int ch = std::min(this -> h, h);
 
 	if (cw <= 0 || ch <= 0)
 		return;
 
 	for(int y=0; y<ch; y++) {
+		int ty = y + this -> y;
+
+		if (ty >= h)
+			break;
+
 		for(int x=0; x<cw; x++) {
-			int out_offset = (y + this -> y) * w * 3 + (x + this -> x) * 3;
+			int tx = x + this -> x;
+			if (tx >= w)
+				break;
+
+			int out_offset = ty * w * 3 + tx * 3;
 			int pic_offset = y * this -> w * 4 + x * 4;
 
 			uint8_t alpha = pixels[pic_offset + 3], ialpha = 255 - alpha;
