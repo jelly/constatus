@@ -27,8 +27,8 @@ void filter_overlay::apply(const uint64_t ts, const int w, const int h, const ui
 {
 	memcpy(out, in, w * h * 3);
 
-	int cw = std::min(this -> w - x, w);
-	int ch = std::min(this -> h - y, h);
+	int cw = std::min(this -> w - this -> x, w);
+	int ch = std::min(this -> h - this -> y, h);
 
 	if (cw <= 0 || ch <= 0)
 		return;
