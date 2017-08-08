@@ -8,7 +8,7 @@
 #include "filter_overlay.h"
 #include "picio.h"
 
-filter_overlay::filter_overlay(const std::string & file)
+filter_overlay::filter_overlay(const std::string & file, const int xIn, const int yIn) : x(xIn), y(yIn)
 {
 	FILE *fh = fopen(file.c_str(), "rb");
 	if (!fh)
@@ -27,12 +27,15 @@ void filter_overlay::apply(const uint64_t ts, const int w, const int h, const ui
 {
 	memcpy(out, in, w * h * 3);
 
-	int cw = std::min(this -> w, w);
-	int ch = std::min(this -> h, h);
+	int cw = std::min(this -> w - x, w);
+	int ch = std::min(this -> h - y, h);
+
+	if (cw <= 0 || ch <= 0)
+		return;
 
 	for(int y=0; y<ch; y++) {
 		for(int x=0; x<cw; x++) {
-			int out_offset = y * w * 3 + x * 3;
+			int out_offset = (y + this -> y) * w * 3 + (x + this -> x) * 3;
 			int pic_offset = y * this -> w * 4 + x * 4;
 
 			uint8_t alpha = pixels[pic_offset + 3], ialpha = 255 - alpha;

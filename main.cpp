@@ -104,8 +104,10 @@ std::vector<filter *> *load_filters(const json_t *const in)
 			filters -> push_back(new filter_boost_contrast());
 		else if (strcasecmp(s_type, "overlay") == 0) {
 			const char *s_pic = json_str(ae, "picture", "PNG to overlay (with alpha channel!)");
+			int x = json_int(ae, "x", "x-coordinate of overlay");
+			int y = json_int(ae, "y", "y-coordinate of overlay");
 
-			filters -> push_back(new filter_overlay(s_pic));
+			filters -> push_back(new filter_overlay(s_pic, x, y));
 		}
 		else if (strcasecmp(s_type, "text") == 0) {
 			const char *s_text = json_str(ae, "text", "what text to show");

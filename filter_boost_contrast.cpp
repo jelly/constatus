@@ -29,7 +29,7 @@ void filter_boost_contrast::apply(const uint64_t ts, const int w, const int h, c
 	double mul = 255.0 / (highest_br - lowest_br);
 
 	if ((highest_br < 255 || lowest_br > 0) && !isnan(mul) && !isinf(mul)){
-		printf("%f\n", mul);
+		// printf("%f\n", mul);
 
 		for(int i=0; i<w*h*3; i+=3) {
 			out[i + 0] = (in[i + 0] - lowest_br) * mul;
