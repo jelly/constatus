@@ -12,6 +12,7 @@
 #include "source_v4l.h"
 #include "source_http_jpeg.h"
 #include "source_http_mjpeg.h"
+#include "source_rtsp.h"
 #include "http_server.h"
 #include "motion_trigger.h"
 #include "write_stream_to_file.h"
@@ -245,6 +246,11 @@ int main(int argc, char *argv[])
 		int jpeg_quality = json_int(j_source, "quality", "JPEG quality, this influences the size");
 
 		s = new source_http_mjpeg(host, port, file, jpeg_quality, &global_stopflag);
+	}
+	else if (strcasecmp(s_type, "rtsp") == 0) {
+		const char *url = json_str(j_source, "url", "address of JPEG stream");
+
+		s = new source_rtsp(url, &global_stopflag);
 	}
 	else {
 		printf(" no source defined!\n");

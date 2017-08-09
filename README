@@ -5,6 +5,7 @@ Supports:
   input:
    - video4linux
    - mjpeg cameras
+   - rtsp cameras
    - jpeg cameras
 
   output:
@@ -33,6 +34,7 @@ Required:
 - libjpeg
 - libpng
 - libgwavi - from https://github.com/Rolinh/libgwavi.git
+- libavformat / libswscale / libavcodec / libavutil
 
 
 The program supports cameras that generate YUYV, JPEG, RGB or YUV420 output.
