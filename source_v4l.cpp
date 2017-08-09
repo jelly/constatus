@@ -263,7 +263,6 @@ source_v4l::source_v4l(const std::string & dev, bool prefer_jpeg_in, bool rpi_wo
 	io_buffer = static_cast<uint8_t *>(mmap(NULL, buf.length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, buf.m.offset));
 
 	th = new std::thread(std::ref(*this));
-	th -> detach();
 }
 
 source_v4l::~source_v4l()

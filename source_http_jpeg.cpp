@@ -11,11 +11,12 @@
 source_http_jpeg::source_http_jpeg(const std::string & urlIn, const bool ignoreCertIn, const std::string & authIn, const int jpeg_quality, std::atomic_bool *const global_stopflag) : source(jpeg_quality, global_stopflag), url(urlIn), auth(authIn), ignore_cert(ignoreCertIn)
 {
 	th = new std::thread(std::ref(*this));
-	th -> detach();
 }
 
 source_http_jpeg::~source_http_jpeg()
 {
+	th -> join();
+	delete th;
 }
 
 void source_http_jpeg::operator()()

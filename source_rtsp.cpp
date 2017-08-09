@@ -17,11 +17,11 @@ extern "C" {
 source_rtsp::source_rtsp(const std::string & urlIn, std::atomic_bool *const global_stopflag) : source(-1, global_stopflag), url(urlIn)
 {
 	th = new std::thread(std::ref(*this));
-	th -> detach();
 }
 
 source_rtsp::~source_rtsp()
 {
+	th -> join();
 	delete th;
 }
 

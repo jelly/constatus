@@ -13,11 +13,12 @@
 source_http_mjpeg::source_http_mjpeg(const std::string & hostnameIn, const int portnrIn, const std::string & fileIn, const int jpeg_quality, std::atomic_bool *const global_stopflag) : source(jpeg_quality, global_stopflag), hostname(hostnameIn), file(fileIn), portnr(portnrIn)
 {
 	th = new std::thread(std::ref(*this));
-	th -> detach();
 }
 
 source_http_mjpeg::~source_http_mjpeg()
 {
+	th -> join();
+	delete th;
 }
 
 void source_http_mjpeg::operator()()
