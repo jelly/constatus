@@ -7,6 +7,8 @@ extern "C" {
 #include <libavformat/avformat.h>
 #include <libavformat/avio.h>
 #include <libswscale/swscale.h>
+#include <libavutil/avutil.h>
+#include <libavutil/imgutils.h>
 }
 
 #include "source_rtsp.h"
@@ -15,10 +17,12 @@ extern "C" {
 source_rtsp::source_rtsp(const std::string & urlIn, std::atomic_bool *const global_stopflag) : source(-1, global_stopflag), url(urlIn)
 {
 	th = new std::thread(std::ref(*this));
+	th -> detach();
 }
 
 source_rtsp::~source_rtsp()
 {
+	delete th;
 }
 
 void source_rtsp::operator()()
@@ -37,7 +41,7 @@ void source_rtsp::operator()()
 	if (avformat_find_stream_info(format_ctx, NULL) < 0)
 		error_exit(false, "avformat_find_stream_info failed (rtsp)");
 
-	//search video stream
+	// search video stream
 	int video_stream_index = 0;
 	for (int i = 0; i < format_ctx->nb_streams; i++) {
 		if (format_ctx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
@@ -47,10 +51,10 @@ void source_rtsp::operator()()
 	AVPacket packet;
 	av_init_packet(&packet);
 
-	//open output file
+	// open output file
 	AVFormatContext* output_ctx = avformat_alloc_context();
 
-	AVStream* stream = NULL;
+	AVStream *stream = NULL;
 
 	//start reading packets from stream and write them to file
 	av_read_play(format_ctx);    //play RTSP
@@ -76,16 +80,16 @@ void source_rtsp::operator()()
 
 	SwsContext *img_convert_ctx = sws_getContext(codec_ctx->width, codec_ctx->height, codec_ctx->pix_fmt, codec_ctx->width, codec_ctx->height, AV_PIX_FMT_RGB24, SWS_BICUBIC, NULL, NULL, NULL);
 
-	int size = avpicture_get_size(AV_PIX_FMT_YUV420P, codec_ctx->width, codec_ctx->height);
+	int size = av_image_get_buffer_size(AV_PIX_FMT_YUV420P, codec_ctx->width, codec_ctx->height, 1);
 	uint8_t* picture_buffer = (uint8_t*) (av_malloc(size));
 	AVFrame* picture = av_frame_alloc();
 	AVFrame* picture_rgb = av_frame_alloc();
-	int size2 = avpicture_get_size(AV_PIX_FMT_RGB24, codec_ctx->width, codec_ctx->height);
+	int size2 = av_image_get_buffer_size(AV_PIX_FMT_RGB24, codec_ctx->width, codec_ctx->height, 1);
 	uint8_t* picture_buffer_2 = (uint8_t*) (av_malloc(size2));
-	avpicture_fill((AVPicture *) picture, picture_buffer, AV_PIX_FMT_YUV420P, codec_ctx->width, codec_ctx->height);
-	avpicture_fill((AVPicture *) picture_rgb, picture_buffer_2, AV_PIX_FMT_RGB24, codec_ctx->width, codec_ctx->height);
+	av_image_fill_arrays(picture -> data, picture -> linesize, picture_buffer, AV_PIX_FMT_YUV420P, codec_ctx->width, codec_ctx->height, 1);
+	av_image_fill_arrays(picture_rgb -> data, picture_rgb -> linesize, picture_buffer_2, AV_PIX_FMT_RGB24, codec_ctx->width, codec_ctx->height, 1);
 
-	while (av_read_frame(format_ctx, &packet) >= 0) {
+	while(!*global_stopflag && av_read_frame(format_ctx, &packet) >= 0) {
 		if (packet.stream_index == video_stream_index) {    //packet is video
 
 			if (stream == NULL) {    //create stream in file
@@ -103,21 +107,20 @@ void source_rtsp::operator()()
 			if (check != 1)
 				printf("Bytes decoded %d check %d\n", result, check);
 
-			{
-				sws_scale(img_convert_ctx, picture->data, picture->linesize, 0, codec_ctx->height, picture_rgb->data, picture_rgb->linesize);
+			sws_scale(img_convert_ctx, picture->data, picture->linesize, 0, codec_ctx->height, picture_rgb->data, picture_rgb->linesize);
 
-				for(int y = 0; y < codec_ctx->height; y++) {
-					for(int x = 0; x < codec_ctx->width * 3; x++)
-						pixels[y * this -> width * 3 + x] = (picture_rgb->data[0] + y * picture_rgb->linesize[0])[x];
-				}
-
-				set_frame(E_RGB, pixels, this -> width * this -> height * 3);
+			for(int y = 0; y < codec_ctx->height; y++) {
+				for(int x = 0; x < codec_ctx->width * 3; x++)
+					pixels[y * this -> width * 3 + x] = (picture_rgb->data[0] + y * picture_rgb->linesize[0])[x];
 			}
+
+			set_frame(E_RGB, pixels, this -> width * this -> height * 3);
 		}
 
-		av_free_packet(&packet);
+		av_packet_unref(&packet);
 		av_init_packet(&packet);
 	}
+
 	av_free(picture);
 	av_free(picture_rgb);
 	av_free(picture_buffer);
@@ -126,6 +129,8 @@ void source_rtsp::operator()()
 	av_read_pause(format_ctx);
 	avio_close(output_ctx->pb);
 	avformat_free_context(output_ctx);
+
+	avcodec_free_context(&codec_ctx);
 
 	free(pixels);
 }

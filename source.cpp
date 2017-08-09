@@ -9,6 +9,7 @@
 source::source(const int jpeg_quality, std::atomic_bool *const global_stopflagIn) : global_stopflag(global_stopflagIn)
 {
 	width = height = -1;
+	ts = 0;
 
 	frame_rgb = NULL;
 	frame_jpeg = NULL;
