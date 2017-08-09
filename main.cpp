@@ -338,7 +338,7 @@ int main(int argc, char *argv[])
 	json_t *j_std = json_object_get(cfg, "stream-to-disk");
 	if (j_std) {
 		size_t n_std = json_array_size(j_std);
-		printf("%zu disk-streams\n", n_std);
+		printf(" %zu disk streams\n", n_std);
 
 		for(size_t i=0; i<n_std; i++) {
 			json_t *ae = json_array_get(j_std, i);
