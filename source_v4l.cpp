@@ -145,11 +145,9 @@ bool source_v4l::try_v4l_configuration(int fd, int *width, int *height, unsigned
 	*width = fmt.fmt.pix.width;
 	*height = fmt.fmt.pix.height;
 
-	printf("%dx%d\n", *width, *height);
-
 	char buffer[5] = { 0 };
 	memcpy(buffer, &fmt.fmt.pix.pixelformat, 4);
-	printf("available pixelformat: %s\n", buffer);
+	printf("available format: %dx%d %s\n", *width, *height, buffer);
 
 	if (fmt.fmt.pix.pixelformat != prev)
 		return false;
@@ -226,9 +224,7 @@ source_v4l::source_v4l(const std::string & dev, bool prefer_jpeg_in, bool rpi_wo
 
 	char buffer[5] = { 0 };
 	memcpy(buffer, &pixelformat, 4);
-	printf("%s\n", buffer);
-
-	printf("%dx%d\n", width, height);
+	printf("chosen: %dx%d %s\n", width, height, buffer);
 
 	// set how we retrieve data (using mmaped thingy)
 	struct v4l2_requestbuffers req;

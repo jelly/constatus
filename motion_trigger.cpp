@@ -60,7 +60,7 @@ void * motion_trigger_thread(void *pin)
 		free(frame);
 	}
 
-	printf("Go!\n");
+	printf("\nGo!\n");
 
 	for(;!*p -> global_stopflag;) {
 		uint8_t *work = NULL;
