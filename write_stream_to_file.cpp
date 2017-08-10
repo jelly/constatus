@@ -151,6 +151,8 @@ void *store_thread(void *pin)
 	if (p -> exec_end)
 		exec(p -> exec_end, name);
 
+	free_filters(p -> filters);
+
 	delete p;
 
 	return NULL;

@@ -106,7 +106,6 @@ void source_rtsp::operator()()
 				stream->sample_aspect_ratio = format_ctx->streams[video_stream_index]->codecpar->sample_aspect_ratio;
 			}
 
-			int check = 0;
 			packet.stream_index = stream->id;
 
 			if (avcodec_send_packet(codec_ctx, &packet) < 0) {

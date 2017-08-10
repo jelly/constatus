@@ -18,6 +18,14 @@ void apply_filters(const std::vector<filter *> *const filters, const uint8_t *co
 	free(temp);
 }
 
+void free_filters(const std::vector<filter *> *filters)
+{
+	for(filter *f : *filters)
+		delete f;
+
+	delete filters;
+}
+
 filter::filter()
 {
 }

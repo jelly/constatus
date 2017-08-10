@@ -17,4 +17,6 @@ public:
 
 void apply_filters(const std::vector<filter *> *const filters, const uint8_t *const prev, uint8_t *const work, const uint64_t ts, const int w, const int h);
 
+void free_filters(const std::vector<filter *> *filters);
+
 #endif

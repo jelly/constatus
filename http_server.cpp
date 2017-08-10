@@ -564,6 +564,10 @@ void * http_server_thread(void *p)
 		}
 	}
 
+	free_filters(st -> filters);
+
+	delete st;
+
 	return NULL;
 }
 
