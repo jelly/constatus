@@ -7,7 +7,7 @@
 void apply_filters(const std::vector<filter *> *const filters, const uint8_t *const prev, uint8_t *const work, const uint64_t ts, const int w, const int h)
 {
 	const size_t bytes = w * h * 3;
-	uint8_t *const temp = (uint8_t *)malloc(bytes);
+	uint8_t *const temp = (uint8_t *)valloc(bytes);
 
 	for(filter *f : *filters) {
 		f -> apply(ts, w, h, prev, work, temp);

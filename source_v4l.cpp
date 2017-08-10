@@ -278,7 +278,7 @@ source_v4l::~source_v4l()
 void source_v4l::operator()()
 {
 	int bytes = width * height * 3;
-	unsigned char *conv_buffer = static_cast<unsigned char *>(malloc(bytes));
+	unsigned char *conv_buffer = static_cast<unsigned char *>(valloc(bytes));
 
 	for(;!*global_stopflag;)
 	{

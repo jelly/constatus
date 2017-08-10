@@ -43,12 +43,12 @@ void source::set_frame(const encoding_t pe, const uint8_t *const data, const siz
 
 	if (size) {
 		if (pe == E_RGB) {
-			frame_rgb = (uint8_t *)malloc(size);
+			frame_rgb = (uint8_t *)valloc(size);
 			frame_rgb_len = size;
 			memcpy(frame_rgb, data, size);
 		}
 		else {
-			frame_jpeg = (uint8_t *)malloc(size);
+			frame_jpeg = (uint8_t *)valloc(size);
 			frame_jpeg_len = size;
 			memcpy(frame_jpeg, data, size);
 		}
@@ -81,7 +81,7 @@ bool source::get_frame(const encoding_t pe, const int jpeg_quality, uint64_t *ts
 			frame_rgb_len = *width * *height * 3;
 		}
 
-		*frame = (uint8_t *)malloc(frame_rgb_len);
+		*frame = (uint8_t *)valloc(frame_rgb_len);
 		memcpy(*frame, frame_rgb, frame_rgb_len);
 		*frame_len = frame_rgb_len;
 	}
@@ -89,7 +89,7 @@ bool source::get_frame(const encoding_t pe, const int jpeg_quality, uint64_t *ts
 		if (!frame_jpeg)
 			write_JPEG_memory(*width, *height, jpeg_quality, frame_rgb, (char **)&frame_jpeg, &frame_jpeg_len);
 
-		*frame = (uint8_t *)malloc(frame_jpeg_len);
+		*frame = (uint8_t *)valloc(frame_jpeg_len);
 		memcpy(*frame, frame_jpeg, frame_jpeg_len);
 		*frame_len = frame_jpeg_len;
 	}

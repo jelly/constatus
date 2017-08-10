@@ -3,14 +3,89 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "io_buffer.h"
+#include <curl/curl.h>
+
 #include "utils.h"
 #include "source.h"
 #include "source_http_mjpeg.h"
 #include "picio.h"
 #include "frame.h"
 
-source_http_mjpeg::source_http_mjpeg(const std::string & hostnameIn, const int portnrIn, const std::string & fileIn, const int jpeg_quality, std::atomic_bool *const global_stopflag) : source(jpeg_quality, global_stopflag), hostname(hostnameIn), file(fileIn), portnr(portnrIn)
+typedef struct
+{
+	source *s;
+	bool first;
+	bool header;
+	uint8_t *data;
+	size_t n;
+	size_t req_len;
+} work_data_t;
+
+static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
+{
+	work_data_t *w = (work_data_t *)mypt;
+	const size_t full_size = size * nmemb;
+
+	w -> data = (uint8_t *)realloc(w -> data, w -> n + full_size + 1);
+	memcpy(&w -> data[w -> n], ptr, full_size);
+	w -> n += full_size;
+	w -> data[w -> n] = 0x00;
+
+	if (w -> header) {
+		char *header_end = strstr((char *)w -> data, "\r\n\r\n");
+		if (!header_end)
+			return full_size;
+
+		*header_end = 0x0;
+
+		char *cl = strstr((char *)w -> data, "Content-Length:");
+		if (!cl)
+			printf("Content-Length missing from header\n");
+
+		w -> header = false;
+
+		size_t left = w -> n - (strlen((char *)w -> data) + 4);
+		if (left) {
+			printf("LEFT %zu\n", left);
+			memmove(w -> data, header_end + 4, left);
+		}
+		w -> n = left;
+
+		w -> req_len = atoi(&cl[16]);
+		printf("needed len: %zu\n", w -> req_len);
+	}
+	else if (w -> n == w -> req_len) {
+		printf("frame! (%p %zu/%zu)\n", w -> data, w -> n, w -> req_len);
+
+		if (w -> first) {
+			int width = -1, height = -1;
+			unsigned char *temp = NULL;
+			read_JPEG_memory(w -> data, w -> req_len, &width, &height, &temp);
+			free(temp);
+
+			w -> first = false;
+			printf("%dx%d\n", width, height);
+
+			w -> s -> set_size(width, height);
+		}
+
+		w -> s -> set_frame(E_JPEG, w -> data, w -> req_len);
+
+		size_t left = w -> n - w -> req_len;
+		if (left) {
+			printf("LEFT %zu\n", left);
+			memmove(w -> data, &w -> data[w -> req_len], left);
+		}
+		w -> n = left;
+
+		w -> header = true;
+	}
+
+	return full_size;
+}
+
+
+source_http_mjpeg::source_http_mjpeg(const std::string & urlIn, const int jpeg_quality, std::atomic_bool *const global_stopflag) : source(jpeg_quality, global_stopflag), url(urlIn)
 {
 	th = new std::thread(std::ref(*this));
 }
@@ -23,209 +98,42 @@ source_http_mjpeg::~source_http_mjpeg()
 
 void source_http_mjpeg::operator()()
 {
-	int fd = -1;
-	io_buffer *ib = NULL;
-	unsigned char *needle = NULL;
-	unsigned int needle_len = 0;
-	bool first = true;
+	for(;!*global_stopflag;)
+	{
+		/* init the curl session */ 
+		CURL *curl_handle = curl_easy_init();
 
-	for(;!*global_stopflag;) {
-		if (fd == -1) {
-			delete ib;
-			free(needle);
+		/* set URL to get here */ 
+		curl_easy_setopt(curl_handle, CURLOPT_URL, "https://admin:bertus@odafloor-camera/video/mjpg.cgi");
 
-			fd = connect_to(hostname, portnr);
+		curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 0);
 
-			if (fd == -1)
-			{
-				sleep(1); // FIXME exponential back-off and o-o-o bitmap
-				continue;
-			}
+		curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYHOST, 0);
 
-			std::string get_request = std::string("GET ") + file + " HTTP/1.0\r\nHost: " + hostname + "\r\n\r\n";
+		/* Switch on full protocol/debug output while testing */ 
+		curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 1L);
 
-			size_t len = get_request.size();
-			if (WRITE(fd, get_request.c_str(), len) != ssize_t(len))
-			{
-				close(fd);
-				fd = -1;
-				continue;
-			}
+		/* disable progress meter, set to 0L to enable and disable debug output */ 
+		curl_easy_setopt(curl_handle, CURLOPT_NOPROGRESS, 1L);
 
-			ib = new io_buffer(fd);
+		/* send all data to this function  */ 
+		curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_data);
 
-			printf("connected\n");
-		}
+		/* write the page body to this file handle */ 
+		work_data_t *w = new work_data_t;
+		w -> s = this;
+		w -> first = w -> header = true;
+		w -> data = NULL;
+		w -> n = 0;
+		curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, w);
 
-		unsigned char *frame_data = NULL;
-		int data_len = 0;
-		if (!retrieve_mjpeg_frame(ib, &frame_data, &data_len, &needle, &needle_len))
-		{
-			printf("no frame\n");
+		/* get it! */ 
+		curl_easy_perform(curl_handle);
 
-			close(fd);
-			fd = -1;
-		}
-		else
-		{
-			printf("frame! (%p %d)\n", frame_data, data_len);
+		free(w -> data);
+		delete w;
 
-			if (first) {
-				unsigned char *temp = NULL;
-				read_JPEG_memory(frame_data, data_len, &width, &height, &temp);
-				free(temp);
-
-				first = false;
-				printf("%dx%d\n", width, height);
-			}
-
-			set_frame(E_JPEG, frame_data, data_len);
-
-			free(frame_data);
-		}
-	}
-}
-
-bool source_http_mjpeg::retrieve_mjpeg_frame(io_buffer *cur_ib, unsigned char **data, int *data_len, unsigned char **needle, unsigned int *needle_len)
-{
-	const int max_size = 10 * 1024 * 1024;
-	*data = static_cast<unsigned char *>(malloc(max_size + 1)); // call me if frames get larger
-	*data_len = 0;
-
-	bool process_header = true;
-
-	for(;!*global_stopflag;) {
-		int data_read = 0;
-
-		if (!cur_ib -> read_available(&(*data)[*data_len], &data_read, max_size - *data_len))
-		{
-			printf("no data\n");
-			free(*data);
-			*data = NULL;
-			*data_len = 0;
-			return false;
-		}
-		assert(data_read >= 0);
-		if (data_read == 0)
-			return true;
-
-		*data_len += data_read;
-
-		// search
-		if (*needle) // then search for end of frame
-		{
-			if (process_header)
-			{
-				unsigned char *search_start = *data;
-				int search_len = *data_len;
-				bool lf = false;
-				unsigned char *terminator = memstr(search_start, search_len, reinterpret_cast<unsigned char *>(const_cast<char *>("\r\n\r\n")), 4);
-				if (!terminator)
-				{
-					terminator = memstr(search_start, search_len, reinterpret_cast<unsigned char *>(const_cast<char *>("\n\n")), 2);
-					lf = true;
-				}
-				if (!terminator)
-					continue;
-
-				unsigned char *push_back_p = terminator + (lf?2:4);
-				int push_back_len = int(*data_len - (push_back_p - *data));
-				assert(push_back_len >= 0);
-				cur_ib -> push_back(push_back_p, push_back_len);
-				*data_len = 0;
-
-				process_header = false;
-			}
-			else // data
-			{
-				unsigned char *search_start = *data;
-				int search_len = *data_len;
-				unsigned char *needle_found = memstr(search_start, search_len, *needle, *needle_len);
-				if (!needle_found)
-					continue;
-
-				unsigned char *end_frame = NULL;
-				if (needle_found[-2] == '\r')
-					end_frame = needle_found - 2; // frames end with \r\n
-				else
-					end_frame = needle_found - 1; // frame ending with \n
-				if (end_frame < search_start)
-					end_frame = search_start;
-				// push back
-				unsigned char *push_back_p = needle_found;
-				int push_back_len = int(search_len - (push_back_p - search_start));
-				assert(push_back_len > 0);
-				cur_ib -> push_back(push_back_p, push_back_len);
-
-				*data_len = int(end_frame - *data);
-				assert(*data_len >= 0);
-				*data = static_cast<unsigned char *>(realloc(*data, *data_len));
-
-				process_header = true;
-
-				return true;
-			}
-		}
-		else
-		{
-			// printf("main-header %d\n", *data_len - old_len);
-			// search for end of header so that we can look for 'boundary='
-			bool lf = false;
-			unsigned char *terminator = memstr(*data, *data_len, reinterpret_cast<unsigned char *>(const_cast<char *>("\r\n\r\n")), 4);
-			if (!terminator)
-			{
-				lf = true;
-				terminator = memstr(*data, *data_len, reinterpret_cast<unsigned char *>(const_cast<char *>("\n\n")), 2);
-			}
-			if (!terminator)
-			{
-				if (*data_len > 32768) // response headers should not be more than 32KB
-				{
-					printf("Response headers overflow\n");
-
-					free(*data);
-					*data = NULL;
-					*data_len = 0;
-					return false;
-				}
-				continue;
-			}
-
-			terminator[lf?2:4] = 0x00;
-			char *boundary = strstr(reinterpret_cast<char *>(*data), "boundary=");
-			if (!boundary) // mallformed headers, start over
-			{
-				printf("No boundary in response headers\n");
-
-				free(*data);
-				*data = NULL;
-				*data_len = 0;
-				return false;
-			}
-
-			char *line_end = strchr(boundary + 9, '\r');
-			if (line_end)
-				*line_end = 0x00;
-			line_end = strchr(boundary + 9, '\n');
-			if (line_end)
-				*line_end = 0x00;
-			char *boundary_end = strchr(boundary + 9, ' ');
-			if (!boundary_end)
-				boundary_end = strchr(boundary + 9, ';');
-			if (boundary_end)
-				*boundary_end = 0x00;
-
-			*needle_len = static_cast<unsigned int>(strlen(boundary + 9));
-			*needle = static_cast<unsigned char *>(malloc(*needle_len));
-			memcpy(*needle, boundary + 9, *needle_len);
-
-			unsigned char *push_back_p = terminator + 4;
-			int push_back_len = int(*data_len - (push_back_p - *data));
-			assert(push_back_len >= 0);
-			cur_ib -> push_back(push_back_p, push_back_len);
-			*data_len = 0;
-
-			printf("MJPEG boundary: %s\n", boundary + 9);
-		}
+		/* cleanup curl stuff */ 
+		curl_easy_cleanup(curl_handle);
 	}
 }

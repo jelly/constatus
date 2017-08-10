@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <vector>
 
+#include <curl/curl.h>
+
 #include "error.h"
 #include "source.h"
 #include "source_v4l.h"
@@ -201,6 +203,8 @@ int main(int argc, char *argv[])
 
 	printf("Loading %s...\n", cfg_file);
 
+	curl_global_init(CURL_GLOBAL_ALL);
+
 	FILE *fh = fopen(cfg_file, "r");
 	if (!fh)
 		error_exit(true, "Cannot access configuration file %s", cfg_file);
@@ -248,12 +252,10 @@ int main(int argc, char *argv[])
 		s = new source_http_jpeg(url, ign_cert, auth, jpeg_quality, &global_stopflag);
 	}
 	else if (strcasecmp(s_type, "mjpeg") == 0) {
-		const char *host = json_str(j_source, "host", "IP address/hostname of the camera");
-		int port = json_int(j_source, "port", "Port the camera listens on (usually 80)");
-		const char *file = json_str(j_source, "file", "Name of the file, e.g. \"/stream.mjpeg\"");
+		const char *url = json_str(j_source, "url", "address of MJPEG stream");
 		int jpeg_quality = json_int(j_source, "quality", "JPEG quality, this influences the size");
 
-		s = new source_http_mjpeg(host, port, file, jpeg_quality, &global_stopflag);
+		s = new source_http_mjpeg(url, jpeg_quality, &global_stopflag);
 	}
 	else if (strcasecmp(s_type, "rtsp") == 0) {
 		const char *url = json_str(j_source, "url", "address of JPEG stream");

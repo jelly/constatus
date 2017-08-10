@@ -30,7 +30,7 @@ void frame::set_frame(const uint8_t *const data_in, const size_t size)
 	free(data);
 
 	if (size) {
-		data = (uint8_t *)malloc(size);
+		data = (uint8_t *)valloc(size);
 		s = size;
 		memcpy(data, data_in, size);
 	}
@@ -70,7 +70,7 @@ void frame::get_frame_data(uint8_t **const data_out, size_t *const size)
 	pthread_mutex_lock(&lock);
 
 	if (s) {
-		*data_out = (uint8_t *)malloc(s);
+		*data_out = (uint8_t *)valloc(s);
 		memcpy(*data_out, data, s);
 		*size = s;
 	}

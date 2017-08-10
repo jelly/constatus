@@ -80,7 +80,7 @@ void source_rtsp::operator()()
 
 	this -> width = codec_ctx -> width;
 	this -> height = codec_ctx -> height;
-	uint8_t *pixels = (uint8_t *)malloc(this -> width * this -> height * 3);
+	uint8_t *pixels = (uint8_t *)valloc(this -> width * this -> height * 3);
 
 	SwsContext *img_convert_ctx = sws_getContext(codec_ctx->width, codec_ctx->height, codec_ctx->pix_fmt, codec_ctx->width, codec_ctx->height, AV_PIX_FMT_RGB24, SWS_BICUBIC, NULL, NULL, NULL);
 

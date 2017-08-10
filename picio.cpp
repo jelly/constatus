@@ -78,7 +78,7 @@ void read_PNG_file_rgba(FILE *fh, int *w, int *h, uint8_t **pixels)
 
 	png_read_update_info(png, info);
 
-	*pixels = (uint8_t *)malloc(*w * *h * 4);
+	*pixels = (uint8_t *)valloc(*w * *h * 4);
 
 	png_bytep *row_pointers = (png_bytep *)malloc(sizeof(png_bytep) * *h);
 	for(int y = 0; y < *h; y++)
@@ -198,7 +198,7 @@ void read_JPEG_memory(unsigned char *in, int n_bytes_in, int *w, int *h, unsigne
 
 	unsigned long dataSize = *w * *h * info.num_components;
 
-	*pixels = (unsigned char *)malloc(dataSize);
+	*pixels = (unsigned char *)valloc(dataSize);
 	while(info.output_scanline < *h) {
 		unsigned char *rowptr = *pixels + info.output_scanline * *w * info.num_components;
 
