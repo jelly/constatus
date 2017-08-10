@@ -106,26 +106,20 @@ void source_http_mjpeg::operator()()
 {
 	for(;!*global_stopflag;)
 	{
-		/* init the curl session */ 
 		CURL *curl_handle = curl_easy_init();
 
-		/* set URL to get here */ 
 		curl_easy_setopt(curl_handle, CURLOPT_URL, url.c_str());
 
 		curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 0);
 
 		curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYHOST, 0);
 
-		/* Switch on full protocol/debug output while testing */ 
-		curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 1L);
+		curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 0L);
 
-		/* disable progress meter, set to 0L to enable and disable debug output */ 
 		curl_easy_setopt(curl_handle, CURLOPT_NOPROGRESS, 1L);
 
-		/* send all data to this function  */ 
 		curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_data);
 
-		/* write the page body to this file handle */ 
 		work_data_t *w = new work_data_t;
 		w -> global_stopflag = global_stopflag;
 		w -> s = this;
@@ -134,13 +128,11 @@ void source_http_mjpeg::operator()()
 		w -> n = 0;
 		curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, w);
 
-		/* get it! */ 
 		curl_easy_perform(curl_handle);
 
 		free(w -> data);
 		delete w;
 
-		/* cleanup curl stuff */ 
 		curl_easy_cleanup(curl_handle);
 	}
 }
