@@ -131,12 +131,19 @@ void *store_thread(void *pin)
 		free(prev_frame);
 		prev_frame = work;
 
-		if (p -> interval > 0) {
-			int s = p -> interval;
+		double slp = p -> interval;
+		while(slp > 0 && !*p -> global_stopflag) {
+			double cur = std::min(slp, 0.1);
+			slp -= cur;
+
+			int s = cur;
+
+			uint64_t us = (cur - s) * 1000 * 1000;
+
+			// printf("%d, %lu\n", s, us);
+
 			if (s)
 				sleep(s); // FIXME handle signals
-
-			uint64_t us = (p -> interval - s) * 1000 * 1000;
 
 			if (us)
 				usleep(us); // FIXME handle signals
@@ -176,12 +183,8 @@ void start_store_thread(source *const s, const std::string & store_path, const s
 	p -> exec_end = exec_end;
 	p -> global_stopflag = global_stopflag;
 
-	pthread_attr_t tattr;
-	pthread_attr_init(&tattr);
-	pthread_attr_setdetachstate(&tattr, PTHREAD_CREATE_DETACHED);
-
 	int rc = -1;
-	if ((rc = pthread_create(th, &tattr, store_thread, p)) != 0)
+	if ((rc = pthread_create(th, NULL, store_thread, p)) != 0)
 	{
 		errno = rc;
 		error_exit(true, "pthread_create failed (store thread)");

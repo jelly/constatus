@@ -587,12 +587,8 @@ void start_http_server(const char *const http_adapter, const int http_port, sour
 		st -> filters = filters;
 		st -> global_stopflag = global_stopflag;
 
-                pthread_attr_t tattr;
-		pthread_attr_init(&tattr);
-                pthread_attr_setdetachstate(&tattr, PTHREAD_CREATE_DETACHED);
-
 		int rc = -1;
-		if ((rc = pthread_create(th, &tattr, http_server_thread, st)) != 0)
+		if ((rc = pthread_create(th, NULL, http_server_thread, st)) != 0)
 		{
 			errno = rc;
 			error_exit(true, "pthread_create failed (http server main)");

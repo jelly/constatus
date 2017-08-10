@@ -105,12 +105,8 @@ void start_p2vl_thread(source *const s, const double fps, const std::string & de
 	p -> filters = filters;
 	p -> global_stopflag = global_stopflag;
 
-	pthread_attr_t tattr;
-	pthread_attr_init(&tattr);
-	pthread_attr_setdetachstate(&tattr, PTHREAD_CREATE_DETACHED);
-
 	int rc = -1;
-	if ((rc = pthread_create(th, &tattr, p2vl_thread, p)) != 0)
+	if ((rc = pthread_create(th, NULL, p2vl_thread, p)) != 0)
 	{
 		errno = rc;
 		error_exit(true, "pthread_create failed (vloopback thread)");

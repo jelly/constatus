@@ -158,12 +158,8 @@ void start_motion_trigger_thread(source *const s, const int quality, const int n
 	// FIXME static
 	static mt_pars_t p = { s, noise_factor, percentage_pixels_changed, keep_recording_n_frames, ignore_n_frames_after_recording, store_path, prefix, quality, max_file_time, camera_warm_up, pre_record_count, before, after, fps, exec_start, exec_cycle, exec_end, global_stopflag };
 
-	pthread_attr_t tattr;
-	pthread_attr_init(&tattr);
-	pthread_attr_setdetachstate(&tattr, PTHREAD_CREATE_DETACHED);
-
 	int rc = -1;
-	if ((rc = pthread_create(th, &tattr, motion_trigger_thread, &p)) != 0)
+	if ((rc = pthread_create(th, NULL, motion_trigger_thread, &p)) != 0)
 	{
 		errno = rc;
 		error_exit(true, "pthread_create failed (motion trigger)");
