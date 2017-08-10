@@ -13,6 +13,7 @@
 
 typedef struct
 {
+	std::atomic_bool *global_stopflag;
 	source *s;
 	bool first;
 	bool header;
@@ -25,6 +26,9 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 {
 	work_data_t *w = (work_data_t *)mypt;
 	const size_t full_size = size * nmemb;
+
+	if (*w -> global_stopflag)
+		return 0;
 
 	w -> data = (uint8_t *)realloc(w -> data, w -> n + full_size + 1);
 	memcpy(&w -> data[w -> n], ptr, full_size);
@@ -52,10 +56,10 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 		w -> n = left;
 
 		w -> req_len = atoi(&cl[16]);
-		printf("needed len: %zu\n", w -> req_len);
+		//printf("needed len: %zu\n", w -> req_len);
 	}
 	else if (w -> n == w -> req_len) {
-		printf("frame! (%p %zu/%zu)\n", w -> data, w -> n, w -> req_len);
+		//printf("frame! (%p %zu/%zu)\n", w -> data, w -> n, w -> req_len);
 
 		if (w -> first) {
 			int width = -1, height = -1;
@@ -121,6 +125,7 @@ void source_http_mjpeg::operator()()
 
 		/* write the page body to this file handle */ 
 		work_data_t *w = new work_data_t;
+		w -> global_stopflag = global_stopflag;
 		w -> s = this;
 		w -> first = w -> header = true;
 		w -> data = NULL;
