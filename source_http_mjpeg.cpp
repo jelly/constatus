@@ -106,6 +106,8 @@ void source_http_mjpeg::operator()()
 {
 	for(;!*global_stopflag;)
 	{
+		printf("(re-)connect to MJPEG source %s\n", url.c_str());
+
 		CURL *curl_handle = curl_easy_init();
 
 		curl_easy_setopt(curl_handle, CURLOPT_URL, url.c_str());
