@@ -62,6 +62,8 @@ void * motion_trigger_thread(void *pin)
 
 	printf("\nGo!\n");
 
+	pthread_t th;
+
 	for(;!*p -> global_stopflag;) {
 		uint8_t *work = NULL;
 		size_t work_len = 0;
@@ -101,7 +103,7 @@ void * motion_trigger_thread(void *pin)
 					std::vector<frame_t> *pr = new std::vector<frame_t>(prerecord);
 					prerecord.clear();
 
-					stop_flag = start_store_thread(p -> s, p -> store_path, p -> prefix, p -> quality, p -> max_file_time, p -> fps, pr, p -> after, p -> exec_start, p -> exec_cycle, p -> exec_end, p -> global_stopflag);
+					start_store_thread(p -> s, p -> store_path, p -> prefix, p -> quality, p -> max_file_time, p -> fps, pr, p -> after, p -> exec_start, p -> exec_cycle, p -> exec_end, p -> global_stopflag, &stop_flag, &th);
 					motion = true;
 				}
 
@@ -118,6 +120,9 @@ void * motion_trigger_thread(void *pin)
 						printf(" stopping");
 						*stop_flag = true;
 						stop_flag = NULL;
+						void *dummy = NULL;
+						pthread_join(th, &dummy);
+
 						motion = false;
 						mute = p -> mute_after_record_frame_count;
 					}
@@ -148,7 +153,7 @@ void * motion_trigger_thread(void *pin)
 	return NULL;
 }
 
-void start_motion_trigger_thread(source *const s, const int quality, const int noise_factor, const double percentage_pixels_changed, const int keep_recording_n_frames, const int ignore_n_frames_after_recording, const std::string & store_path, const std::string & prefix, const int max_file_time, const int camera_warm_up, const int pre_record_count, const std::vector<filter *> *const before, const std::vector<filter *> *const after, const int fps, const char *const exec_start, const char *const exec_cycle, const char *const exec_end, std::atomic_bool *const global_stopflag)
+void start_motion_trigger_thread(source *const s, const int quality, const int noise_factor, const double percentage_pixels_changed, const int keep_recording_n_frames, const int ignore_n_frames_after_recording, const std::string & store_path, const std::string & prefix, const int max_file_time, const int camera_warm_up, const int pre_record_count, const std::vector<filter *> *const before, const std::vector<filter *> *const after, const int fps, const char *const exec_start, const char *const exec_cycle, const char *const exec_end, std::atomic_bool *const global_stopflag, pthread_t *th)
 {
 	// FIXME static
 	static mt_pars_t p = { s, noise_factor, percentage_pixels_changed, keep_recording_n_frames, ignore_n_frames_after_recording, store_path, prefix, quality, max_file_time, camera_warm_up, pre_record_count, before, after, fps, exec_start, exec_cycle, exec_end, global_stopflag };
@@ -157,9 +162,8 @@ void start_motion_trigger_thread(source *const s, const int quality, const int n
 	pthread_attr_init(&tattr);
 	pthread_attr_setdetachstate(&tattr, PTHREAD_CREATE_DETACHED);
 
-	pthread_t th;
 	int rc = -1;
-	if ((rc = pthread_create(&th, &tattr, motion_trigger_thread, &p)) != 0)
+	if ((rc = pthread_create(th, &tattr, motion_trigger_thread, &p)) != 0)
 	{
 		errno = rc;
 		error_exit(true, "pthread_create failed (motion trigger)");

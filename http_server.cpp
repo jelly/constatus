@@ -571,7 +571,7 @@ void * http_server_thread(void *p)
 	return NULL;
 }
 
-void start_http_server(const char *const http_adapter, const int http_port, source *const src, const double fps, const int quality, const int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag)
+void start_http_server(const char *const http_adapter, const int http_port, source *const src, const double fps, const int quality, const int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, pthread_t *th)
 {
 	if (http_port != -1)
 	{
@@ -591,9 +591,8 @@ void start_http_server(const char *const http_adapter, const int http_port, sour
 		pthread_attr_init(&tattr);
                 pthread_attr_setdetachstate(&tattr, PTHREAD_CREATE_DETACHED);
 
-		pthread_t th;
 		int rc = -1;
-		if ((rc = pthread_create(&th, &tattr, http_server_thread, st)) != 0)
+		if ((rc = pthread_create(th, &tattr, http_server_thread, st)) != 0)
 		{
 			errno = rc;
 			error_exit(true, "pthread_create failed (http server main)");

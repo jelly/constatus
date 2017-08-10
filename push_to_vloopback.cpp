@@ -95,7 +95,7 @@ void *p2vl_thread(void *pin)
 	return NULL;
 }
 
-void start_p2vl_thread(source *const s, const double fps, const std::string & dev, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag)
+void start_p2vl_thread(source *const s, const double fps, const std::string & dev, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, pthread_t *th)
 {
 	p2vl_thread_pars_t *p = new p2vl_thread_pars_t;
 
@@ -109,9 +109,8 @@ void start_p2vl_thread(source *const s, const double fps, const std::string & de
 	pthread_attr_init(&tattr);
 	pthread_attr_setdetachstate(&tattr, PTHREAD_CREATE_DETACHED);
 
-	pthread_t th;
 	int rc = -1;
-	if ((rc = pthread_create(&th, &tattr, p2vl_thread, p)) != 0)
+	if ((rc = pthread_create(th, &tattr, p2vl_thread, p)) != 0)
 	{
 		errno = rc;
 		error_exit(true, "pthread_create failed (vloopback thread)");

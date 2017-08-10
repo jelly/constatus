@@ -258,6 +258,9 @@ int main(int argc, char *argv[])
 
 	//***
 
+	std::vector<pthread_t> ths;
+	pthread_t th;
+
 	// listen adapter, listen port, source, fps, jpeg quality, time limit (in seconds)
 	printf("Configuring the HTTP listener...\n");
 	json_t *j_hl = json_object_get(cfg, "http-listener");
@@ -270,7 +273,8 @@ int main(int argc, char *argv[])
 
 		std::vector<filter *> *http_filters = load_filters(json_object_get(j_hl, "filters"));
 
-		start_http_server(listen_adapter, listen_port, s, fps, jpeg_quality, time_limit, http_filters, &global_stopflag);
+		start_http_server(listen_adapter, listen_port, s, fps, jpeg_quality, time_limit, http_filters, &global_stopflag, &th);
+		ths.push_back(th);
 	}
 	else {
 		printf(" no HTTP listener\n");
@@ -286,7 +290,8 @@ int main(int argc, char *argv[])
 
 		std::vector<filter *> *loopback_filters = load_filters(json_object_get(j_vl, "filters"));
 
-		start_p2vl_thread(s, fps, dev, loopback_filters, &global_stopflag);
+		start_p2vl_thread(s, fps, dev, loopback_filters, &global_stopflag, &th);
+		ths.push_back(th);
 	}
 	else {
 		printf(" no video loopback\n");
@@ -318,7 +323,8 @@ int main(int argc, char *argv[])
 		std::vector<filter *> *filters_before = load_filters(json_object_get(j_mt, "filters-before"));
 		std::vector<filter *> *filters_after = load_filters(json_object_get(j_mt, "filters-after"));
 
-		start_motion_trigger_thread(s, jpeg_quality, noise_factor, pixels_changed_perctange, min_duration, mute_duration, path, prefix, restart_interval, warmup_duration, pre_motion_record_duration, filters_before, filters_after, fps, exec_start, exec_cycle, exec_end, &global_stopflag);
+		start_motion_trigger_thread(s, jpeg_quality, noise_factor, pixels_changed_perctange, min_duration, mute_duration, path, prefix, restart_interval, warmup_duration, pre_motion_record_duration, filters_before, filters_after, fps, exec_start, exec_cycle, exec_end, &global_stopflag, &th);
+		ths.push_back(th);
 	}
 	else {
 		printf(" no motion trigger defined\n");
@@ -354,7 +360,9 @@ int main(int argc, char *argv[])
 
 			std::vector<filter *> *store_filters = load_filters(json_object_get(ae, "filters"));
 
-			start_store_thread(s, path, prefix, jpeg_quality, restart_interval, snapshot_interval, NULL, store_filters, exec_start, exec_cycle,   exec_end, &global_stopflag);
+			std::atomic_bool *dummy = NULL;
+			start_store_thread(s, path, prefix, jpeg_quality, restart_interval, snapshot_interval, NULL, store_filters, exec_start, exec_cycle,   exec_end, &global_stopflag, &dummy, &th);
+			ths.push_back(th);
 		}
 	}
 	else {
@@ -377,6 +385,11 @@ int main(int argc, char *argv[])
 	getchar();
 
 	global_stopflag = true;
+
+	for(pthread_t t : ths) {
+		void *dummy = NULL;
+		pthread_join(t, &dummy);
+	}
 
 	delete s;
 	json_decref(cfg);

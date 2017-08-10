@@ -158,7 +158,7 @@ void *store_thread(void *pin)
 	return NULL;
 }
 
-std::atomic_bool * start_store_thread(source *const s, const std::string & store_path, const std::string & prefix, const int quality, const int max_time, const double interval, std::vector<frame_t> *const pre_record, const std::vector<filter *> *const filters, const char *const exec_start, const char *const exec_cycle, const char *const exec_end, std::atomic_bool *const global_stopflag)
+void start_store_thread(source *const s, const std::string & store_path, const std::string & prefix, const int quality, const int max_time, const double interval, std::vector<frame_t> *const pre_record, const std::vector<filter *> *const filters, const char *const exec_start, const char *const exec_cycle, const char *const exec_end, std::atomic_bool *const global_stopflag, std::atomic_bool **local_stop_flag, pthread_t *th)
 {
 	store_thread_pars_t *p = new store_thread_pars_t;
 
@@ -180,13 +180,12 @@ std::atomic_bool * start_store_thread(source *const s, const std::string & store
 	pthread_attr_init(&tattr);
 	pthread_attr_setdetachstate(&tattr, PTHREAD_CREATE_DETACHED);
 
-	pthread_t th;
 	int rc = -1;
-	if ((rc = pthread_create(&th, &tattr, store_thread, p)) != 0)
+	if ((rc = pthread_create(th, &tattr, store_thread, p)) != 0)
 	{
 		errno = rc;
 		error_exit(true, "pthread_create failed (store thread)");
 	}
 
-	return &p -> stop_flag;
+	*local_stop_flag = &p -> stop_flag;
 }
