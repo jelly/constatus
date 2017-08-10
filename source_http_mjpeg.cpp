@@ -49,7 +49,7 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 			printf("Content-Length missing from header\n");
 
 		w -> req_len = atoi(&cl[16]);
-		printf("needed len: %zu\n", w -> req_len);
+		//printf("needed len: %zu\n", w -> req_len);
 
 		w -> header = false;
 
