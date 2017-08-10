@@ -212,6 +212,8 @@ int main(int argc, char *argv[])
 	if (!cfg)
 		error_exit(false, "At column %d in line %d the following JSON problem was found in the configuration file: %s (%s", error.column, error.line, error.text, error.source);
 
+	fclose(fh);
+
 	//***
 
 	//int w = 352, h = 288; // or -1, -1 for auto detect
