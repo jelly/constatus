@@ -35,6 +35,8 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 	w -> n += full_size;
 	w -> data[w -> n] = 0x00;
 
+	//printf("h:%d  n:%zu req:%zu\n", w -> header, w -> n, w -> req_len);
+
 	if (w -> header) {
 		char *header_end = strstr((char *)w -> data, "\r\n\r\n");
 		if (!header_end)
@@ -46,6 +48,9 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 		if (!cl)
 			printf("Content-Length missing from header\n");
 
+		w -> req_len = atoi(&cl[16]);
+		printf("needed len: %zu\n", w -> req_len);
+
 		w -> header = false;
 
 		size_t left = w -> n - (strlen((char *)w -> data) + 4);
@@ -54,11 +59,8 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 			memmove(w -> data, header_end + 4, left);
 		}
 		w -> n = left;
-
-		w -> req_len = atoi(&cl[16]);
-		//printf("needed len: %zu\n", w -> req_len);
 	}
-	else if (w -> n == w -> req_len) {
+	else if (w -> n >= w -> req_len) {
 		//printf("frame! (%p %zu/%zu)\n", w -> data, w -> n, w -> req_len);
 
 		if (w -> first) {
