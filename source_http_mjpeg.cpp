@@ -55,7 +55,7 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 
 		size_t left = w -> n - (strlen((char *)w -> data) + 4);
 		if (left) {
-			printf("LEFT %zu\n", left);
+			//printf("LEFT %zu\n", left);
 			memmove(w -> data, header_end + 4, left);
 		}
 		w -> n = left;
@@ -79,7 +79,7 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 
 		size_t left = w -> n - w -> req_len;
 		if (left) {
-			printf("LEFT %zu\n", left);
+			//printf("LEFT %zu\n", left);
 			memmove(w -> data, &w -> data[w -> req_len], left);
 		}
 		w -> n = left;
