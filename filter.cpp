@@ -22,8 +22,6 @@ void free_filters(const std::vector<filter *> *filters)
 {
 	for(filter *f : *filters)
 		delete f;
-
-	delete filters;
 }
 
 filter::filter()

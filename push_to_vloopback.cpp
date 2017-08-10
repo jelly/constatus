@@ -89,7 +89,6 @@ void *p2vl_thread(void *pin)
 
 	free(prev_frame);
 
-	free_filters(p -> filters);
 	delete p;
 
 	return NULL;

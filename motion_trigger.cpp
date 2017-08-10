@@ -147,9 +147,6 @@ void * motion_trigger_thread(void *pin)
 		prerecord.erase(prerecord.begin() + 0);
 	}
 
-	free_filters(p -> before);
-	free_filters(p -> after);
-
 	return NULL;
 }
 

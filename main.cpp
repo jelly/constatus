@@ -67,6 +67,12 @@ double json_float(const json_t *const in, const char *const key, const char * co
 	return json_real_value(j_value);
 }
 
+void add_filters(std::vector<filter *> *af, const std::vector<filter *> *const in)
+{
+	for(filter *f : *in)
+		af -> push_back(f);
+}
+
 std::vector<filter *> *load_filters(const json_t *const in)
 {
 	std::vector<filter *> *const filters = new std::vector<filter *>();
@@ -260,6 +266,7 @@ int main(int argc, char *argv[])
 
 	std::vector<pthread_t> ths;
 	pthread_t th;
+	std::vector<filter *> af;
 
 	// listen adapter, listen port, source, fps, jpeg quality, time limit (in seconds)
 	printf("Configuring the HTTP listener...\n");
@@ -272,6 +279,7 @@ int main(int argc, char *argv[])
 		int time_limit = json_int(j_hl, "time-limit", "how long (in seconds) to stream before the connection is closed");
 
 		std::vector<filter *> *http_filters = load_filters(json_object_get(j_hl, "filters"));
+		add_filters(&af, http_filters);
 
 		start_http_server(listen_adapter, listen_port, s, fps, jpeg_quality, time_limit, http_filters, &global_stopflag, &th);
 		ths.push_back(th);
@@ -289,6 +297,7 @@ int main(int argc, char *argv[])
 		double fps = json_float(j_vl, "fps", "nubmer of frames per second");
 
 		std::vector<filter *> *loopback_filters = load_filters(json_object_get(j_vl, "filters"));
+		add_filters(&af, loopback_filters);
 
 		start_p2vl_thread(s, fps, dev, loopback_filters, &global_stopflag, &th);
 		ths.push_back(th);
@@ -321,7 +330,9 @@ int main(int argc, char *argv[])
 		const char *exec_end = json_str(j_mt, "exec-end", "script to start when the motion stops");
 
 		std::vector<filter *> *filters_before = load_filters(json_object_get(j_mt, "filters-before"));
+		add_filters(&af, filters_before);
 		std::vector<filter *> *filters_after = load_filters(json_object_get(j_mt, "filters-after"));
+		add_filters(&af, filters_after);
 
 		start_motion_trigger_thread(s, jpeg_quality, noise_factor, pixels_changed_perctange, min_duration, mute_duration, path, prefix, restart_interval, warmup_duration, pre_motion_record_duration, filters_before, filters_after, fps, exec_start, exec_cycle, exec_end, &global_stopflag, &th);
 		ths.push_back(th);
@@ -359,6 +370,7 @@ int main(int argc, char *argv[])
 			const char *exec_end = json_str(ae, "exec-end", "script to start when the motion stops");
 
 			std::vector<filter *> *store_filters = load_filters(json_object_get(ae, "filters"));
+			add_filters(&af, store_filters);
 
 			std::atomic_bool *dummy = NULL;
 			start_store_thread(s, path, prefix, jpeg_quality, restart_interval, snapshot_interval, NULL, store_filters, exec_start, exec_cycle,   exec_end, &global_stopflag, &dummy, &th);
@@ -393,6 +405,8 @@ int main(int argc, char *argv[])
 
 	delete s;
 	json_decref(cfg);
+
+	free_filters(&af);
 
 	return 0;
 }
