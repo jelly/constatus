@@ -42,11 +42,14 @@ void source_rtsp::operator()()
 		error_exit(false, "avformat_find_stream_info failed (rtsp)");
 
 	// search video stream
-	int video_stream_index = 0;
+	int video_stream_index = -1;
 	for (int i = 0; i < format_ctx->nb_streams; i++) {
 		if (format_ctx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
 			video_stream_index = i;
 	}
+
+	if (video_stream_index == -1)
+		error_exit(false, "No video stream in rstp feed");
 
 	AVPacket packet;
 	av_init_packet(&packet);
@@ -69,7 +72,8 @@ void source_rtsp::operator()()
 	AVCodecContext *codec_ctx = avcodec_alloc_context3(codec);
 
 	avcodec_get_context_defaults3(codec_ctx, codec);
-	avcodec_copy_context(codec_ctx, format_ctx->streams[video_stream_index]->codec);
+
+	avcodec_parameters_to_context(codec_ctx, format_ctx->streams[video_stream_index]->codecpar);
 
 	if (avcodec_open2(codec_ctx, codec, NULL) < 0)
 		error_exit(false, "avcodec_open2 failed");
@@ -95,17 +99,26 @@ void source_rtsp::operator()()
 			if (stream == NULL) {    //create stream in file
 				printf("Create stream\n");
 
-				stream = avformat_new_stream(output_ctx, format_ctx->streams[video_stream_index]->codec->codec);
-				avcodec_copy_context(stream->codec, format_ctx->streams[video_stream_index]->codec);
-				stream->sample_aspect_ratio = format_ctx->streams[video_stream_index]->codec->sample_aspect_ratio;
+				stream = avformat_new_stream(output_ctx, NULL);
+
+				avcodec_parameters_to_context(stream->codec, format_ctx->streams[video_stream_index]->codecpar);
+
+				stream->sample_aspect_ratio = format_ctx->streams[video_stream_index]->codecpar->sample_aspect_ratio;
 			}
 
 			int check = 0;
 			packet.stream_index = stream->id;
 
-			int result = avcodec_decode_video2(codec_ctx, picture, &check, &packet);
-			if (check != 1)
-				printf("Bytes decoded %d check %d\n", result, check);
+			if (avcodec_send_packet(codec_ctx, &packet) < 0) {
+				printf("rtsp error\n");
+				break;
+			}
+
+			int result = avcodec_receive_frame(codec_ctx, picture); //avcodec_decode_video2(codec_ctx, picture, &check, &packet);
+			if (result < 0 && result != AVERROR(EAGAIN) && result != AVERROR_EOF) {
+				printf("rtsp error %d\n", result);
+				break;
+			}
 
 			sws_scale(img_convert_ctx, picture->data, picture->linesize, 0, codec_ctx->height, picture_rgb->data, picture_rgb->linesize);
 
@@ -117,19 +130,22 @@ void source_rtsp::operator()()
 			set_frame(E_RGB, pixels, this -> width * this -> height * 3);
 		}
 
+		av_frame_unref(picture);
+
 		av_packet_unref(&packet);
 		av_init_packet(&packet);
 	}
+
+	av_packet_unref(&packet);
 
 	av_free(picture);
 	av_free(picture_rgb);
 	av_free(picture_buffer);
 	av_free(picture_buffer_2);
-
 	av_read_pause(format_ctx);
 	avio_close(output_ctx->pb);
 	avformat_free_context(output_ctx);
-
+	sws_freeContext(img_convert_ctx);
 	avcodec_free_context(&codec_ctx);
 
 	free(pixels);
