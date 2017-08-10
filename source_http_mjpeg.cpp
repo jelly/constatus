@@ -108,7 +108,7 @@ void source_http_mjpeg::operator()()
 		CURL *curl_handle = curl_easy_init();
 
 		/* set URL to get here */ 
-		curl_easy_setopt(curl_handle, CURLOPT_URL, "https://admin:bertus@odafloor-camera/video/mjpg.cgi");
+		curl_easy_setopt(curl_handle, CURLOPT_URL, url.c_str());
 
 		curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 0);
 
