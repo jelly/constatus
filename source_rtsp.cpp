@@ -122,8 +122,11 @@ void source_rtsp::operator()()
 			sws_scale(img_convert_ctx, picture->data, picture->linesize, 0, codec_ctx->height, picture_rgb->data, picture_rgb->linesize);
 
 			for(int y = 0; y < codec_ctx->height; y++) {
+				uint8_t *out_pointer = &pixels[y * this -> width * 3];
+				uint8_t *in_pointer = picture_rgb->data[0] + y * picture_rgb->linesize[0];
+
 				for(int x = 0; x < codec_ctx->width * 3; x++)
-					pixels[y * this -> width * 3 + x] = (picture_rgb->data[0] + y * picture_rgb->linesize[0])[x];
+					out_pointer[x] = in_pointer[x];
 			}
 
 			set_frame(E_RGB, pixels, this -> width * this -> height * 3);
