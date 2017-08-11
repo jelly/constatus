@@ -206,48 +206,6 @@ unsigned char *memstr(unsigned char *haystack, unsigned int haystack_len, unsign
 	return NULL;
 }
 
-int connect_to(const std::string & hostname, int port)
-{
-	std::string portstr = myformat("%d", port);
-	int fd = -1;
-
-        struct addrinfo hints;
-        struct addrinfo* result = NULL;
-        memset(&hints, 0x00, sizeof(struct addrinfo));
-        hints.ai_family = AF_UNSPEC;
-        hints.ai_socktype = SOCK_STREAM;
-        hints.ai_flags = 0;
-        hints.ai_protocol = 0;
-
-        int rc = getaddrinfo(hostname.c_str(), portstr.c_str(), &hints, &result);
-        if (rc) {
-                //logger -> dolog("Cannot resolve host name %s: %s", hostname.c_str(), gai_strerror(rc));
-		freeaddrinfo(result);
-		return -1;
-        }
-
-	for (struct addrinfo *rp = result; rp != NULL; rp = rp -> ai_next) {
-		fd = socket(rp -> ai_family, rp -> ai_socktype, rp -> ai_protocol);
-		if (fd == -1)
-			continue;
-
-		/* wait for connection */
-		/* connect to peer */
-		if (connect(fd, rp -> ai_addr, rp -> ai_addrlen) == 0) {
-			/* connection made, return */
-			freeaddrinfo(result);
-			return fd;
-		}
-
-		close(fd);
-		fd = -1;
-	}
-
-	freeaddrinfo(result);
-
-	return fd;
-}
-
 void set_thread_name(const std::string & name)
 {
 	std::string full_name = "cs:" + name;

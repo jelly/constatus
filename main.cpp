@@ -23,11 +23,13 @@
 #include "filter_mirror_h.h"
 #include "filter_noise_neighavg.h"
 #include "filter_add_text.h"
+#include "filter_add_scaled_text.h"
 #include "filter_grayscale.h"
 #include "filter_boost_contrast.h"
 #include "filter_marker_simple.h"
 #include "push_to_vloopback.h"
 #include "filter_overlay.h"
+#include "picio.h"
 
 const char *json_str(const json_t *const in, const char *const key, const char *const descr)
 {
@@ -75,6 +77,24 @@ void add_filters(std::vector<filter *> *af, const std::vector<filter *> *const i
 		af -> push_back(f);
 }
 
+bool *load_selection_bitmap(const char *const selection_bitmap)
+{
+	bool *sb = NULL;
+
+	if (selection_bitmap[0]) {
+		FILE *fh = fopen(selection_bitmap, "rb");
+		if (!fh)
+			error_exit(true, "Cannot open file \"%s\"", selection_bitmap);
+
+		int w, h;
+		load_PBM_file(fh, &w, &h, &sb);
+
+		fclose(fh);
+	}
+
+	return sb;
+}
+
 std::vector<filter *> *load_filters(const json_t *const in)
 {
 	std::vector<filter *> *const filters = new std::vector<filter *>();
@@ -107,7 +127,10 @@ std::vector<filter *> *load_filters(const json_t *const in)
 			else if (strcasecmp(s_position, "invert") == 0)
 				sm = m_invert;
 
-			filters -> push_back(new filter_marker_simple(sm));
+			const char *selection_bitmap = json_str(ae, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.");
+			bool *sb = load_selection_bitmap(selection_bitmap);
+
+			filters -> push_back(new filter_marker_simple(sm, sb));
 		}
 		else if (strcasecmp(s_type, "boost-contrast") == 0)
 			filters -> push_back(new filter_boost_contrast());
@@ -146,6 +169,18 @@ std::vector<filter *> *load_filters(const json_t *const in)
 				error_exit(false, "(text-)position %s is not understood", s_position);
 
 			filters -> push_back(new filter_add_text(s_text, tp));
+		}
+		else if (strcasecmp(s_type, "scaled-text") == 0) {
+			const char *s_text = json_str(ae, "text", "what text to show");
+			const char *font = json_str(ae, "font", "which font to use");
+			int x = json_int(ae, "x", "x-coordinate of text");
+			int y = json_int(ae, "y", "y-coordinate of text");
+			int fs = json_int(ae, "font-size", "font size (in pixels)");
+			int r = json_int(ae, "r", "red component of text color");
+			int g = json_int(ae, "g", "green component of text color");
+			int b = json_int(ae, "b", "blue component of text color");
+
+			filters -> push_back(new filter_add_scaled_text(s_text, font, x, y, fs, r, g, b));
 		}
 		else {
 			error_exit(false, "Filter %s is not known", s_type);
@@ -254,8 +289,9 @@ int main(int argc, char *argv[])
 	else if (strcasecmp(s_type, "mjpeg") == 0) {
 		const char *url = json_str(j_source, "url", "address of MJPEG stream");
 		int jpeg_quality = json_int(j_source, "quality", "JPEG quality, this influences the size");
+		bool ign_cert = json_bool(j_source, "ignore-cert", "ignore SSL errors");
 
-		s = new source_http_mjpeg(url, jpeg_quality, &global_stopflag);
+		s = new source_http_mjpeg(url, ign_cert, jpeg_quality, &global_stopflag);
 	}
 	else if (strcasecmp(s_type, "rtsp") == 0) {
 		const char *url = json_str(j_source, "url", "address of JPEG stream");
@@ -332,13 +368,23 @@ int main(int argc, char *argv[])
 		const char *exec_start = json_str(j_mt, "exec-start", "script to start when motion begins");
 		const char *exec_cycle = json_str(j_mt, "exec-cycle", "script to start when the output file is restarted");
 		const char *exec_end = json_str(j_mt, "exec-end", "script to start when the motion stops");
+		const char *selection_bitmap = json_str(j_mt, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.");
 
 		std::vector<filter *> *filters_before = load_filters(json_object_get(j_mt, "filters-before"));
 		add_filters(&af, filters_before);
 		std::vector<filter *> *filters_after = load_filters(json_object_get(j_mt, "filters-after"));
 		add_filters(&af, filters_after);
 
-		start_motion_trigger_thread(s, jpeg_quality, noise_factor, pixels_changed_perctange, min_duration, mute_duration, path, prefix, restart_interval, warmup_duration, pre_motion_record_duration, filters_before, filters_after, fps, exec_start, exec_cycle, exec_end, &global_stopflag, &th);
+		const char *format = json_str(j_mt, "format", "either AVI or JPEG");
+		o_format_t of = OF_AVI;
+		if (strcasecmp(format, "AVI") == 0)
+			of = OF_AVI;
+		else if (strcasecmp(format, "JPGE") == 0)
+			of = OF_JPEG;
+
+		bool *sb = load_selection_bitmap(selection_bitmap);
+
+		start_motion_trigger_thread(s, jpeg_quality, noise_factor, pixels_changed_perctange, min_duration, mute_duration, path, prefix, restart_interval, warmup_duration, pre_motion_record_duration, filters_before, filters_after, fps, exec_start, exec_cycle, exec_end, of, &global_stopflag, sb, &th);
 		ths.push_back(th);
 	}
 	else {
@@ -372,12 +418,19 @@ int main(int argc, char *argv[])
 			const char *exec_start = json_str(ae, "exec-start", "script to start when motion begins");
 			const char *exec_cycle = json_str(ae, "exec-cycle", "script to start when the output file is restarted");
 			const char *exec_end = json_str(ae, "exec-end", "script to start when the motion stops");
+			const char *format = json_str(ae, "format", "either AVI or JPEG");
 
 			std::vector<filter *> *store_filters = load_filters(json_object_get(ae, "filters"));
 			add_filters(&af, store_filters);
 
+			o_format_t of = OF_AVI;
+			if (strcasecmp(format, "AVI") == 0)
+				of = OF_AVI;
+			else if (strcasecmp(format, "JPGE") == 0)
+				of = OF_JPEG;
+
 			std::atomic_bool *dummy = NULL;
-			start_store_thread(s, path, prefix, jpeg_quality, restart_interval, snapshot_interval, NULL, store_filters, exec_start, exec_cycle,   exec_end, &global_stopflag, &dummy, &th);
+			start_store_thread(s, path, prefix, jpeg_quality, restart_interval, snapshot_interval, NULL, store_filters, exec_start, exec_cycle,   exec_end, &global_stopflag, of, &dummy, &th);
 			ths.push_back(th);
 		}
 	}

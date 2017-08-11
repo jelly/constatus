@@ -31,6 +31,8 @@ typedef struct
 	const std::vector<filter *> *const before, *const after;
 	int fps;
 	const char *const exec_start, *const exec_cycle, *const exec_end;
+	const bool *pixel_select_bitmap;
+	o_format_t of;
 	std::atomic_bool *const global_stopflag;
 } mt_pars_t;
 
@@ -50,7 +52,7 @@ void * motion_trigger_thread(void *pin)
 
 	std::vector<frame_t> prerecord;
 
-	for(int i=0; i<p -> camera_warm_up; i++) {
+	for(int i=0; i<p -> camera_warm_up && !*p -> global_stopflag; i++) {
 		printf("Warm-up... %d\r", i);
 
 		uint8_t *frame = NULL;
@@ -74,20 +76,42 @@ void * motion_trigger_thread(void *pin)
 		apply_filters(p -> before, prev_frame, work, prev_ts, w, h);
 
 		if (prev_frame) {
-			const uint8_t *pw = work, *pp = prev_frame;
 			int cnt = 0;
-			for(int i=0; i<w*h; i++) {
-				int lc = *pw++;
-				lc += *pw++;
-				lc += *pw++;
-				lc /= 3;
 
-				int lp = *pp++;
-				lp += *pp++;
-				lp += *pp++;
-				lp /= 3;
+			if (p -> pixel_select_bitmap) {
+				const uint8_t *pw = work, *pp = prev_frame;
+				for(int i=0; i<w*h; i++) {
+					if (!p -> pixel_select_bitmap[i])
+						continue;
 
-				cnt += abs(lc - lp) >= p -> noise_level;
+					int lc = *pw++;
+					lc += *pw++;
+					lc += *pw++;
+					lc /= 3;
+
+					int lp = *pp++;
+					lp += *pp++;
+					lp += *pp++;
+					lp /= 3;
+
+					cnt += abs(lc - lp) >= p -> noise_level;
+				}
+			}
+			else {
+				const uint8_t *pw = work, *pp = prev_frame;
+				for(int i=0; i<w*h; i++) {
+					int lc = *pw++;
+					lc += *pw++;
+					lc += *pw++;
+					lc /= 3;
+
+					int lp = *pp++;
+					lp += *pp++;
+					lp += *pp++;
+					lp /= 3;
+
+					cnt += abs(lc - lp) >= p -> noise_level;
+				}
 			}
 
 			if (mute) {
@@ -103,7 +127,7 @@ void * motion_trigger_thread(void *pin)
 					std::vector<frame_t> *pr = new std::vector<frame_t>(prerecord);
 					prerecord.clear();
 
-					start_store_thread(p -> s, p -> store_path, p -> prefix, p -> quality, p -> max_file_time, p -> fps, pr, p -> after, p -> exec_start, p -> exec_cycle, p -> exec_end, p -> global_stopflag, &stop_flag, &th);
+					start_store_thread(p -> s, p -> store_path, p -> prefix, p -> quality, p -> max_file_time, p -> fps, pr, p -> after, p -> exec_start, p -> exec_cycle, p -> exec_end, p -> global_stopflag, p -> of, &stop_flag, &th);
 					motion = true;
 				}
 
@@ -147,13 +171,15 @@ void * motion_trigger_thread(void *pin)
 		prerecord.erase(prerecord.begin() + 0);
 	}
 
+	free((void *)p -> pixel_select_bitmap);
+
 	return NULL;
 }
 
-void start_motion_trigger_thread(source *const s, const int quality, const int noise_factor, const double percentage_pixels_changed, const int keep_recording_n_frames, const int ignore_n_frames_after_recording, const std::string & store_path, const std::string & prefix, const int max_file_time, const int camera_warm_up, const int pre_record_count, const std::vector<filter *> *const before, const std::vector<filter *> *const after, const int fps, const char *const exec_start, const char *const exec_cycle, const char *const exec_end, std::atomic_bool *const global_stopflag, pthread_t *th)
+void start_motion_trigger_thread(source *const s, const int quality, const int noise_factor, const double percentage_pixels_changed, const int keep_recording_n_frames, const int ignore_n_frames_after_recording, const std::string & store_path, const std::string & prefix, const int max_file_time, const int camera_warm_up, const int pre_record_count, const std::vector<filter *> *const before, const std::vector<filter *> *const after, const int fps, const char *const exec_start, const char *const exec_cycle, const char *const exec_end, const o_format_t of, std::atomic_bool *const global_stopflag, const bool *pixel_select_bitmap, pthread_t *th)
 {
 	// FIXME static
-	static mt_pars_t p = { s, noise_factor, percentage_pixels_changed, keep_recording_n_frames, ignore_n_frames_after_recording, store_path, prefix, quality, max_file_time, camera_warm_up, pre_record_count, before, after, fps, exec_start, exec_cycle, exec_end, global_stopflag };
+	static mt_pars_t p = { s, noise_factor, percentage_pixels_changed, keep_recording_n_frames, ignore_n_frames_after_recording, store_path, prefix, quality, max_file_time, camera_warm_up, pre_record_count, before, after, fps, exec_start, exec_cycle, exec_end, pixel_select_bitmap, of, global_stopflag };
 
 	int rc = -1;
 	if ((rc = pthread_create(th, NULL, motion_trigger_thread, &p)) != 0)

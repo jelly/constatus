@@ -22,6 +22,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <jpeglib.h>
+extern "C" {
+#include <pbm.h>
+}
 
 #include "error.h"
 
@@ -210,4 +213,18 @@ void read_JPEG_memory(unsigned char *in, int n_bytes_in, int *w, int *h, unsigne
 	fclose(fh);
 
 	jpeg_destroy_decompress(&info);
+}
+
+void load_PBM_file(FILE *const fh, int *const w, int *const h, bool **out)
+{
+	bit **pbm = pbm_readpbm(fh, w, h);
+
+	*out = (bool *)malloc(*w * *h * sizeof(bool));
+
+	for(int y=0; y<*h; y++) {
+		for(int x=0; x<*w; x++)
+			(*out)[y * *w + x] = pbm[y][x];
+	}
+
+	pbm_freearray(pbm, *h);
 }
