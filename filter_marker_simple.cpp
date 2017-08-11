@@ -5,12 +5,13 @@
 
 #include "filter_marker_simple.h"
 
-filter_marker_simple::filter_marker_simple(const sm_mode_t modeIn) : mode(modeIn)
+filter_marker_simple::filter_marker_simple(const sm_mode_t modeIn, const bool *pixel_select_bitmap) : mode(modeIn), psb(pixel_select_bitmap)
 {
 }
 
 filter_marker_simple::~filter_marker_simple()
 {
+	free((void *)psb);
 }
 
 void filter_marker_simple::updatePixel(uint8_t *const out, const int x, const int y, const int w)
@@ -43,11 +44,26 @@ void filter_marker_simple::apply(const uint64_t ts, const int w, const int h, co
 
 	bool *diffs = new bool[w * h];
 
-	for(int i=0; i<w*h*3; i += 3) {
-		int lc = (in[i + 0] + in[i + 1] + in[i + 2]) / 3;
-		int lp = (prev[i + 0] + prev[i + 1] + prev[i + 2]) / 3;
+	if (psb) {
+		for(int i=0; i<w*h; i++) {
+			if (!psb[i])
+				continue;
 
-		diffs[i / 3] = abs(lc - lp) >= 32; // FIXME
+			int i3 = i * 3;
+
+			int lc = (in[i3 + 0] + in[i3 + 1] + in[i3 + 2]) / 3;
+			int lp = (prev[i3 + 0] + prev[i3 + 1] + prev[i3 + 2]) / 3;
+
+			diffs[i / 3] = abs(lc - lp) >= 32; // FIXME
+		}
+	}
+	else {
+		for(int i=0; i<w*h*3; i += 3) {
+			int lc = (in[i + 0] + in[i + 1] + in[i + 2]) / 3;
+			int lp = (prev[i + 0] + prev[i + 1] + prev[i + 2]) / 3;
+
+			diffs[i / 3] = abs(lc - lp) >= 32; // FIXME
+		}
 	}
 
 	int cx = 0, cy = 0, cn = 0;

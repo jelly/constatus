@@ -29,6 +29,7 @@
 #include "filter_marker_simple.h"
 #include "push_to_vloopback.h"
 #include "filter_overlay.h"
+#include "picio.h"
 
 const char *json_str(const json_t *const in, const char *const key, const char *const descr)
 {
@@ -76,6 +77,24 @@ void add_filters(std::vector<filter *> *af, const std::vector<filter *> *const i
 		af -> push_back(f);
 }
 
+bool *load_selection_bitmap(const char *const selection_bitmap)
+{
+	bool *sb = NULL;
+
+	if (selection_bitmap[0]) {
+		FILE *fh = fopen(selection_bitmap, "rb");
+		if (!fh)
+			error_exit(true, "Cannot open file \"%s\"", selection_bitmap);
+
+		int w, h;
+		load_PBM_file(fh, &w, &h, &sb);
+
+		fclose(fh);
+	}
+
+	return sb;
+}
+
 std::vector<filter *> *load_filters(const json_t *const in)
 {
 	std::vector<filter *> *const filters = new std::vector<filter *>();
@@ -108,7 +127,10 @@ std::vector<filter *> *load_filters(const json_t *const in)
 			else if (strcasecmp(s_position, "invert") == 0)
 				sm = m_invert;
 
-			filters -> push_back(new filter_marker_simple(sm));
+			const char *selection_bitmap = json_str(ae, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.");
+			bool *sb = load_selection_bitmap(selection_bitmap);
+
+			filters -> push_back(new filter_marker_simple(sm, sb));
 		}
 		else if (strcasecmp(s_type, "boost-contrast") == 0)
 			filters -> push_back(new filter_boost_contrast());
@@ -346,13 +368,16 @@ int main(int argc, char *argv[])
 		const char *exec_start = json_str(j_mt, "exec-start", "script to start when motion begins");
 		const char *exec_cycle = json_str(j_mt, "exec-cycle", "script to start when the output file is restarted");
 		const char *exec_end = json_str(j_mt, "exec-end", "script to start when the motion stops");
+		const char *selection_bitmap = json_str(j_mt, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.");
 
 		std::vector<filter *> *filters_before = load_filters(json_object_get(j_mt, "filters-before"));
 		add_filters(&af, filters_before);
 		std::vector<filter *> *filters_after = load_filters(json_object_get(j_mt, "filters-after"));
 		add_filters(&af, filters_after);
 
-		start_motion_trigger_thread(s, jpeg_quality, noise_factor, pixels_changed_perctange, min_duration, mute_duration, path, prefix, restart_interval, warmup_duration, pre_motion_record_duration, filters_before, filters_after, fps, exec_start, exec_cycle, exec_end, &global_stopflag, &th);
+		bool *sb = load_selection_bitmap(selection_bitmap);
+
+		start_motion_trigger_thread(s, jpeg_quality, noise_factor, pixels_changed_perctange, min_duration, mute_duration, path, prefix, restart_interval, warmup_duration, pre_motion_record_duration, filters_before, filters_after, fps, exec_start, exec_cycle, exec_end, &global_stopflag, sb, &th);
 		ths.push_back(th);
 	}
 	else {
