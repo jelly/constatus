@@ -15,7 +15,11 @@ source::source(const int jpeg_quality, std::atomic_bool *const global_stopflagIn
 	frame_jpeg = NULL;
 
 	cond = PTHREAD_COND_INITIALIZER;
+
 	lock = PTHREAD_MUTEX_INITIALIZER;
+	pthread_mutexattr_t ma;
+	pthread_mutexattr_settype(&ma, PTHREAD_MUTEX_ERRORCHECK);
+	pthread_mutex_init(&lock, &ma);
 }
 
 source::~source()
