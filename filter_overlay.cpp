@@ -21,6 +21,7 @@ filter_overlay::filter_overlay(const std::string & file, const int xIn, const in
 
 filter_overlay::~filter_overlay()
 {
+	free(pixels);
 }
 
 void filter_overlay::apply(const uint64_t ts, const int w, const int h, const uint8_t *const prev, const uint8_t *const in, uint8_t *const out)
