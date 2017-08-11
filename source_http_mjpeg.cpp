@@ -9,7 +9,6 @@
 #include "source.h"
 #include "source_http_mjpeg.h"
 #include "picio.h"
-#include "frame.h"
 #include "error.h"
 
 typedef struct

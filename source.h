@@ -3,9 +3,8 @@
 #define __SOURCE_H__
 
 #include <atomic>
+#include <pthread.h>
 #include <stdint.h>
-
-#include "frame.h"
 
 typedef enum { E_RGB, E_JPEG } encoding_t;
 
