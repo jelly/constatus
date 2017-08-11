@@ -19,4 +19,6 @@ void apply_filters(const std::vector<filter *> *const filters, const uint8_t *co
 
 void free_filters(const std::vector<filter *> *filters);
 
+void scale(const uint8_t *in, const int win, const int hin, uint8_t **out, const int wout, const int hout);
+
 #endif
