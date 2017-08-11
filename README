@@ -17,6 +17,7 @@ Supports:
 
   filters:
    - add generic text
+     two versions: fast (low CPU) or scaled (text can be any font, size or color)
    - boost contrast
    - convert to grayscale
    - add box around movement
@@ -35,6 +36,7 @@ Required:
 - libpng
 - libgwavi - from https://github.com/Rolinh/libgwavi.git
 - libavformat / libswscale / libavcodec / libavutil
+- libcairo
 
 
 The program supports cameras that generate YUYV, JPEG, RGB or YUV420 output.

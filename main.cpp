@@ -23,6 +23,7 @@
 #include "filter_mirror_h.h"
 #include "filter_noise_neighavg.h"
 #include "filter_add_text.h"
+#include "filter_add_scaled_text.h"
 #include "filter_grayscale.h"
 #include "filter_boost_contrast.h"
 #include "filter_marker_simple.h"
@@ -146,6 +147,18 @@ std::vector<filter *> *load_filters(const json_t *const in)
 				error_exit(false, "(text-)position %s is not understood", s_position);
 
 			filters -> push_back(new filter_add_text(s_text, tp));
+		}
+		else if (strcasecmp(s_type, "scaled-text") == 0) {
+			const char *s_text = json_str(ae, "text", "what text to show");
+			const char *font = json_str(ae, "font", "which font to use");
+			int x = json_int(ae, "x", "x-coordinate of text");
+			int y = json_int(ae, "y", "y-coordinate of text");
+			int fs = json_int(ae, "font-size", "font size (in pixels)");
+			int r = json_int(ae, "r", "red component of text color");
+			int g = json_int(ae, "g", "green component of text color");
+			int b = json_int(ae, "b", "blue component of text color");
+
+			filters -> push_back(new filter_add_scaled_text(s_text, font, x, y, fs, r, g, b));
 		}
 		else {
 			error_exit(false, "Filter %s is not known", s_type);
