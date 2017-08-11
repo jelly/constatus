@@ -4,13 +4,14 @@ This camera can be locally attached to your Linux system or be accessed via MJPE
 Supports:
   input:
    - video4linux
-   - mjpeg cameras
-   - rtsp cameras
-   - jpeg cameras
+   - MJPEG cameras
+   - RTSP cameras
+   - JPEG cameras
 
   output:
-   - avi file(s)
-   - http streaming
+   - AVI file(s)
+   - individual JPEGs
+   - HTTP streaming
    - video4linux loopback device
 
   motion detection

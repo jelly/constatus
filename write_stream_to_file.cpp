@@ -195,7 +195,7 @@ void *store_thread_jpeg(void *pin)
 		struct tm tm;
 		localtime_r(&tv.tv_sec, &tm);
 
-		name = myformat("%s/%s%04d-%02d-%02d_%02d:%02d:%02d.%03d-%d.avi",
+		name = myformat("%s/%s%04d-%02d-%02d_%02d:%02d:%02d.%03d-%d.jpg",
 				p -> path.c_str(), p -> prefix.c_str(),
 				tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
 				tm.tm_hour, tm.tm_min, tm.tm_sec,

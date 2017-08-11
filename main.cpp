@@ -36,7 +36,7 @@ const char *json_str(const json_t *const in, const char *const key, const char *
 	json_t *j_value = json_object_get(in, key);
 
 	if (!j_value)
-		error_exit(false, "%s missing (%s)", key, descr);
+		error_exit(false, "\"%s\" missing (%s)", key, descr);
 
 	return json_string_value(j_value);
 }
@@ -46,7 +46,7 @@ bool json_bool(const json_t *const in, const char *const key, const char * const
 	json_t *j_value = json_object_get(in, key);
 
 	if (!j_value)
-		error_exit(false, "%s missing (%s)", key, descr);
+		error_exit(false, "\"%s\" missing (%s)", key, descr);
 
 	return json_boolean_value(j_value);
 }
@@ -56,7 +56,7 @@ int json_int(const json_t *const in, const char *const key, const char * const d
 	json_t *j_value = json_object_get(in, key);
 
 	if (!j_value)
-		error_exit(false, "%s missing (%s)", key, descr);
+		error_exit(false, "\"%s\" missing (%s)", key, descr);
 
 	return json_integer_value(j_value);
 }
@@ -66,7 +66,7 @@ double json_float(const json_t *const in, const char *const key, const char * co
 	json_t *j_value = json_object_get(in, key);
 
 	if (!j_value)
-		error_exit(false, "%s missing (%s)", key, descr);
+		error_exit(false, "\"%s\" missing (%s)", key, descr);
 
 	return json_real_value(j_value);
 }
@@ -379,7 +379,7 @@ int main(int argc, char *argv[])
 		o_format_t of = OF_AVI;
 		if (strcasecmp(format, "AVI") == 0)
 			of = OF_AVI;
-		else if (strcasecmp(format, "JPGE") == 0)
+		else if (strcasecmp(format, "JPEG") == 0)
 			of = OF_JPEG;
 
 		bool *sb = load_selection_bitmap(selection_bitmap);
@@ -426,7 +426,7 @@ int main(int argc, char *argv[])
 			o_format_t of = OF_AVI;
 			if (strcasecmp(format, "AVI") == 0)
 				of = OF_AVI;
-			else if (strcasecmp(format, "JPGE") == 0)
+			else if (strcasecmp(format, "JPEG") == 0)
 				of = OF_JPEG;
 
 			std::atomic_bool *dummy = NULL;
