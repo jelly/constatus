@@ -36,12 +36,19 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 	w -> n += full_size;
 	w -> data[w -> n] = 0x00;
 
-	//printf("h:%d  n:%zu req:%zu\n", w -> header, w -> n, w -> req_len);
+	// printf("h:%d  n:%zu req:%zu\n", w -> header, w -> n, w -> req_len);
 
 	if (w -> header) {
+		bool proper_header = true;
+
 		char *header_end = strstr((char *)w -> data, "\r\n\r\n");
-		if (!header_end)
-			return full_size;
+		if (!header_end) {
+			header_end = strstr((char *)w -> data, "\n\n");
+			if (!header_end)
+				return full_size;
+
+			proper_header = false;
+		}
 
 		*header_end = 0x0;
 
@@ -49,20 +56,20 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 		if (!cl)
 			printf("Content-Length missing from header\n");
 
-		w -> req_len = atoi(&cl[16]);
+		w -> req_len = atoi(&cl[15]);
 		//printf("needed len: %zu\n", w -> req_len);
 
 		w -> header = false;
 
-		size_t left = w -> n - (strlen((char *)w -> data) + 4);
+		size_t left = w -> n - (strlen((char *)w -> data) + (proper_header?4:2));
 		if (left) {
 			//printf("LEFT %zu\n", left);
-			memmove(w -> data, header_end + 4, left);
+			memmove(w -> data, header_end + (proper_header?4:2), left);
 		}
 		w -> n = left;
 	}
 	else if (w -> n >= w -> req_len) {
-		//printf("frame! (%p %zu/%zu)\n", w -> data, w -> n, w -> req_len);
+		// printf("frame! (%p %zu/%zu)\n", w -> data, w -> n, w -> req_len);
 
 		if (w -> first) {
 			int width = -1, height = -1;
@@ -80,12 +87,19 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 
 		size_t left = w -> n - w -> req_len;
 		if (left) {
-			//printf("LEFT %zu\n", left);
 			memmove(w -> data, &w -> data[w -> req_len], left);
+		//printf("LEFT %zu\n", left);
 		}
 		w -> n = left;
 
+		w -> req_len = 0;
+
 		w -> header = true;
+	}
+
+	if (w -> n > 16 * 1024 * 1024) { // sanity limit
+		printf("frame too big\n");
+		return 0;
 	}
 
 	return full_size;
