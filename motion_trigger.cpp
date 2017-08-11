@@ -50,7 +50,7 @@ void * motion_trigger_thread(void *pin)
 
 	std::vector<frame_t> prerecord;
 
-	for(int i=0; i<p -> camera_warm_up; i++) {
+	for(int i=0; i<p -> camera_warm_up && !*p -> global_stopflag; i++) {
 		printf("Warm-up... %d\r", i);
 
 		uint8_t *frame = NULL;

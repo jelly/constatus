@@ -254,8 +254,9 @@ int main(int argc, char *argv[])
 	else if (strcasecmp(s_type, "mjpeg") == 0) {
 		const char *url = json_str(j_source, "url", "address of MJPEG stream");
 		int jpeg_quality = json_int(j_source, "quality", "JPEG quality, this influences the size");
+		bool ign_cert = json_bool(j_source, "ignore-cert", "ignore SSL errors");
 
-		s = new source_http_mjpeg(url, jpeg_quality, &global_stopflag);
+		s = new source_http_mjpeg(url, ign_cert, jpeg_quality, &global_stopflag);
 	}
 	else if (strcasecmp(s_type, "rtsp") == 0) {
 		const char *url = json_str(j_source, "url", "address of JPEG stream");

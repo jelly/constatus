@@ -10,6 +10,7 @@
 #include "source_http_mjpeg.h"
 #include "picio.h"
 #include "frame.h"
+#include "error.h"
 
 typedef struct
 {
@@ -91,7 +92,7 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 }
 
 
-source_http_mjpeg::source_http_mjpeg(const std::string & urlIn, const int jpeg_quality, std::atomic_bool *const global_stopflag) : source(jpeg_quality, global_stopflag), url(urlIn)
+source_http_mjpeg::source_http_mjpeg(const std::string & urlIn, const bool ic, const int jpeg_quality, std::atomic_bool *const global_stopflag) : source(jpeg_quality, global_stopflag), url(urlIn), ignore_cert(ic)
 {
 	th = new std::thread(std::ref(*this));
 }
@@ -108,11 +109,24 @@ void source_http_mjpeg::operator()()
 	{
 		CURL *curl_handle = curl_easy_init();
 
+		char error[CURL_ERROR_SIZE] = "?";
+		if (curl_easy_setopt(curl_handle, CURLOPT_ERRORBUFFER, error))
+			error_exit(false, "curl_easy_setopt(CURLOPT_ERRORBUFFER) failed: %s", error);
+
 		curl_easy_setopt(curl_handle, CURLOPT_URL, url.c_str());
 
-		curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 0);
+		std::string useragent = NAME " " VERSION;
 
-		curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYHOST, 0);
+		if (curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, useragent.c_str()))
+			error_exit(false, "curl_easy_setopt(CURLOPT_USERAGENT) failed: %s", error);
+
+		if (ignore_cert) {
+			if (curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 0))
+				error_exit(false, "curl_easy_setopt(CURLOPT_SSL_VERIFYPEER) failed: %s", error);
+
+			if (curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYHOST, 0))
+				error_exit(false, "curl_easy_setopt(CURLOPT_SSL_VERIFYHOST) failed: %s", error);
+		}
 
 		curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 0L);
 
