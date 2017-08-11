@@ -32,6 +32,7 @@ typedef struct
 	int fps;
 	const char *const exec_start, *const exec_cycle, *const exec_end;
 	const bool *pixel_select_bitmap;
+	o_format_t of;
 	std::atomic_bool *const global_stopflag;
 } mt_pars_t;
 
@@ -126,7 +127,7 @@ void * motion_trigger_thread(void *pin)
 					std::vector<frame_t> *pr = new std::vector<frame_t>(prerecord);
 					prerecord.clear();
 
-					start_store_thread(p -> s, p -> store_path, p -> prefix, p -> quality, p -> max_file_time, p -> fps, pr, p -> after, p -> exec_start, p -> exec_cycle, p -> exec_end, p -> global_stopflag, &stop_flag, &th);
+					start_store_thread(p -> s, p -> store_path, p -> prefix, p -> quality, p -> max_file_time, p -> fps, pr, p -> after, p -> exec_start, p -> exec_cycle, p -> exec_end, p -> global_stopflag, p -> of, &stop_flag, &th);
 					motion = true;
 				}
 
@@ -175,10 +176,10 @@ void * motion_trigger_thread(void *pin)
 	return NULL;
 }
 
-void start_motion_trigger_thread(source *const s, const int quality, const int noise_factor, const double percentage_pixels_changed, const int keep_recording_n_frames, const int ignore_n_frames_after_recording, const std::string & store_path, const std::string & prefix, const int max_file_time, const int camera_warm_up, const int pre_record_count, const std::vector<filter *> *const before, const std::vector<filter *> *const after, const int fps, const char *const exec_start, const char *const exec_cycle, const char *const exec_end, std::atomic_bool *const global_stopflag, const bool *pixel_select_bitmap, pthread_t *th)
+void start_motion_trigger_thread(source *const s, const int quality, const int noise_factor, const double percentage_pixels_changed, const int keep_recording_n_frames, const int ignore_n_frames_after_recording, const std::string & store_path, const std::string & prefix, const int max_file_time, const int camera_warm_up, const int pre_record_count, const std::vector<filter *> *const before, const std::vector<filter *> *const after, const int fps, const char *const exec_start, const char *const exec_cycle, const char *const exec_end, const o_format_t of, std::atomic_bool *const global_stopflag, const bool *pixel_select_bitmap, pthread_t *th)
 {
 	// FIXME static
-	static mt_pars_t p = { s, noise_factor, percentage_pixels_changed, keep_recording_n_frames, ignore_n_frames_after_recording, store_path, prefix, quality, max_file_time, camera_warm_up, pre_record_count, before, after, fps, exec_start, exec_cycle, exec_end, pixel_select_bitmap, global_stopflag };
+	static mt_pars_t p = { s, noise_factor, percentage_pixels_changed, keep_recording_n_frames, ignore_n_frames_after_recording, store_path, prefix, quality, max_file_time, camera_warm_up, pre_record_count, before, after, fps, exec_start, exec_cycle, exec_end, pixel_select_bitmap, of, global_stopflag };
 
 	int rc = -1;
 	if ((rc = pthread_create(th, NULL, motion_trigger_thread, &p)) != 0)

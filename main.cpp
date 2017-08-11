@@ -375,9 +375,16 @@ int main(int argc, char *argv[])
 		std::vector<filter *> *filters_after = load_filters(json_object_get(j_mt, "filters-after"));
 		add_filters(&af, filters_after);
 
+		const char *format = json_str(j_mt, "format", "either AVI or JPEG");
+		o_format_t of = OF_AVI;
+		if (strcasecmp(format, "AVI") == 0)
+			of = OF_AVI;
+		else if (strcasecmp(format, "JPGE") == 0)
+			of = OF_JPEG;
+
 		bool *sb = load_selection_bitmap(selection_bitmap);
 
-		start_motion_trigger_thread(s, jpeg_quality, noise_factor, pixels_changed_perctange, min_duration, mute_duration, path, prefix, restart_interval, warmup_duration, pre_motion_record_duration, filters_before, filters_after, fps, exec_start, exec_cycle, exec_end, &global_stopflag, sb, &th);
+		start_motion_trigger_thread(s, jpeg_quality, noise_factor, pixels_changed_perctange, min_duration, mute_duration, path, prefix, restart_interval, warmup_duration, pre_motion_record_duration, filters_before, filters_after, fps, exec_start, exec_cycle, exec_end, of, &global_stopflag, sb, &th);
 		ths.push_back(th);
 	}
 	else {
@@ -411,12 +418,19 @@ int main(int argc, char *argv[])
 			const char *exec_start = json_str(ae, "exec-start", "script to start when motion begins");
 			const char *exec_cycle = json_str(ae, "exec-cycle", "script to start when the output file is restarted");
 			const char *exec_end = json_str(ae, "exec-end", "script to start when the motion stops");
+			const char *format = json_str(ae, "format", "either AVI or JPEG");
 
 			std::vector<filter *> *store_filters = load_filters(json_object_get(ae, "filters"));
 			add_filters(&af, store_filters);
 
+			o_format_t of = OF_AVI;
+			if (strcasecmp(format, "AVI") == 0)
+				of = OF_AVI;
+			else if (strcasecmp(format, "JPGE") == 0)
+				of = OF_JPEG;
+
 			std::atomic_bool *dummy = NULL;
-			start_store_thread(s, path, prefix, jpeg_quality, restart_interval, snapshot_interval, NULL, store_filters, exec_start, exec_cycle,   exec_end, &global_stopflag, &dummy, &th);
+			start_store_thread(s, path, prefix, jpeg_quality, restart_interval, snapshot_interval, NULL, store_filters, exec_start, exec_cycle,   exec_end, &global_stopflag, of, &dummy, &th);
 			ths.push_back(th);
 		}
 	}
