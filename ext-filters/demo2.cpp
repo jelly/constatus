@@ -1,5 +1,8 @@
+#include <algorithm>
 #include <stdint.h>
 #include <string.h>
+
+extern "C" {
 
 void init_filter(const char *const parameter)
 {
@@ -15,5 +18,7 @@ void apply_filter(const uint64_t ts, const int w, const int h, const uint8_t *co
 	memcpy(result, current_frame, bytes);
 
 	for(size_t i=0; i<bytes; i += 3)
-		result[i + 0] ^= 0xff;
+		std::swap(result[i + 0], result[i + 2]);
+}
+
 }
