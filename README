@@ -25,6 +25,7 @@ Supports:
    - mirror vertical and/or horizontal
    - neighbour average noise filter
    - picture overlay (with alpha blending)
+   - external filters (.so-files that can be linked at runtime)
 
 
 Required:

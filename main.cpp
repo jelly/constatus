@@ -30,6 +30,7 @@
 #include "push_to_vloopback.h"
 #include "filter_overlay.h"
 #include "picio.h"
+#include "filter_ext.h"
 
 const char *json_str(const json_t *const in, const char *const key, const char *const descr)
 {
@@ -115,6 +116,12 @@ std::vector<filter *> *load_filters(const json_t *const in)
 			filters -> push_back(new filter_noise_neighavg());
 		else if (strcasecmp(s_type, "grayscale") == 0)
 			filters -> push_back(new filter_grayscale());
+		else if (strcasecmp(s_type, "ext-filter") == 0) {
+			const char *file = json_str(ae, "file", "filename of external filter");
+			const char *par = json_str(ae, "par", "parameter for external filter");
+
+			filters -> push_back(new filter_ext(file, par));
+		}
 		else if (strcasecmp(s_type, "marker") == 0) {
 			const char *s_position = json_str(ae, "mode", "marker mode, e.g. red, red-invert or invert");
 
