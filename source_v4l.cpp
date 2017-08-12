@@ -280,28 +280,21 @@ void source_v4l::operator()()
 	int bytes = width * height * 3;
 	unsigned char *conv_buffer = static_cast<unsigned char *>(valloc(bytes));
 
+	struct v4l2_buffer buf = { 0 };
+	buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	buf.memory = V4L2_MEMORY_MMAP;
+
 	for(;!*global_stopflag;)
 	{
-		struct v4l2_buffer buf = { 0 };
-
-		buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-		buf.memory = V4L2_MEMORY_MMAP;
-
 		if (ioctl(fd, VIDIOC_DQBUF, &buf) == -1)
 			continue;
 
-		struct timeval tv;
-		if (gettimeofday(&tv, NULL) == -1)
-			error_exit(true, "gettimeofday failed");
-
-		if (prefer_jpeg)
-		{
+		if (prefer_jpeg) {
 			int cur_n_bytes = buf.bytesused;
 
 			set_frame(E_JPEG, io_buffer, cur_n_bytes);
 		}
-		else
-		{
+		else {
 			if (pixelformat == V4L2_PIX_FMT_YUV420)
 				image_yuv420_to_rgb(io_buffer, conv_buffer, width, height);
 			else if (pixelformat == V4L2_PIX_FMT_YUYV)
