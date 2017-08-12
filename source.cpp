@@ -110,10 +110,14 @@ void source::set_scaled_frame(const uint8_t *const in, const int sourcew, const 
 	int target_w = resize_w != -1 ? resize_w : sourcew;
 	int target_h = resize_h != -1 ? resize_h : sourceh;
 
+	//printf("%dx%d => %dx%d\n", sourcew, sourceh, target_w, target_h);
 	uint8_t *out = NULL;
 	scale(in, sourcew, sourceh, &out, target_w, target_h);
 
 	set_frame(E_RGB, out, target_w * target_h * 3);
+
+	width = target_w;
+	height = target_h;
 
 	free(out);
 }
