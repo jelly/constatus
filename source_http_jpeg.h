@@ -13,7 +13,7 @@ private:
 	std::thread *th;
 
 public:
-	source_http_jpeg(const std::string & url, const bool ignore_cert, const std::string & auth, const int jpeg_quality, std::atomic_bool *const global_stopflag);
+	source_http_jpeg(const std::string & url, const bool ignore_cert, const std::string & auth, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h);
 	~source_http_jpeg();
 
 	void operator()();

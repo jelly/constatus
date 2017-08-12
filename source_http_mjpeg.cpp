@@ -82,7 +82,16 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 			w -> s -> set_size(width, height);
 		}
 
-		w -> s -> set_frame(E_JPEG, w -> data, w -> req_len);
+		if (w -> s -> need_scale()) {
+			int dw, dh;
+			unsigned char *temp = NULL;
+			read_JPEG_memory(w -> data, w -> req_len, &dw, &dh, &temp);
+			w -> s -> set_scaled_frame(temp, dw, dh);
+			free(temp);
+		}
+		else {
+			w -> s -> set_frame(E_JPEG, w -> data, w -> req_len);
+		}
 
 		size_t left = w -> n - w -> req_len;
 		if (left) {
@@ -105,7 +114,7 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 }
 
 
-source_http_mjpeg::source_http_mjpeg(const std::string & urlIn, const bool ic, const int jpeg_quality, std::atomic_bool *const global_stopflag) : source(jpeg_quality, global_stopflag), url(urlIn), ignore_cert(ic)
+source_http_mjpeg::source_http_mjpeg(const std::string & urlIn, const bool ic, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h) : source(global_stopflag, resize_w, resize_h), url(urlIn), ignore_cert(ic)
 {
 	th = new std::thread(std::ref(*this));
 }

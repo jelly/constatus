@@ -14,7 +14,7 @@ void image_yuyv2_to_rgb(const unsigned char* src, int width, int height, unsigne
 class source_v4l : public source
 {
 protected:
-	int fd;
+	int fd, vw, vh;
 	unsigned int pixelformat;
 	uint8_t *io_buffer;
 	size_t unmap_size;
@@ -24,7 +24,7 @@ protected:
 	virtual bool try_v4l_configuration(int fd, int *width, int *height, unsigned int *format);
 
 public:
-	source_v4l(const std::string & dev, bool prefer_jpeg, bool rpi_workaround, int jpeg_quality, int w_override, int h_override, std::atomic_bool *const global_stopflag);
+	source_v4l(const std::string & dev, bool prefer_jpeg, bool rpi_workaround, int jpeg_quality, int w_override, int h_override, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h);
 	virtual ~source_v4l();
 
 	virtual void operator()();

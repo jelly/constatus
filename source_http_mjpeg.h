@@ -13,7 +13,7 @@ private:
 	std::thread *th;
 
 public:
-	source_http_mjpeg(const std::string & url, const bool ignore_cert, const int jpeg_quality, std::atomic_bool *const global_stopflag);
+	source_http_mjpeg(const std::string & url, const bool ignore_cert, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h);
 	virtual ~source_http_mjpeg();
 
 	void operator()();

@@ -7,8 +7,9 @@
 #include "source.h"
 #include "source_http_jpeg.h"
 #include "picio.h"
+#include "filter.h"
 
-source_http_jpeg::source_http_jpeg(const std::string & urlIn, const bool ignoreCertIn, const std::string & authIn, const int jpeg_quality, std::atomic_bool *const global_stopflag) : source(jpeg_quality, global_stopflag), url(urlIn), auth(authIn), ignore_cert(ignoreCertIn)
+source_http_jpeg::source_http_jpeg(const std::string & urlIn, const bool ignoreCertIn, const std::string & authIn, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h) : source(global_stopflag, resize_w, resize_h), url(urlIn), auth(authIn), ignore_cert(ignoreCertIn)
 {
 	th = new std::thread(std::ref(*this));
 }
@@ -21,7 +22,7 @@ source_http_jpeg::~source_http_jpeg()
 
 void source_http_jpeg::operator()()
 {
-	bool first = true;
+	bool first = true, resize = resize_h != -1 || resize_w != -1;
 
 	for(;!*global_stopflag;)
 	{
@@ -35,15 +36,29 @@ void source_http_jpeg::operator()()
 			continue;
 		}
 
-		if (first) {
-                        unsigned char *temp = NULL;
-                        read_JPEG_memory(work, work_len, &width, &height, &temp);
-			free(temp);
+		unsigned char *temp = NULL;
+		int dw = -1, dh = -1;
+		if (first || resize) {
+                        read_JPEG_memory(work, work_len, &dw, &dh, &temp);
+
+			if (resize) {
+				width = resize_w;
+				height = resize_h;
+			}
+			else {
+				width = dw;
+				height = dh;
+			}
 
 			first = false;
 		}
 
-		set_frame(E_JPEG, work, work_len);
+		if (resize)
+			set_scaled_frame(temp, dw, dh);
+		else
+			set_frame(E_JPEG, work, work_len);
+
+		free(temp);
 
 		free(work);
 	}

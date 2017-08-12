@@ -12,7 +12,7 @@ private:
 	std::thread *th;
 
 public:
-	source_rtsp(const std::string & url, std::atomic_bool *const global_stopflag);
+	source_rtsp(const std::string & url, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h);
 	~source_rtsp();
 
 	void operator()();

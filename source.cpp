@@ -5,8 +5,9 @@
 
 #include "source.h"
 #include "picio.h"
+#include "filter.h"
 
-source::source(const int jpeg_quality, std::atomic_bool *const global_stopflagIn) : global_stopflag(global_stopflagIn)
+source::source(std::atomic_bool *const global_stopflagIn, const int resize_w, const int resize_h) : resize_w(resize_w), resize_h(resize_h), global_stopflag(global_stopflagIn)
 {
 	width = height = -1;
 	ts = 0;
@@ -102,4 +103,17 @@ bool source::get_frame(const encoding_t pe, const int jpeg_quality, uint64_t *ts
 	pthread_mutex_unlock(&lock);
 
 	return rc;
+}
+
+void source::set_scaled_frame(const uint8_t *const in, const int sourcew, const int sourceh)
+{
+	int target_w = resize_w != -1 ? resize_w : sourcew;
+	int target_h = resize_h != -1 ? resize_h : sourceh;
+
+	uint8_t *out = NULL;
+	scale(in, sourcew, sourceh, &out, target_w, target_h);
+
+	set_frame(E_RGB, out, target_w * target_h * 3);
+
+	free(out);
 }

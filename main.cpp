@@ -275,28 +275,34 @@ int main(int argc, char *argv[])
 		int w = json_int(j_source, "width", "width of picture");
 		int h = json_int(j_source, "height", "height of picture");
 		int jpeg_quality = json_int(j_source, "quality", "JPEG quality, this influences the size");
+		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
+		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
 
-		s = new source_v4l(json_str(j_source, "device", "linux v4l2 device"), pref_jpeg, rpi_wa, jpeg_quality, w, h, &global_stopflag);
+		s = new source_v4l(json_str(j_source, "device", "linux v4l2 device"), pref_jpeg, rpi_wa, jpeg_quality, w, h, &global_stopflag, resize_w, resize_h);
 	}
 	else if (strcasecmp(s_type, "jpeg") == 0) {
 		bool ign_cert = json_bool(j_source, "ignore-cert", "ignore SSL errors");
 		const char *auth = json_str(j_source, "http-auth", "HTTP authentication string");
 		const char *url = json_str(j_source, "url", "address of JPEG stream");
-		int jpeg_quality = json_int(j_source, "quality", "JPEG quality, this influences the size");
+		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
+		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
 
-		s = new source_http_jpeg(url, ign_cert, auth, jpeg_quality, &global_stopflag);
+		s = new source_http_jpeg(url, ign_cert, auth, &global_stopflag, resize_w, resize_h);
 	}
 	else if (strcasecmp(s_type, "mjpeg") == 0) {
 		const char *url = json_str(j_source, "url", "address of MJPEG stream");
-		int jpeg_quality = json_int(j_source, "quality", "JPEG quality, this influences the size");
 		bool ign_cert = json_bool(j_source, "ignore-cert", "ignore SSL errors");
+		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
+		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
 
-		s = new source_http_mjpeg(url, ign_cert, jpeg_quality, &global_stopflag);
+		s = new source_http_mjpeg(url, ign_cert, &global_stopflag, resize_w, resize_h);
 	}
 	else if (strcasecmp(s_type, "rtsp") == 0) {
 		const char *url = json_str(j_source, "url", "address of JPEG stream");
+		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
+		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
 
-		s = new source_rtsp(url, &global_stopflag);
+		s = new source_rtsp(url, &global_stopflag, resize_w, resize_h);
 	}
 	else {
 		printf(" no source defined!\n");

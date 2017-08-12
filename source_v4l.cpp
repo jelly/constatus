@@ -10,6 +10,7 @@
 #include "error.h"
 #include "source.h"
 #include "source_v4l.h"
+#include "picio.h"
 
 #define min(x, y)	((y) < (x) ? (y) : (x))
 #define max(x, y)	((y) > (x) ? (y) : (x))
@@ -155,7 +156,7 @@ bool source_v4l::try_v4l_configuration(int fd, int *width, int *height, unsigned
 	return true;
 }
 
-source_v4l::source_v4l(const std::string & dev, bool prefer_jpeg_in, bool rpi_workaround_in, int jpeg_quality, int w_override, int h_override, std::atomic_bool *const global_stopflag) : source(jpeg_quality, global_stopflag), prefer_jpeg(prefer_jpeg_in), rpi_workaround(rpi_workaround_in)
+source_v4l::source_v4l(const std::string & dev, bool prefer_jpeg_in, bool rpi_workaround_in, int jpeg_quality, int w_override, int h_override, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h) : source(global_stopflag, resize_w, resize_h), prefer_jpeg(prefer_jpeg_in), rpi_workaround(rpi_workaround_in)
 {
 	fd = open(dev.c_str(), O_RDWR);
 	if (fd == -1)
@@ -262,6 +263,14 @@ source_v4l::source_v4l(const std::string & dev, bool prefer_jpeg_in, bool rpi_wo
 	unmap_size = buf.length;
 	io_buffer = static_cast<uint8_t *>(mmap(NULL, buf.length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, buf.m.offset));
 
+	vw = width;
+	vh = height;
+
+	if (need_scale()) {
+		width = resize_w;
+		height = resize_h;
+	}
+
 	th = new std::thread(std::ref(*this));
 }
 
@@ -277,7 +286,7 @@ source_v4l::~source_v4l()
 
 void source_v4l::operator()()
 {
-	int bytes = width * height * 3;
+	int bytes = vw * vh * 3;
 	unsigned char *conv_buffer = static_cast<unsigned char *>(valloc(bytes));
 
 	struct v4l2_buffer buf = { 0 };
@@ -292,19 +301,31 @@ void source_v4l::operator()()
 		if (prefer_jpeg) {
 			int cur_n_bytes = buf.bytesused;
 
-			set_frame(E_JPEG, io_buffer, cur_n_bytes);
+			if (resize_h != -1 || resize_w != -1) {
+				int dw = -1, dh = -1;
+				unsigned char *temp = NULL;
+				read_JPEG_memory(io_buffer, cur_n_bytes, &dw, &dh, &temp);
+				set_scaled_frame(temp, dw, dh);
+				free(temp);
+			}
+			else {
+				set_frame(E_JPEG, io_buffer, cur_n_bytes);
+			}
 		}
 		else {
 			if (pixelformat == V4L2_PIX_FMT_YUV420)
-				image_yuv420_to_rgb(io_buffer, conv_buffer, width, height);
+				image_yuv420_to_rgb(io_buffer, conv_buffer, vw, vh);
 			else if (pixelformat == V4L2_PIX_FMT_YUYV)
-				image_yuyv2_to_rgb(io_buffer, width, height, conv_buffer);
+				image_yuyv2_to_rgb(io_buffer, vw, vh, conv_buffer);
 			else if (pixelformat == V4L2_PIX_FMT_RGB24)
-				memcpy(conv_buffer, io_buffer, width * height * 3);
+				memcpy(conv_buffer, io_buffer, vw * vh * 3);
 			else
 				error_exit(false, "video4linux: video source has unsupported pixel format");
 
-			set_frame(E_RGB, conv_buffer, width * height * 3);
+			if (need_scale())
+				set_scaled_frame(conv_buffer, vw, vh);
+			else
+				set_frame(E_RGB, conv_buffer, vw * vh * 3);
 		}
 
 		if (ioctl(fd, VIDIOC_QBUF, &buf) == -1)

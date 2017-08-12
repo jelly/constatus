@@ -14,7 +14,7 @@ extern "C" {
 #include "source_rtsp.h"
 #include "error.h"
 
-source_rtsp::source_rtsp(const std::string & urlIn, std::atomic_bool *const global_stopflag) : source(-1, global_stopflag), url(urlIn)
+source_rtsp::source_rtsp(const std::string & urlIn, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h) : source(global_stopflag, resize_w, resize_h), url(urlIn)
 {
 	th = new std::thread(std::ref(*this));
 }
@@ -78,9 +78,16 @@ void source_rtsp::operator()()
 	if (avcodec_open2(codec_ctx, codec, NULL) < 0)
 		error_exit(false, "avcodec_open2 failed");
 
-	this -> width = codec_ctx -> width;
-	this -> height = codec_ctx -> height;
-	uint8_t *pixels = (uint8_t *)valloc(this -> width * this -> height * 3);
+	if (need_scale()) {
+		width = resize_w;
+		height = resize_h;
+	}
+	else {
+		width = codec_ctx -> width;
+		height = codec_ctx -> height;
+	}
+
+	uint8_t *pixels = (uint8_t *)valloc(codec_ctx -> width * codec_ctx -> height * 3);
 
 	SwsContext *img_convert_ctx = sws_getContext(codec_ctx->width, codec_ctx->height, codec_ctx->pix_fmt, codec_ctx->width, codec_ctx->height, AV_PIX_FMT_RGB24, SWS_BICUBIC, NULL, NULL, NULL);
 
@@ -122,14 +129,17 @@ void source_rtsp::operator()()
 			sws_scale(img_convert_ctx, picture->data, picture->linesize, 0, codec_ctx->height, picture_rgb->data, picture_rgb->linesize);
 
 			for(int y = 0; y < codec_ctx->height; y++) {
-				uint8_t *out_pointer = &pixels[y * this -> width * 3];
+				uint8_t *out_pointer = &pixels[y * codec_ctx -> width * 3];
 				uint8_t *in_pointer = picture_rgb->data[0] + y * picture_rgb->linesize[0];
 
 				for(int x = 0; x < codec_ctx->width * 3; x++)
 					out_pointer[x] = in_pointer[x];
 			}
 
-			set_frame(E_RGB, pixels, this -> width * this -> height * 3);
+			if (need_scale())
+				set_scaled_frame(pixels, codec_ctx -> width, codec_ctx -> height);
+			else
+				set_frame(E_RGB, pixels, codec_ctx -> width * codec_ctx -> height * 3);
 		}
 
 		av_frame_unref(picture);
