@@ -27,9 +27,6 @@ Supports:
    - picture overlay (with alpha blending)
 
 
-This program is beta.
-
-
 Required:
 - libcurl
 - libjansson
