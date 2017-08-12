@@ -37,9 +37,10 @@ typedef struct {
 	int time_limit;
 	const std::vector<filter *> *filters;
 	std::atomic_bool *global_stopflag;
+	int resize_w, resize_h;
 } http_thread_t;
 
-void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag)
+void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h)
 {
         const char reply_headers[] =
                 "HTTP/1.0 200 ok\r\n"
@@ -91,14 +92,14 @@ void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, in
 		}
 
 		// decode, encode, etc frame
-		if (filters -> empty()) {
+		if (filters -> empty() && !s -> need_scale()) {
 			char img_h[4096] = { 0 };
-			snprintf(img_h, sizeof img_h, 
+			int len = snprintf(img_h, sizeof img_h, 
 				"--myboundary\r\n"
 				"Content-Type: image/jpeg\r\n"
 				"Content-Size: %zu\r\n"
 				"\r\n", work_len);
-			if (WRITE(cfd, img_h, strlen(img_h)) <= 0)
+			if (WRITE(cfd, img_h, len) <= 0)
 			{
 				printf("short write on boundary header\n");
 				break;
@@ -122,7 +123,19 @@ void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, in
 			if (!fh)
 				error_exit(true, "open_memstream() failed");
 
-			write_JPEG_file(fh, w, h, quality, work);
+			if (resize_h != -1 || resize_w != -1) {
+				int target_w = resize_w != -1 ? resize_w : w;
+				int target_h = resize_h != -1 ? resize_h : h;
+
+				uint8_t *temp = NULL;
+				scale(work, w, h, &temp, target_w, target_h);
+
+				write_JPEG_file(fh, target_w, target_h, quality, temp);
+				free(temp);
+			}
+			else {
+				write_JPEG_file(fh, w, h, quality, work);
+			}
 
 			fclose(fh);
 
@@ -130,12 +143,12 @@ void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, in
 			prev_frame = work;
 
 			char img_h[4096] = { 0 };
-			snprintf(img_h, sizeof img_h, 
+			int len = snprintf(img_h, sizeof img_h, 
 				"--myboundary\r\n"
 				"Content-Type: image/jpeg\r\n"
 				"Content-Size: %d\r\n"
 				"\r\n", (int)data_out_len);
-			if (WRITE(cfd, img_h, strlen(img_h)) <= 0)
+			if (WRITE(cfd, img_h, len) <= 0)
 			{
 				printf("short write on boundary header\n");
 				break;
@@ -162,7 +175,7 @@ void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, in
 	free(prev_frame);
 }
 
-void send_mpng_stream(int cfd, source *s, double fps, bool get, const int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag)
+void send_mpng_stream(int cfd, source *s, double fps, bool get, const int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h)
 {
         const char reply_headers[] =
                 "HTTP/1.0 200 ok\r\n"
@@ -218,7 +231,20 @@ void send_mpng_stream(int cfd, source *s, double fps, bool get, const int time_l
 		if (!fh)
 			error_exit(true, "open_memstream() failed");
 
-		write_PNG_file(fh, w, h, work);
+		if (s -> need_scale()) {
+			int target_w = resize_w != -1 ? resize_w : w;
+			int target_h = resize_h != -1 ? resize_h : h;
+
+			uint8_t *temp = NULL;
+			scale(work, w, h, &temp, target_w, target_h);
+
+			write_PNG_file(fh, target_w, target_h, temp);
+
+			free(temp);
+		}
+		else {
+			write_PNG_file(fh, w, h, work);
+		}
 
 		fclose(fh);
 
@@ -268,7 +294,7 @@ void send_mpng_stream(int cfd, source *s, double fps, bool get, const int time_l
 	free(prev_frame);
 }
 
-void send_png_frame(int cfd, source *s, bool get, const std::vector<filter *> *const filters)
+void send_png_frame(int cfd, source *s, bool get, const std::vector<filter *> *const filters, const int resize_w, const int resize_h)
 {
         const char reply_headers[] =
                 "HTTP/1.0 200 ok\r\n"
@@ -315,7 +341,20 @@ void send_png_frame(int cfd, source *s, bool get, const std::vector<filter *> *c
 
 	apply_filters(filters, NULL, work, prev_ts, w, h);
 
-	write_PNG_file(fh, w, h, work);
+	if (s -> need_scale()) {
+		int target_w = resize_w != -1 ? resize_w : w;
+		int target_h = resize_h != -1 ? resize_h : h;
+
+		uint8_t *temp = NULL;
+		scale(work, w, h, &temp, target_w, target_h);
+
+		write_PNG_file(fh, target_w, target_h, temp);
+
+		free(temp);
+	}
+	else {
+		write_PNG_file(fh, w, h, work);
+	}
 
 	free(work);
 
@@ -327,7 +366,7 @@ void send_png_frame(int cfd, source *s, bool get, const std::vector<filter *> *c
 	free(data_out);
 }
 
-void send_jpg_frame(int cfd, source *s, bool get, int quality, const std::vector<filter *> *const filters)
+void send_jpg_frame(int cfd, source *s, bool get, int quality, const std::vector<filter *> *const filters, const int resize_w, const int resize_h)
 {
         const char reply_headers[] =
                 "HTTP/1.0 200 ok\r\n"
@@ -371,12 +410,24 @@ void send_jpg_frame(int cfd, source *s, bool get, int quality, const std::vector
 	if (!fh)
 		error_exit(true, "open_memstream() failed");
 
-	if (filters -> empty())
+	if (filters -> empty() && !s -> need_scale())
 		fwrite(work, work_len, 1, fh);
 	else {
 		apply_filters(filters, NULL, work, prev_ts, w, h);
 
-		write_JPEG_file(fh, w, h, quality, work);
+		if (resize_h != -1 || resize_w != -1) {
+			int target_w = resize_w != -1 ? resize_w : w;
+			int target_h = resize_h != -1 ? resize_h : h;
+
+			uint8_t *temp = NULL;
+			scale(work, w, h, &temp, target_w, target_h);
+
+			write_JPEG_file(fh, target_w, target_h, quality, temp);
+			free(temp);
+		}
+		else {
+			write_JPEG_file(fh, w, h, quality, work);
+		}
 	}
 
 	fclose(fh);
@@ -389,7 +440,7 @@ void send_jpg_frame(int cfd, source *s, bool get, int quality, const std::vector
 	free(work);
 }
 
-void handle_http_client(int cfd, source *s, double fps, int quality, int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag)
+void handle_http_client(int cfd, source *s, double fps, int quality, int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h)
 {
 	sigset_t all_sigs;
 	sigfillset(&all_sigs);
@@ -465,13 +516,13 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 	printf("\tURL: %s\n", path);
 
 	if (strcmp(path, "/stream.mjpeg") == 0)
-		send_mjpeg_stream(cfd, s, fps, quality, get, time_limit, filters, global_stopflag);
+		send_mjpeg_stream(cfd, s, fps, quality, get, time_limit, filters, global_stopflag, resize_w, resize_h);
 	else if (strcmp(path, "/stream.mpng") == 0)
-		send_mpng_stream(cfd, s, fps, get, time_limit, filters, global_stopflag);
+		send_mpng_stream(cfd, s, fps, get, time_limit, filters, global_stopflag, resize_w, resize_h);
 	else if (strcmp(path, "/image.png") == 0)
-		send_png_frame(cfd, s, get, filters);
+		send_png_frame(cfd, s, get, filters, resize_w, resize_h);
 	else if (strcmp(path, "/image.jpg") == 0)
-		send_jpg_frame(cfd, s, get, quality, filters);
+		send_jpg_frame(cfd, s, get, quality, filters, resize_w, resize_h);
 	else if (strcmp(path, "/stream.html") == 0)
 	{
 		const char reply[] =
@@ -516,7 +567,7 @@ void * handle_http_client_thread(void *ct_in)
 
 	set_thread_name("http_client");
 
-	handle_http_client(ct -> fd, ct -> s, ct -> fps, ct -> quality, ct -> time_limit, ct -> filters, ct -> global_stopflag);
+	handle_http_client(ct -> fd, ct -> s, ct -> fps, ct -> quality, ct -> time_limit, ct -> filters, ct -> global_stopflag, ct -> resize_w, ct -> resize_h);
 
 	delete ct;
 
@@ -550,6 +601,8 @@ void * http_server_thread(void *p)
 		ct -> time_limit = st -> time_limit;
 		ct -> filters = st -> filters;
 		ct -> global_stopflag = st -> global_stopflag;
+		ct -> resize_w = st -> resize_w;
+		ct -> resize_h = st -> resize_h;
 
 		pthread_attr_t tattr;
 		pthread_attr_init(&tattr);
@@ -569,7 +622,7 @@ void * http_server_thread(void *p)
 	return NULL;
 }
 
-void start_http_server(const char *const http_adapter, const int http_port, source *const src, const double fps, const int quality, const int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, pthread_t *th)
+void start_http_server(const char *const http_adapter, const int http_port, source *const src, const double fps, const int quality, const int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, pthread_t *th)
 {
 	if (http_port != -1)
 	{
@@ -584,6 +637,8 @@ void start_http_server(const char *const http_adapter, const int http_port, sour
 		st -> time_limit = time_limit;
 		st -> filters = filters;
 		st -> global_stopflag = global_stopflag;
+		st -> resize_w = resize_w;
+		st -> resize_h = resize_h;
 
 		int rc = -1;
 		if ((rc = pthread_create(th, NULL, http_server_thread, st)) != 0)

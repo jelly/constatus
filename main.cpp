@@ -323,11 +323,13 @@ int main(int argc, char *argv[])
 		int fps = json_int(j_hl, "fps", "number of frames per second to record");
 		int jpeg_quality = json_int(j_hl, "quality", "JPEG quality, this influences the size");
 		int time_limit = json_int(j_hl, "time-limit", "how long (in seconds) to stream before the connection is closed");
+		int resize_w = json_int(j_hl, "resize-width", "resize picture width to this (-1 to disable)");
+		int resize_h = json_int(j_hl, "resize-height", "resize picture height to this (-1 to disable)");
 
 		std::vector<filter *> *http_filters = load_filters(json_object_get(j_hl, "filters"));
 		add_filters(&af, http_filters);
 
-		start_http_server(listen_adapter, listen_port, s, fps, jpeg_quality, time_limit, http_filters, &global_stopflag, &th);
+		start_http_server(listen_adapter, listen_port, s, fps, jpeg_quality, time_limit, http_filters, &global_stopflag, resize_w, resize_h, &th);
 		ths.push_back(th);
 	}
 	else {
