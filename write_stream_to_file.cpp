@@ -17,6 +17,7 @@ extern "C" {
 #include "filter.h"
 #include "exec.h"
 #include "write_stream_to_file.h"
+#include "log.h"
 
 typedef struct
 {
@@ -54,12 +55,12 @@ void *store_thread_avi(void *pin)
 		p -> s -> get_frame(p -> filters -> empty() ? E_JPEG : E_RGB, p -> quality, &prev_ts, &w, &h, &work, &work_len);
 
 		if (work == NULL || work_len == 0) {
-			printf("did not get a frame\n");
+			log("did not get a frame");
 			continue;
 		}
 
 		if (p -> max_time > 0 && time(NULL) >= cut_ts) {
-			printf("new file\n");
+			log("new file");
 
 			if (gwavi)
 				gwavi_close(gwavi);
@@ -186,7 +187,7 @@ void *store_thread_jpeg(void *pin)
 		p -> s -> get_frame(p -> filters -> empty() ? E_JPEG : E_RGB, p -> quality, &prev_ts, &w, &h, &work, &work_len);
 
 		if (work == NULL || work_len == 0) {
-			printf("did not get a frame\n");
+			log("did not get a frame");
 			continue;
 		}
 

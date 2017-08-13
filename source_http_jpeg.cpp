@@ -8,6 +8,7 @@
 #include "source_http_jpeg.h"
 #include "picio.h"
 #include "filter.h"
+#include "log.h"
 
 source_http_jpeg::source_http_jpeg(const std::string & urlIn, const bool ignoreCertIn, const std::string & authIn, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h) : source(global_stopflag, resize_w, resize_h), url(urlIn), auth(authIn), ignore_cert(ignoreCertIn)
 {
@@ -22,6 +23,8 @@ source_http_jpeg::~source_http_jpeg()
 
 void source_http_jpeg::operator()()
 {
+	log("source http jpeg thread started");
+
 	bool first = true, resize = resize_h != -1 || resize_w != -1;
 
 	for(;!*global_stopflag;)
@@ -31,7 +34,7 @@ void source_http_jpeg::operator()()
 
 		if (!http_get(url, ignore_cert, auth.empty() ? NULL : auth.c_str(), &work, &work_len))
 		{
-			printf("did not get a frame\n");
+			log("did not get a frame");
 			usleep(101000);
 			continue;
 		}
@@ -62,4 +65,6 @@ void source_http_jpeg::operator()()
 
 		free(work);
 	}
+
+	log("source http jpeg thread terminating");
 }

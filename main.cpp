@@ -31,6 +31,7 @@
 #include "filter_overlay.h"
 #include "picio.h"
 #include "filter_ext.h"
+#include "log.h"
 
 const char *json_str(const json_t *const in, const char *const key, const char *const descr)
 {
@@ -243,7 +244,7 @@ int main(int argc, char *argv[])
 
 	signal(SIGCHLD, SIG_IGN);
 
-	printf("Loading %s...\n", cfg_file);
+	log("Loading %s...", cfg_file);
 
 	curl_global_init(CURL_GLOBAL_ALL);
 
@@ -262,6 +263,12 @@ int main(int argc, char *argv[])
 
 	//***
 
+	json_t *j_gen = json_object_get(cfg, "general");
+	const char *logfile = json_str(j_gen, "logfile", "file where to store logging");
+	setlogfile(logfile[0] ? logfile : NULL);
+
+	//***
+
 	//int w = 352, h = 288; // or -1, -1 for auto detect
 	// video device, prefer jpeg, rpi workaround, jpeg quality, width, height
 	//source_v4l *s = new source_v4l("/dev/video0", false, false, 75, w, h);
@@ -274,7 +281,7 @@ int main(int argc, char *argv[])
 	json_t *j_source = json_object_get(cfg, "source");
 
 	source *s = NULL;
-	printf("Configuring the video-source...\n");
+	log("Configuring the video-source...");
 	const char *s_type = json_str(j_source, "type", "source-type");
 	if (strcasecmp(s_type, "v4l") == 0) {
 		bool pref_jpeg = json_bool(j_source, "prefer-jpeg", "if the camera is capable of JPEG, should that be used");
@@ -312,7 +319,7 @@ int main(int argc, char *argv[])
 		s = new source_rtsp(url, &global_stopflag, resize_w, resize_h);
 	}
 	else {
-		printf(" no source defined!\n");
+		log(" no source defined!");
 	}
 
 	//***
@@ -322,7 +329,7 @@ int main(int argc, char *argv[])
 	std::vector<filter *> af;
 
 	// listen adapter, listen port, source, fps, jpeg quality, time limit (in seconds)
-	printf("Configuring the HTTP listener...\n");
+	log("Configuring the HTTP listener...");
 	json_t *j_hl = json_object_get(cfg, "http-listener");
 	if (j_hl) {
 		const char *listen_adapter = json_str(j_hl, "listen-adapter", "network interface to listen on or 0.0.0.0 for all");
@@ -340,12 +347,12 @@ int main(int argc, char *argv[])
 		ths.push_back(th);
 	}
 	else {
-		printf(" no HTTP listener\n");
+		log(" no HTTP listener");
 	}
 
 	//***
 
-	printf("Configuring the video-loopback...\n");
+	log("Configuring the video-loopback...");
 	json_t *j_vl = json_object_get(cfg, "video-loopback");
 	if (j_vl) {
 		const char *dev = json_str(j_vl, "device", "Linux v4l2 device to connect to");
@@ -358,7 +365,7 @@ int main(int argc, char *argv[])
 		ths.push_back(th);
 	}
 	else {
-		printf(" no video loopback\n");
+		log(" no video loopback");
 	}
 
 
@@ -366,7 +373,7 @@ int main(int argc, char *argv[])
 
 	// source, jpeg quality, noise factor, pixels changed % trigger, record min n frames, ignore n frames after record, path to store mjpeg files in, filename prefix, max file duration, camera-warm-up(ignore first x frames), pre-record-count(how many frames to store of just-before-the-motion-started)
 	//start_motion_trigger_thread(s, 75, 32, 0.6, 15, 5, "./", "motion-", 3600, 10, 15, &filters_before, &filters_after);
-	printf("Configuring the motion trigger...\n");
+	log("Configuring the motion trigger...");
 	json_t *j_mt = json_object_get(cfg, "motion-trigger");
 	if (j_mt) {
 		int jpeg_quality = json_int(j_mt, "quality", "JPEG quality, this influences the size");
@@ -403,7 +410,7 @@ int main(int argc, char *argv[])
 		ths.push_back(th);
 	}
 	else {
-		printf(" no motion trigger defined\n");
+		log(" no motion trigger defined");
 	}
 
 	//***
@@ -416,11 +423,11 @@ int main(int argc, char *argv[])
 	// store all there's to see in a file, timelapse
 	// source, path, filename prefix, jpeg quality, max duration per file, time lapse interval/fps
 	//start_store_thread(s, "./", "tl-", 100, 86400, 60, NULL, &filters_after);
-	printf("Configuring the stream-to-disk backend(s)...\n");
+	log("Configuring the stream-to-disk backend(s)...");
 	json_t *j_std = json_object_get(cfg, "stream-to-disk");
 	if (j_std) {
 		size_t n_std = json_array_size(j_std);
-		printf(" %zu disk streams\n", n_std);
+		log(" %zu disk streams", n_std);
 
 		for(size_t i=0; i<n_std; i++) {
 			json_t *ae = json_array_get(j_std, i);
@@ -450,7 +457,7 @@ int main(int argc, char *argv[])
 		}
 	}
 	else {
-		printf(" no stream-to-disk backends defined\n");
+		log(" no stream-to-disk backends defined");
 	}
 
 	if (!s)
@@ -464,11 +471,15 @@ int main(int argc, char *argv[])
 			sleep(86400);
 	}
 
-	printf("System started. Press enter to exit.\n");
+	log("System started");
 
 	getchar();
 
+	log("Terminating");
+
 	global_stopflag = true;
+
+	log("Waiting for threads to terminate");
 
 	for(pthread_t t : ths) {
 		void *dummy = NULL;
@@ -479,6 +490,8 @@ int main(int argc, char *argv[])
 	json_decref(cfg);
 
 	free_filters(&af);
+
+	log("Bye bye");
 
 	return 0;
 }

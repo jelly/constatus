@@ -28,6 +28,7 @@
 #include "picio.h"
 #include "source.h"
 #include "utils.h"
+#include "log.h"
 
 typedef struct {
 	int fd;
@@ -54,7 +55,7 @@ void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, in
 
 	if (WRITE(cfd, reply_headers, strlen(reply_headers)) <= 0)
 	{
-		printf("short write on response header\n");
+		log("short write on response header");
 		close(cfd);
 		return;
 	}
@@ -77,7 +78,7 @@ void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, in
 		size_t work_len = 0;
 		s -> get_frame(filters -> empty() ? E_JPEG : E_RGB, quality, &prev, &w, &h, &work, &work_len);
 		if (work == NULL || work_len == 0) {
-			printf("did not get a frame\n");
+			log("did not get a frame");
 			continue;
 		}
 
@@ -87,7 +88,7 @@ void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, in
                         first = false;
                 else if (WRITE(cfd, term, strlen(term)) <= 0)
 		{
-			printf("short write on terminating cr/lf\n");
+			log("short write on terminating cr/lf");
                         break;
 		}
 
@@ -101,13 +102,13 @@ void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, in
 				"\r\n", work_len);
 			if (WRITE(cfd, img_h, len) <= 0)
 			{
-				printf("short write on boundary header\n");
+				log("short write on boundary header");
 				break;
 			}
 
 			if (WRITE(cfd, reinterpret_cast<char *>(work), work_len) <= 0)
 			{
-				printf("short write on img data\n");
+				log("short write on img data");
 				break;
 			}
 
@@ -150,13 +151,13 @@ void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, in
 				"\r\n", (int)data_out_len);
 			if (WRITE(cfd, img_h, len) <= 0)
 			{
-				printf("short write on boundary header\n");
+				log("short write on boundary header");
 				break;
 			}
 
 			if (WRITE(cfd, data_out, data_out_len) <= 0)
 			{
-				printf("short write on img data\n");
+				log("short write on img data");
 				break;
 			}
 
@@ -189,7 +190,7 @@ void send_mpng_stream(int cfd, source *s, double fps, bool get, const int time_l
 
 	if (WRITE(cfd, reply_headers, strlen(reply_headers)) <= 0)
 	{
-		printf("short write on response header\n");
+		log("short write on response header");
 		close(cfd);
 		return;
 	}
@@ -216,7 +217,7 @@ void send_mpng_stream(int cfd, source *s, double fps, bool get, const int time_l
 		s -> get_frame(E_RGB, -1, &prev, &w, &h, &work, &work_len);
 
 		if (work == NULL || work_len == 0) {
-			printf("did not get a frame\n");
+			log("did not get a frame");
 			continue;
 		}
 
@@ -257,7 +258,7 @@ void send_mpng_stream(int cfd, source *s, double fps, bool get, const int time_l
                         first = false;
                 else if (WRITE(cfd, term, strlen(term)) <= 0)
 		{
-			printf("short write on terminating cr/lf\n");
+			log("short write on terminating cr/lf");
                         break;
 		}
 
@@ -269,13 +270,13 @@ void send_mpng_stream(int cfd, source *s, double fps, bool get, const int time_l
                         "\r\n", (int)data_out_len);
 		if (WRITE(cfd, img_h, strlen(img_h)) <= 0)
 		{
-			printf("short write on boundary header\n");
+			log("short write on boundary header");
 			break;
 		}
 
 		if (WRITE(cfd, data_out, data_out_len) <= 0)
 		{
-			printf("short write on img data\n");
+			log("short write on img data");
 			break;
 		}
 
@@ -306,15 +307,13 @@ void send_png_frame(int cfd, source *s, bool get, const std::vector<filter *> *c
                 "content-type: image/png\r\n"
                 "\r\n";
 
-	if (WRITE(cfd, reply_headers, strlen(reply_headers)) <= 0)
-	{
-		printf("short write on response header\n");
+	if (WRITE(cfd, reply_headers, strlen(reply_headers)) <= 0) {
+		log("short write on response header");
 		close(cfd);
 		return;
 	}
 
-	if (!get)
-	{
+	if (!get) {
 		close(cfd);
 		return;
 	}
@@ -328,7 +327,7 @@ void send_png_frame(int cfd, source *s, bool get, const std::vector<filter *> *c
 	s -> get_frame(E_RGB, -1, &prev_ts, &w, &h, &work, &work_len);
 
 	if (work == NULL || work_len == 0) {
-		printf("did not get a frame\n");
+		log("did not get a frame");
 		return;
 	}
 
@@ -361,7 +360,7 @@ void send_png_frame(int cfd, source *s, bool get, const std::vector<filter *> *c
 	fclose(fh);
 
 	if (WRITE(cfd, data_out, data_out_len) <= 0)
-		printf("short write on img data\n");
+		log("short write on img data");
 
 	free(data_out);
 }
@@ -378,9 +377,8 @@ void send_jpg_frame(int cfd, source *s, bool get, int quality, const std::vector
                 "content-type: image/jpeg\r\n"
                 "\r\n";
 
-	if (WRITE(cfd, reply_headers, strlen(reply_headers)) <= 0)
-	{
-		printf("short write on response header\n");
+	if (WRITE(cfd, reply_headers, strlen(reply_headers)) <= 0) {
+		log("short write on response header");
 		close(cfd);
 		return;
 	}
@@ -400,7 +398,7 @@ void send_jpg_frame(int cfd, source *s, bool get, int quality, const std::vector
 	s -> get_frame(filters -> empty() ? E_JPEG : E_RGB, quality, &prev_ts, &w, &h, &work, &work_len);
 
 	if (work == NULL || work_len == 0) {
-		printf("did not get a frame\n");
+		log("did not get a frame");
 		return;
 	}
 
@@ -433,7 +431,7 @@ void send_jpg_frame(int cfd, source *s, bool get, int quality, const std::vector
 	fclose(fh);
 
 	if (WRITE(cfd, data_out, data_out_len) <= 0)
-		printf("short write on img data\n");
+		log("short write on img data");
 
 	free(data_out);
 
@@ -446,13 +444,7 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 	sigfillset(&all_sigs);
 	pthread_sigmask(SIG_BLOCK, &all_sigs, NULL);
 
-	time_t t = time(NULL);
-	struct tm tm;
-	localtime_r(&t, &tm);
-	char ts[4096];
-	strftime(ts, sizeof ts, "%c", &tm);
-
-	printf("%s connected with: %s\n", ts, get_endpoint_name(cfd).c_str());
+	log("connected with: %s", get_endpoint_name(cfd).c_str());
 
 	char request_headers[65536] = { 0 };
 	int h_n = 0;
@@ -465,13 +457,13 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 			if (errno == EINTR || errno == EAGAIN)
 				continue;
 
-			printf("error receiving request headers\n");
+			log("error receiving request headers");
 			close(cfd);
 			return;
 		}
 		else if (rc == 0)
 		{
-			printf("error receiving request headers\n");
+			log("error receiving request headers");
 			close(cfd);
 			return;
 		}
@@ -513,7 +505,7 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 	if (dummy)
 		*dummy = 0x00;
 
-	printf("\tURL: %s\n", path);
+	log("URL: %s", path);
 
 	if (strcmp(path, "/stream.mjpeg") == 0)
 		send_mjpeg_stream(cfd, s, fps, quality, get, time_limit, filters, global_stopflag, resize_w, resize_h);
@@ -537,7 +529,7 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 			"<html><body><img src=\"stream.mjpeg\"></body></html>";
 
 		if (WRITE(cfd, reply, sizeof(reply)) <= 0)
-			printf("short write on response header\n");
+			log("short write on response header");
 	}
 	else
 	{
@@ -553,7 +545,7 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 			"URL not found. Use either \"<A HREF=\"stream.mjpeg\">stream.mjpeg</A>\" or \"<A HREF=\"stream.html\">stream.html</A>\".\r\n";
 
 		if (WRITE(cfd, reply, sizeof(reply)) <= 0)
-			printf("short write on response header\n");
+			log("short write on response header");
 	}
 
 	free(path);
@@ -590,7 +582,7 @@ void * http_server_thread(void *p)
 		if (cfd == -1)
 			continue;
 
-		printf("HTTP connected with: %s\n", get_endpoint_name(cfd).c_str());
+		log("HTTP connected with: %s", get_endpoint_name(cfd).c_str());
 
 		http_thread_t *ct = new http_thread_t;
 

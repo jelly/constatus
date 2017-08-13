@@ -11,6 +11,7 @@
 #include "source.h"
 #include "source_v4l.h"
 #include "picio.h"
+#include "log.h"
 
 #define min(x, y)	((y) < (x) ? (y) : (x))
 #define max(x, y)	((y) > (x) ? (y) : (x))
@@ -148,7 +149,7 @@ bool source_v4l::try_v4l_configuration(int fd, int *width, int *height, unsigned
 
 	char buffer[5] = { 0 };
 	memcpy(buffer, &fmt.fmt.pix.pixelformat, 4);
-	printf("available format: %dx%d %s\n", *width, *height, buffer);
+	log("available format: %dx%d %s", *width, *height, buffer);
 
 	if (fmt.fmt.pix.pixelformat != prev)
 		return false;
@@ -225,7 +226,7 @@ source_v4l::source_v4l(const std::string & dev, bool prefer_jpeg_in, bool rpi_wo
 
 	char buffer[5] = { 0 };
 	memcpy(buffer, &pixelformat, 4);
-	printf("chosen: %dx%d %s\n", width, height, buffer);
+	log("chosen: %dx%d %s", width, height, buffer);
 
 	// set how we retrieve data (using mmaped thingy)
 	struct v4l2_requestbuffers req;
@@ -286,6 +287,8 @@ source_v4l::~source_v4l()
 
 void source_v4l::operator()()
 {
+	log("source v4l2 thread started");
+
 	int bytes = vw * vh * 3;
 	unsigned char *conv_buffer = static_cast<unsigned char *>(valloc(bytes));
 
@@ -295,8 +298,10 @@ void source_v4l::operator()()
 
 	for(;!*global_stopflag;)
 	{
-		if (ioctl(fd, VIDIOC_DQBUF, &buf) == -1)
+		if (ioctl(fd, VIDIOC_DQBUF, &buf) == -1) {
+			log("VIDIOC_DQBUF failed: %s", strerror(errno));
 			continue;
+		}
 
 		if (prefer_jpeg) {
 			int cur_n_bytes = buf.bytesused;
@@ -333,4 +338,6 @@ void source_v4l::operator()()
 	}
 
 	free(conv_buffer);
+
+	log("source v4l2 thread terminating");
 }

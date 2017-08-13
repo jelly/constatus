@@ -1,3 +1,4 @@
+# (C) 2017 by folkert van heusden, this file is released in the public domain
 INSTALL_PREFIX=/usr/local
 
 CFLAGS=-fPIC -Wall -pedantic

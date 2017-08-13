@@ -17,6 +17,7 @@
 #include "picio.h"
 #include "write_stream_to_file.h"
 #include "filter.h"
+#include "log.h"
 
 typedef struct
 {
@@ -53,7 +54,7 @@ void * motion_trigger_thread(void *pin)
 	std::vector<frame_t> prerecord;
 
 	for(int i=0; i<p -> camera_warm_up && !*p -> global_stopflag; i++) {
-		printf("Warm-up... %d\r", i);
+		log("Warm-up... %d", i);
 
 		uint8_t *frame = NULL;
 		size_t frame_len = 0;
@@ -62,7 +63,7 @@ void * motion_trigger_thread(void *pin)
 		free(frame);
 	}
 
-	printf("\nGo!\n");
+	log("Go!");
 
 	pthread_t th;
 
@@ -115,14 +116,14 @@ void * motion_trigger_thread(void *pin)
 			}
 
 			if (mute) {
-				printf("mute\n");
+				log("mute");
 				mute--;
 			}
 			else if (cnt > (p -> percentage_changed / 100) * w *h ) {
-				printf("motion detected");
+				log("motion detected");
 
 				if (!motion) {
-					printf(" starting store");
+					log(" starting store");
 
 					std::vector<frame_t> *pr = new std::vector<frame_t>(prerecord);
 					prerecord.clear();
@@ -131,17 +132,15 @@ void * motion_trigger_thread(void *pin)
 					motion = true;
 				}
 
-				printf("\n");
-
 				stopping = 0;
 			}
 			else if (stop_flag) {
 				if (motion) {
-					printf("stop motion");
+					log("stop motion");
 					stopping++;
 
 					if (stopping > p -> stop_after_frame_count) {
-						printf(" stopping");
+						log(" stopping");
 						*stop_flag = true;
 						stop_flag = NULL;
 						void *dummy = NULL;
@@ -150,8 +149,6 @@ void * motion_trigger_thread(void *pin)
 						motion = false;
 						mute = p -> mute_after_record_frame_count;
 					}
-
-					printf("\n");
 				}
 			}
 		}

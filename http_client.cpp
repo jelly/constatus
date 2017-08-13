@@ -7,6 +7,7 @@
 #include <curl/curl.h>
 
 #include "error.h"
+#include "log.h"
 
 typedef struct
 {
@@ -81,7 +82,7 @@ bool http_get(const std::string & url, const bool ignore_cert, const char *const
 
 	bool ok = true;
 	if (curl_easy_perform(ch)) {
-		fprintf(stderr, "curl_easy_perform() failed: %s\n", error);
+		log("curl_easy_perform() failed: %s", error);
 		ok = false;
 	}
 

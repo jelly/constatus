@@ -13,6 +13,7 @@ extern "C" {
 
 #include "source_rtsp.h"
 #include "error.h"
+#include "log.h"
 
 source_rtsp::source_rtsp(const std::string & urlIn, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h) : source(global_stopflag, resize_w, resize_h), url(urlIn)
 {
@@ -27,6 +28,8 @@ source_rtsp::~source_rtsp()
 
 void source_rtsp::operator()()
 {
+	log("source rtsp thread started");
+
 	// Open the initial context variables that are needed
 	AVFormatContext* format_ctx = avformat_alloc_context();
 
@@ -104,7 +107,7 @@ void source_rtsp::operator()()
 		if (packet.stream_index == video_stream_index) {    //packet is video
 
 			if (stream == NULL) {    //create stream in file
-				printf("Create stream\n");
+				log("Create stream");
 
 				stream = avformat_new_stream(output_ctx, NULL);
 
@@ -116,13 +119,13 @@ void source_rtsp::operator()()
 			packet.stream_index = stream->id;
 
 			if (avcodec_send_packet(codec_ctx, &packet) < 0) {
-				printf("rtsp error\n");
+				log("rtsp error");
 				break;
 			}
 
 			int result = avcodec_receive_frame(codec_ctx, picture); //avcodec_decode_video2(codec_ctx, picture, &check, &packet);
 			if (result < 0 && result != AVERROR(EAGAIN) && result != AVERROR_EOF) {
-				printf("rtsp error %d\n", result);
+				log("rtsp error %d", result);
 				break;
 			}
 
@@ -161,4 +164,6 @@ void source_rtsp::operator()()
 	avcodec_free_context(&codec_ctx);
 
 	free(pixels);
+
+	log("source rtsp thread terminating");
 }

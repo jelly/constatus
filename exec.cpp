@@ -1,14 +1,24 @@
+// (C) 2017 by folkert van heusden, released under AGPL v3.0
 #include <stdlib.h>
 #include <string>
 #include <unistd.h>
+
+#include "error.h"
 
 void exec(const std::string & what, const std::string & parameter)
 {
 	unshare(CLONE_FILES);
 
-	if (!what.empty() && fork() == 0) {
-		system((what + " " + parameter).c_str());
+	if (!what.empty()) {
+		pid_t p = fork();
 
-		exit(0);
+		if (p == 0) {
+			system((what + " " + parameter).c_str());
+
+			exit(0);
+		}
+		else if (p == -1) {
+			error_exit(true, "Cannot fork");
+		}
 	}
 }

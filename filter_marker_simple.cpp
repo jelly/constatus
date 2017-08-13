@@ -1,9 +1,11 @@
+// (C) 2017 by folkert van heusden, released under AGPL v3.0
 #include <algorithm>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "filter_marker_simple.h"
+#include "log.h"
 
 filter_marker_simple::filter_marker_simple(const sm_mode_t modeIn, const bool *pixel_select_bitmap) : mode(modeIn), psb(pixel_select_bitmap)
 {
@@ -107,7 +109,7 @@ void filter_marker_simple::apply(const uint64_t ts, const int w, const int h, co
 	int xmin = std::max(0, cx - xdist), xmax = std::min(w - 1, cx + xdist);
 	int ymin = std::max(0, cy - ydist), ymax = std::min(h - 1, cy + ydist);
 
-	printf("%d,%d - %d,%d\n", xmin, ymin, xmax, ymax);
+	log("%d,%d - %d,%d", xmin, ymin, xmax, ymax);
 
 	for(int y=ymin; y<ymax; y++) {
 		updatePixel(out, xmin, y, w);

@@ -1,3 +1,4 @@
+// (C) 2017 by folkert van heusden, released under AGPL v3.0
 #include <assert.h>
 #include <string>
 #include <string.h>
@@ -10,6 +11,7 @@
 #include "source_http_mjpeg.h"
 #include "picio.h"
 #include "error.h"
+#include "log.h"
 
 typedef struct
 {
@@ -53,7 +55,7 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 
 		char *cl = strstr((char *)w -> data, "Content-Length:");
 		if (!cl)
-			printf("Content-Length missing from header\n");
+			log("Content-Length missing in header");
 
 		w -> req_len = atoi(&cl[15]);
 		//printf("needed len: %zu\n", w -> req_len);
@@ -77,7 +79,7 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 			free(temp);
 
 			w -> first = false;
-			printf("%dx%d\n", width, height);
+			log("first frame received, mjpeg size: %dx%d", width, height);
 
 			w -> s -> set_size(width, height);
 		}
@@ -106,7 +108,7 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 	}
 
 	if (w -> n > 16 * 1024 * 1024) { // sanity limit
-		printf("frame too big\n");
+		log("frame too big");
 		return 0;
 	}
 
@@ -127,9 +129,11 @@ source_http_mjpeg::~source_http_mjpeg()
 
 void source_http_mjpeg::operator()()
 {
+	log("source http mjpeg thread started");
+
 	for(;!*global_stopflag;)
 	{
-		printf("(re-)connect to MJPEG source %s\n", url.c_str());
+		log("(re-)connect to MJPEG source %s", url.c_str());
 
 		CURL *curl_handle = curl_easy_init();
 
@@ -173,4 +177,6 @@ void source_http_mjpeg::operator()()
 
 		curl_easy_cleanup(curl_handle);
 	}
+
+	log("source http mjpeg thread terminating");
 }

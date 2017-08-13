@@ -1,3 +1,4 @@
+// (C) 2017 by folkert van heusden, released under AGPL v3.0
 #ifndef __MARKER_SIMPLE_H__
 #define __MARKER_SIMPLE_H__
 

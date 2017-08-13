@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <syslog.h>
 
 void error_exit(const bool se, const char *format, ...)
 {
@@ -11,13 +12,19 @@ void error_exit(const bool se, const char *format, ...)
 	va_list ap;
 
 	va_start(ap, format);
-	vfprintf(stderr, format, ap);
+	char *temp = NULL;
+	vasprintf(&temp, format, ap);
 	va_end(ap);
 
-	fprintf(stderr, "\n");
+	fprintf(stderr, "%s", temp);
+	syslog(LOG_ERR, "%s", temp);
 
-	if (se)
-		fprintf(stderr, "\nerrno: %d (%s)\n", e, strerror(e));
+	if (se) {
+		fprintf(stderr, "errno: %d (%s)", e, strerror(e));
+		syslog(LOG_ERR, "errno: %d (%s)", e, strerror(e));
+	}
+
+	free(temp);
 
 	exit(EXIT_FAILURE);
 }

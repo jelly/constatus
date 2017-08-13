@@ -1,3 +1,4 @@
+// (C) 2017 by folkert van heusden, this file is released in the public domain
 #include <stdint.h>
 
 void init_filter(const char *const parameter)
