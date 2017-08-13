@@ -118,9 +118,9 @@ std::vector<filter *> *load_filters(const json_t *const in)
 			filters -> push_back(new filter_noise_neighavg());
 		else if (strcasecmp(s_type, "grayscale") == 0)
 			filters -> push_back(new filter_grayscale());
-		else if (strcasecmp(s_type, "ext-filter") == 0) {
-			const char *file = json_str(ae, "file", "filename of external filter");
-			const char *par = json_str(ae, "par", "parameter for external filter");
+		else if (strcasecmp(s_type, "filter-plugin") == 0) {
+			const char *file = json_str(ae, "file", "filename of filter plugin");
+			const char *par = json_str(ae, "par", "parameter for filter plugin");
 
 			filters -> push_back(new filter_ext(file, par));
 		}
@@ -407,10 +407,10 @@ int main(int argc, char *argv[])
 		else if (strcasecmp(format, "JPEG") == 0)
 			of = OF_JPEG;
 
-		const char *file = json_str(j_mt, "ext-trigger-file", "filename of external motion trigger");
+		const char *file = json_str(j_mt, "trigger-plugin-file", "filename of external motion trigger");
 		if (file[0]) {
 			et = new ext_trigger_t;
-			et -> par = json_str(j_mt, "ext-trigger-par", "parameter for external motion trigger");
+			et -> par = json_str(j_mt, "trigger-plugin-parameter", "parameter for external motion trigger");
 
 			et -> library = dlopen(file, RTLD_NOW);
 			if (!et -> library)
