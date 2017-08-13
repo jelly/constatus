@@ -266,6 +266,7 @@ int main(int argc, char *argv[])
 	json_t *j_gen = json_object_get(cfg, "general");
 	const char *logfile = json_str(j_gen, "logfile", "file where to store logging");
 	setlogfile(logfile[0] ? logfile : NULL);
+	log(" *** " NAME " v" VERSION " starting ***");
 
 	//***
 

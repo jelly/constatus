@@ -210,8 +210,17 @@ void set_thread_name(const std::string & name)
 {
 	std::string full_name = "cs:" + name;
 
-	if (full_name.length() > 16)
-		full_name = full_name.substr(0, 16);
+	if (full_name.length() > 15)
+		full_name = full_name.substr(0, 15);
 
 	pthread_setname_np(pthread_self(), full_name.c_str());
+}
+
+std::string get_thread_name()
+{
+	char buffer[16];
+
+	pthread_getname_np(pthread_self(), buffer, sizeof buffer);
+
+	return buffer;
 }
