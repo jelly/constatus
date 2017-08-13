@@ -1,8 +1,8 @@
 # (C) 2017 by folkert van heusden, this file is released in the public domain
 INSTALL_PREFIX=/usr/local
 
-CFLAGS=-fPIC -Wall -pedantic -ggdb3
-CXXFLAGS=-fPIC -Wall -pedantic -ggdb3
+CFLAGS=-fPIC -Wall -pedantic -ggdb3 `pkg-config --cflags opencv`
+CXXFLAGS=-fPIC -Wall -pedantic -ggdb3 `pkg-config --cflags opencv`
 VERSION=0.1
 
 OBJS1=demo.o
@@ -21,7 +21,7 @@ lib2: $(OBJS2)
 
 lib3: $(OBJS3)
 	ar -r demoocv.a $(OBJS3)
-	ld -g -x -lm -lopencv_core -shared -soname demoocv.so.2 -o demoocv.so.$(VERSION) --whole-archive demoocv.a
+	ld -g -x -lm `pkg-config --libs opencv` -shared -soname demoocv.so.2 -o demoocv.so.$(VERSION) --whole-archive demoocv.a
 
 install: all
 	cp demo.so.* demo2.so.* demoocv.so.* $(INSTALL_PREFIX)/lib
