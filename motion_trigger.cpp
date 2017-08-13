@@ -18,6 +18,7 @@
 #include "write_stream_to_file.h"
 #include "filter.h"
 #include "log.h"
+#include "motion_trigger.h"
 
 typedef struct
 {
@@ -34,6 +35,7 @@ typedef struct
 	const char *const exec_start, *const exec_cycle, *const exec_end;
 	const bool *pixel_select_bitmap;
 	o_format_t of;
+	const ext_trigger_t *const et;
 	std::atomic_bool *const global_stopflag;
 } mt_pars_t;
 
@@ -42,6 +44,9 @@ void * motion_trigger_thread(void *pin)
 	mt_pars_t *p = (mt_pars_t *)pin;
 
 	set_thread_name("motion_trigger");
+
+	if (p -> et)
+		p -> et -> init_motion_trigger(p -> et -> par);
 
 	int w = -1, h = -1;
 	uint64_t prev_ts = 0;
@@ -77,9 +82,13 @@ void * motion_trigger_thread(void *pin)
 		apply_filters(p -> before, prev_frame, work, prev_ts, w, h);
 
 		if (prev_frame) {
-			int cnt = 0;
+			bool triggered = false;
 
-			if (p -> pixel_select_bitmap) {
+			if (p -> et) {
+				triggered = p -> et -> detect_motion(prev_ts, w, h, prev_frame, work);
+			}
+			else if (p -> pixel_select_bitmap) {
+				int cnt = 0;
 				const uint8_t *pw = work, *pp = prev_frame;
 				for(int i=0; i<w*h; i++) {
 					if (!p -> pixel_select_bitmap[i])
@@ -97,8 +106,11 @@ void * motion_trigger_thread(void *pin)
 
 					cnt += abs(lc - lp) >= p -> noise_level;
 				}
+
+				triggered = cnt > (p -> percentage_changed / 100) * w * h;
 			}
 			else {
+				int cnt = 0;
 				const uint8_t *pw = work, *pp = prev_frame;
 				for(int i=0; i<w*h; i++) {
 					int lc = *pw++;
@@ -113,13 +125,15 @@ void * motion_trigger_thread(void *pin)
 
 					cnt += abs(lc - lp) >= p -> noise_level;
 				}
+
+				triggered = cnt > (p -> percentage_changed / 100) * w * h;
 			}
 
 			if (mute) {
 				log("mute");
 				mute--;
 			}
-			else if (cnt > (p -> percentage_changed / 100) * w *h ) {
+			else if (triggered) {
 				log("motion detected");
 
 				if (!motion) {
@@ -173,10 +187,10 @@ void * motion_trigger_thread(void *pin)
 	return NULL;
 }
 
-void start_motion_trigger_thread(source *const s, const int quality, const int noise_factor, const double percentage_pixels_changed, const int keep_recording_n_frames, const int ignore_n_frames_after_recording, const std::string & store_path, const std::string & prefix, const int max_file_time, const int camera_warm_up, const int pre_record_count, const std::vector<filter *> *const before, const std::vector<filter *> *const after, const int fps, const char *const exec_start, const char *const exec_cycle, const char *const exec_end, const o_format_t of, std::atomic_bool *const global_stopflag, const bool *pixel_select_bitmap, pthread_t *th)
+void start_motion_trigger_thread(source *const s, const int quality, const int noise_factor, const double percentage_pixels_changed, const int keep_recording_n_frames, const int ignore_n_frames_after_recording, const std::string & store_path, const std::string & prefix, const int max_file_time, const int camera_warm_up, const int pre_record_count, const std::vector<filter *> *const before, const std::vector<filter *> *const after, const int fps, const char *const exec_start, const char *const exec_cycle, const char *const exec_end, const o_format_t of, std::atomic_bool *const global_stopflag, const bool *pixel_select_bitmap, const ext_trigger_t *const et, pthread_t *th)
 {
 	// FIXME static
-	static mt_pars_t p = { s, noise_factor, percentage_pixels_changed, keep_recording_n_frames, ignore_n_frames_after_recording, store_path, prefix, quality, max_file_time, camera_warm_up, pre_record_count, before, after, fps, exec_start, exec_cycle, exec_end, pixel_select_bitmap, of, global_stopflag };
+	static mt_pars_t p = { s, noise_factor, percentage_pixels_changed, keep_recording_n_frames, ignore_n_frames_after_recording, store_path, prefix, quality, max_file_time, camera_warm_up, pre_record_count, before, after, fps, exec_start, exec_cycle, exec_end, pixel_select_bitmap, of, et, global_stopflag };
 
 	int rc = -1;
 	if ((rc = pthread_create(th, NULL, motion_trigger_thread, &p)) != 0)

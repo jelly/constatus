@@ -1,4 +1,5 @@
 // (C) 2017 by folkert van heusden, released under AGPL v3.0
+#include <dlfcn.h>
 #include <jansson.h>
 #include <signal.h>
 #include <stdio.h>
@@ -375,6 +376,7 @@ int main(int argc, char *argv[])
 	// source, jpeg quality, noise factor, pixels changed % trigger, record min n frames, ignore n frames after record, path to store mjpeg files in, filename prefix, max file duration, camera-warm-up(ignore first x frames), pre-record-count(how many frames to store of just-before-the-motion-started)
 	//start_motion_trigger_thread(s, 75, 32, 0.6, 15, 5, "./", "motion-", 3600, 10, 15, &filters_before, &filters_after);
 	log("Configuring the motion trigger...");
+	ext_trigger_t *et = NULL;
 	json_t *j_mt = json_object_get(cfg, "motion-trigger");
 	if (j_mt) {
 		int jpeg_quality = json_int(j_mt, "quality", "JPEG quality, this influences the size");
@@ -405,9 +407,27 @@ int main(int argc, char *argv[])
 		else if (strcasecmp(format, "JPEG") == 0)
 			of = OF_JPEG;
 
+		const char *file = json_str(j_mt, "ext-trigger-file", "filename of external motion trigger");
+		if (file[0]) {
+			et = new ext_trigger_t;
+			et -> par = json_str(j_mt, "ext-trigger-par", "parameter for external motion trigger");
+
+			et -> library = dlopen(file, RTLD_NOW);
+			if (!et -> library)
+				error_exit(true, "Failed opening external motion trigger library %s", file);
+
+			et -> init_motion_trigger = (init_filter_t)dlsym(et -> library, "init_motion_trigger");
+			if (!et -> init_motion_trigger)
+				error_exit(true, "Failed finding external motion trigger \"init_motion_trigger_t\" in %s", file);
+
+			et -> detect_motion = (detect_motion_t)dlsym(et -> library, "detect_motion");
+			if (!et -> detect_motion)
+				error_exit(true, "Failed finding external motion trigger \"detect_motion\" in %s", file);
+		}
+
 		bool *sb = load_selection_bitmap(selection_bitmap);
 
-		start_motion_trigger_thread(s, jpeg_quality, noise_factor, pixels_changed_perctange, min_duration, mute_duration, path, prefix, restart_interval, warmup_duration, pre_motion_record_duration, filters_before, filters_after, fps, exec_start, exec_cycle, exec_end, of, &global_stopflag, sb, &th);
+		start_motion_trigger_thread(s, jpeg_quality, noise_factor, pixels_changed_perctange, min_duration, mute_duration, path, prefix, restart_interval, warmup_duration, pre_motion_record_duration, filters_before, filters_after, fps, exec_start, exec_cycle, exec_end, of, &global_stopflag, sb, et, &th);
 		ths.push_back(th);
 	}
 	else {
@@ -489,6 +509,11 @@ int main(int argc, char *argv[])
 
 	delete s;
 	json_decref(cfg);
+
+	if (et) {
+		dlclose(et -> library);
+		delete et;
+	}
 
 	free_filters(&af);
 

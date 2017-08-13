@@ -9,15 +9,15 @@ filter_ext::filter_ext(const std::string & filter_filename, const std::string & 
 {
 	library = dlopen(filter_filename.c_str(), RTLD_NOW);
 	if (!library)
-		error_exit(true, "Failed opening library %s", filter_filename.c_str());
+		error_exit(true, "Failed opening external filter library %s", filter_filename.c_str());
 
 	init_filter = (init_filter_t)dlsym(library, "init_filter");
 	if (!init_filter)
-		error_exit(true, "Failed finding \"init_filter\" in %s", filter_filename.c_str());
+		error_exit(true, "Failed finding external filter \"init_filter\" in %s", filter_filename.c_str());
 
 	apply_filter = (apply_filter_t)dlsym(library, "apply_filter");
 	if (!apply_filter)
-		error_exit(true, "Failed finding \"apply_filter\" in %s", filter_filename.c_str());
+		error_exit(true, "Failed finding external filter \"apply_filter\" in %s", filter_filename.c_str());
 }
 
 filter_ext::~filter_ext()
