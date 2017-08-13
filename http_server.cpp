@@ -611,6 +611,8 @@ void * http_server_thread(void *p)
 
 	delete st;
 
+	log("HTTP server thread terminating");
+
 	return NULL;
 }
 
