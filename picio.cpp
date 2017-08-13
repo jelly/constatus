@@ -215,11 +215,11 @@ void read_JPEG_memory(unsigned char *in, int n_bytes_in, int *w, int *h, unsigne
 	jpeg_destroy_decompress(&info);
 }
 
-void load_PBM_file(FILE *const fh, int *const w, int *const h, bool **out)
+void load_PBM_file(FILE *const fh, int *const w, int *const h, uint8_t **out)
 {
 	bit **pbm = pbm_readpbm(fh, w, h);
 
-	*out = (bool *)malloc(*w * *h * sizeof(bool));
+	*out = (uint8_t *)malloc(*w * *h * sizeof(uint8_t));
 
 	for(int y=0; y<*h; y++) {
 		for(int x=0; x<*w; x++)

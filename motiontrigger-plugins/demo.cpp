@@ -12,7 +12,7 @@ void init_motion_trigger(const char *const parameter)
 	// maybe a variable or whatever
 }
 
-bool detect_motion(const uint64_t ts, const int w, const int h, const uint8_t *const prev_frame, uint8_t *const current_frame)
+bool detect_motion(const uint64_t ts, const int w, const int h, const uint8_t *const prev_frame, uint8_t *const current_frame, const uint8_t *const pixel_selection_bitmap)
 {
 	return false;
 }

@@ -80,9 +80,9 @@ void add_filters(std::vector<filter *> *af, const std::vector<filter *> *const i
 		af -> push_back(f);
 }
 
-bool *load_selection_bitmap(const char *const selection_bitmap)
+uint8_t *load_selection_bitmap(const char *const selection_bitmap)
 {
-	bool *sb = NULL;
+	uint8_t *sb = NULL;
 
 	if (selection_bitmap[0]) {
 		FILE *fh = fopen(selection_bitmap, "rb");
@@ -137,7 +137,7 @@ std::vector<filter *> *load_filters(const json_t *const in)
 				sm = m_invert;
 
 			const char *selection_bitmap = json_str(ae, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.");
-			bool *sb = load_selection_bitmap(selection_bitmap);
+			const uint8_t *sb = load_selection_bitmap(selection_bitmap);
 
 			filters -> push_back(new filter_marker_simple(sm, sb));
 		}
@@ -425,7 +425,7 @@ int main(int argc, char *argv[])
 				error_exit(true, "Failed finding external motion trigger \"detect_motion\" in %s", file);
 		}
 
-		bool *sb = load_selection_bitmap(selection_bitmap);
+		const uint8_t *sb = load_selection_bitmap(selection_bitmap);
 
 		start_motion_trigger_thread(s, jpeg_quality, noise_factor, pixels_changed_perctange, min_duration, mute_duration, path, prefix, restart_interval, warmup_duration, pre_motion_record_duration, filters_before, filters_after, fps, exec_start, exec_cycle, exec_end, of, &global_stopflag, sb, et, &th);
 		ths.push_back(th);

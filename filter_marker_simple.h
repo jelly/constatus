@@ -12,12 +12,12 @@ class filter_marker_simple : public filter
 {
 private:
 	const sm_mode_t mode;
-	const bool *const psb;
+	const uint8_t *const psb;
 
 	void updatePixel(uint8_t *const out, const int x, const int y, const int w);
 
 public:
-	filter_marker_simple(const sm_mode_t modeIn, const bool *pixel_select_bitmap);
+	filter_marker_simple(const sm_mode_t modeIn, const uint8_t *pixel_select_bitmap);
 	virtual ~filter_marker_simple();
 
 	void apply(const uint64_t ts, const int w, const int h, const uint8_t *const prev, const uint8_t *const in, uint8_t *const out);
