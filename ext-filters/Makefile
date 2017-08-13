@@ -1,8 +1,8 @@
 # (C) 2017 by folkert van heusden, this file is released in the public domain
 INSTALL_PREFIX=/usr/local
 
-CFLAGS=-fPIC -Wall -pedantic
-CXXFLAGS=-fPIC -Wall -pedantic
+CFLAGS=-fPIC -Wall -pedantic -ggdb3
+CXXFLAGS=-fPIC -Wall -pedantic -ggdb3
 VERSION=0.1
 
 OBJS1=demo.o
@@ -13,15 +13,15 @@ all: lib1 lib2 # lib3
 
 lib1: $(OBJS1)
 	ar -r demo.a $(OBJS1)
-	ld -x -lm -shared -soname demo.so.2 -o demo.so.$(VERSION) --whole-archive demo.a
+	ld -g -x -lm -shared -soname demo.so.2 -o demo.so.$(VERSION) --whole-archive demo.a
 
 lib2: $(OBJS2)
 	ar -r demo2.a $(OBJS2)
-	ld -x -lm -shared -soname demo2.so.2 -o demo2.so.$(VERSION) --whole-archive demo2.a
+	ld -g -x -lm -shared -soname demo2.so.2 -o demo2.so.$(VERSION) --whole-archive demo2.a
 
 lib3: $(OBJS3)
 	ar -r demoocv.a $(OBJS3)
-	ld -x -lm -lopencv_core -shared -soname demoocv.so.2 -o demoocv.so.$(VERSION) --whole-archive demoocv.a
+	ld -g -x -lm -lopencv_core -shared -soname demoocv.so.2 -o demoocv.so.$(VERSION) --whole-archive demoocv.a
 
 install: all
 	cp demo.so.* demo2.so.* demoocv.so.* $(INSTALL_PREFIX)/lib
