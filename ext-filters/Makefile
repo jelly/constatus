@@ -7,8 +7,9 @@ VERSION=0.1
 
 OBJS1=demo.o
 OBJS2=demo2.o
+OBJS3=demoocv.o
 
-all: lib1 lib2
+all: lib1 lib2 # lib3
 
 lib1: $(OBJS1)
 	ar -r demo.a $(OBJS1)
@@ -18,12 +19,16 @@ lib2: $(OBJS2)
 	ar -r demo2.a $(OBJS2)
 	ld -x -lm -shared -soname demo2.so.2 -o demo2.so.$(VERSION) --whole-archive demo2.a
 
+lib3: $(OBJS3)
+	ar -r demoocv.a $(OBJS3)
+	ld -x -lm -lopencv_core -shared -soname demoocv.so.2 -o demoocv.so.$(VERSION) --whole-archive demoocv.a
+
 install: all
-	cp demo.so.* demo2.so.* $(INSTALL_PREFIX)/lib
+	cp demo.so.* demo2.so.* demoocv.so.* $(INSTALL_PREFIX)/lib
 	/sbin/ldconfig
 
 uninstall: clean
-	rm -f $(INSTALL_PREFIX)/lib/demo.so.* $(INSTALL_PREFIX)/lib/demo2.so.*
+	rm -f $(INSTALL_PREFIX)/lib/demo.so.* $(INSTALL_PREFIX)/lib/demo2.so.* $(INSTALL_PREFIX)/lib/demoocv.so.*
 
 clean:
-	rm -f $(OBJS1) $(OBJS2) demo.a demo.so.* core demo2.a demo2.so.*
+	rm -f $(OBJS1) $(OBJS2) demo.a demo.so.* core demo2.a demo2.so.* $(OBJS3) demoocv.so.* demoocv.a

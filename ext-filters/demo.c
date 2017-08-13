@@ -1,4 +1,4 @@
-// (C) 2017 by folkert van heusden, released under AGPL v3.0
+// (C) 2017 by folkert van heusden, this file is released in the public domain
 #include <stdint.h>
 #include <string.h>
 
