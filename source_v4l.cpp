@@ -12,6 +12,7 @@
 #include "source_v4l.h"
 #include "picio.h"
 #include "log.h"
+#include "utils.h"
 
 #define min(x, y)	((y) < (x) ? (y) : (x))
 #define max(x, y)	((y) > (x) ? (y) : (x))
@@ -288,6 +289,8 @@ source_v4l::~source_v4l()
 void source_v4l::operator()()
 {
 	log("source v4l2 thread started");
+
+	set_thread_name("src_v4l2");
 
 	int bytes = vw * vh * 3;
 	unsigned char *conv_buffer = static_cast<unsigned char *>(valloc(bytes));

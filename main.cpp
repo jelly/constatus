@@ -209,6 +209,7 @@ void help()
 {
 	printf("-c x   select configuration file\n");
 	printf("-f     fork into the background\n");
+	printf("-v     enable verbose mode\n");
 	printf("-V     show version & exit\n");
 	printf("-h     this help\n");
 }
@@ -216,10 +217,10 @@ void help()
 int main(int argc, char *argv[])
 {
 	const char *cfg_file = "constatus.conf";
-	bool do_fork = false;
+	bool do_fork = false, verbose = false;
 
 	int c = -1;
-	while((c = getopt(argc, argv, "c:f:hV")) != -1) {
+	while((c = getopt(argc, argv, "c:f:hvV")) != -1) {
 		switch(c) {
 			case 'c':
 				cfg_file = optarg;
@@ -232,6 +233,10 @@ int main(int argc, char *argv[])
 			case 'h':
 				help();
 				return 0;
+
+			case 'v':
+				verbose = true;
+				break;
 
 			case 'V':
 				version();
@@ -303,7 +308,7 @@ int main(int argc, char *argv[])
 		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
 		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
 
-		s = new source_http_jpeg(url, ign_cert, auth, &global_stopflag, resize_w, resize_h);
+		s = new source_http_jpeg(url, ign_cert, auth, &global_stopflag, resize_w, resize_h, verbose);
 	}
 	else if (strcasecmp(s_type, "mjpeg") == 0) {
 		const char *url = json_str(j_source, "url", "address of MJPEG stream");
@@ -311,14 +316,14 @@ int main(int argc, char *argv[])
 		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
 		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
 
-		s = new source_http_mjpeg(url, ign_cert, &global_stopflag, resize_w, resize_h);
+		s = new source_http_mjpeg(url, ign_cert, &global_stopflag, resize_w, resize_h, verbose);
 	}
 	else if (strcasecmp(s_type, "rtsp") == 0) {
 		const char *url = json_str(j_source, "url", "address of JPEG stream");
 		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
 		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
 
-		s = new source_rtsp(url, &global_stopflag, resize_w, resize_h);
+		s = new source_rtsp(url, &global_stopflag, resize_w, resize_h, verbose);
 	}
 	else {
 		log(" no source defined!");

@@ -116,7 +116,7 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 }
 
 
-source_http_mjpeg::source_http_mjpeg(const std::string & urlIn, const bool ic, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h) : source(global_stopflag, resize_w, resize_h), url(urlIn), ignore_cert(ic)
+source_http_mjpeg::source_http_mjpeg(const std::string & urlIn, const bool ic, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const bool verbose) : source(global_stopflag, resize_w, resize_h), url(urlIn), ignore_cert(ic), verbose(verbose)
 {
 	th = new std::thread(std::ref(*this));
 }
@@ -130,6 +130,8 @@ source_http_mjpeg::~source_http_mjpeg()
 void source_http_mjpeg::operator()()
 {
 	log("source http mjpeg thread started");
+
+	set_thread_name("src_h_mjpeg");
 
 	for(;!*global_stopflag;)
 	{
@@ -156,7 +158,7 @@ void source_http_mjpeg::operator()()
 				error_exit(false, "curl_easy_setopt(CURLOPT_SSL_VERIFYHOST) failed: %s", error);
 		}
 
-		curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, 0L);
+		curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, verbose);
 
 		curl_easy_setopt(curl_handle, CURLOPT_NOPROGRESS, 1L);
 

@@ -9,8 +9,9 @@
 #include "picio.h"
 #include "filter.h"
 #include "log.h"
+#include "utils.h"
 
-source_http_jpeg::source_http_jpeg(const std::string & urlIn, const bool ignoreCertIn, const std::string & authIn, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h) : source(global_stopflag, resize_w, resize_h), url(urlIn), auth(authIn), ignore_cert(ignoreCertIn)
+source_http_jpeg::source_http_jpeg(const std::string & urlIn, const bool ignoreCertIn, const std::string & authIn, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const bool verbose) : source(global_stopflag, resize_w, resize_h), url(urlIn), auth(authIn), ignore_cert(ignoreCertIn), verbose(verbose)
 {
 	th = new std::thread(std::ref(*this));
 }
@@ -25,6 +26,8 @@ void source_http_jpeg::operator()()
 {
 	log("source http jpeg thread started");
 
+	set_thread_name("src_h_jpeg");
+
 	bool first = true, resize = resize_h != -1 || resize_w != -1;
 
 	for(;!*global_stopflag;)
@@ -32,7 +35,7 @@ void source_http_jpeg::operator()()
 		uint8_t *work = NULL;
 		size_t work_len = 0;
 
-		if (!http_get(url, ignore_cert, auth.empty() ? NULL : auth.c_str(), &work, &work_len))
+		if (!http_get(url, ignore_cert, auth.empty() ? NULL : auth.c_str(), verbose, &work, &work_len))
 		{
 			log("did not get a frame");
 			usleep(101000);

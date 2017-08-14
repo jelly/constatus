@@ -8,11 +8,12 @@
 class source_rtsp : public source
 {
 private:
-	std::string url;
+	const std::string url;
+	const bool verbose;
 	std::thread *th;
 
 public:
-	source_rtsp(const std::string & url, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h);
+	source_rtsp(const std::string & url, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const bool verbose);
 	~source_rtsp();
 
 	void operator()();

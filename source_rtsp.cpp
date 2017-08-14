@@ -14,9 +14,13 @@ extern "C" {
 #include "source_rtsp.h"
 #include "error.h"
 #include "log.h"
+#include "utils.h"
 
-source_rtsp::source_rtsp(const std::string & urlIn, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h) : source(global_stopflag, resize_w, resize_h), url(urlIn)
+static bool v = false;
+
+source_rtsp::source_rtsp(const std::string & urlIn, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const bool verbose) : source(global_stopflag, resize_w, resize_h), url(urlIn), verbose(verbose)
 {
+	v = verbose;
 	th = new std::thread(std::ref(*this));
 }
 
@@ -26,9 +30,30 @@ source_rtsp::~source_rtsp()
 	delete th;
 }
 
+void my_log_callback(void *ptr, int level, const char *fmt, va_list vargs)
+{
+	if (level <= (v ? AV_LOG_VERBOSE : AV_LOG_ERROR)) {
+		char *buffer = NULL;
+		vasprintf(&buffer, fmt, vargs);
+
+		char *lf = strchr(buffer, '\n');
+		if (lf)
+			*lf = ' ';
+
+		log(buffer);
+
+		free(buffer);
+	}
+}
+
 void source_rtsp::operator()()
 {
 	log("source rtsp thread started");
+
+	set_thread_name("src_h_rtsp");
+
+	av_log_set_level(verbose ? AV_LOG_VERBOSE : AV_LOG_ERROR);
+	av_log_set_callback(my_log_callback);
 
 	// Open the initial context variables that are needed
 	AVFormatContext* format_ctx = avformat_alloc_context();

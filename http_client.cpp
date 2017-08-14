@@ -33,7 +33,7 @@ size_t curl_write_data(void *ptr, size_t size, size_t nmemb, void *ctx)
 	return n;
 }
 
-bool http_get(const std::string & url, const bool ignore_cert, const char *const auth, uint8_t **const out, size_t *const out_n)
+bool http_get(const std::string & url, const bool ignore_cert, const char *const auth, const bool verbose, uint8_t **const out, size_t *const out_n)
 {
 	CURL *ch = curl_easy_init();
 	if (!ch)
@@ -79,6 +79,9 @@ bool http_get(const std::string & url, const bool ignore_cert, const char *const
 
 	if (curl_easy_setopt(ch, CURLOPT_WRITEDATA, &data))
 		error_exit(false, "curl_easy_setopt(CURLOPT_WRITEDATA) failed: %s", error);
+
+	if (curl_easy_setopt(ch, CURLOPT_VERBOSE, verbose))
+		error_exit(false, "curl_easy_setopt(CURLOPT_VERBOSE) failed: %s", error);
 
 	bool ok = true;
 	if (curl_easy_perform(ch)) {
