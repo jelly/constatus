@@ -44,13 +44,13 @@ typedef struct {
 void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h)
 {
         const char reply_headers[] =
-                "HTTP/1.0 200 ok\r\n"
-                "cache-control: no-cache\r\n"
-                "pragma: no-cache\r\n"
-		"server: " NAME " " VERSION "\r\n"
-                "expires: thu, 01 dec 1994 16:00:00 gmt\r\n"
-                "connection: close\r\n"
-                "content-type: multipart/x-mixed-replace; boundary=--myboundary\r\n"
+                "HTTP/1.0 200 OK\r\n"
+                "Cache-Control: no-cache\r\n"
+                "Pragma: no-cache\r\n"
+		"Server: " NAME " " VERSION "\r\n"
+                "Expires: thu, 01 dec 1994 16:00:00 gmt\r\n"
+                "Connection: close\r\n"
+                "Content-Type: multipart/x-mixed-replace; boundary=--myboundary\r\n"
                 "\r\n";
 
 	if (WRITE(cfd, reply_headers, strlen(reply_headers)) <= 0)
@@ -98,7 +98,7 @@ void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, in
 			int len = snprintf(img_h, sizeof img_h, 
 				"--myboundary\r\n"
 				"Content-Type: image/jpeg\r\n"
-				"Content-Size: %zu\r\n"
+				"Content-Length: %zu\r\n"
 				"\r\n", work_len);
 			if (WRITE(cfd, img_h, len) <= 0)
 			{
@@ -147,8 +147,8 @@ void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, in
 			int len = snprintf(img_h, sizeof img_h, 
 				"--myboundary\r\n"
 				"Content-Type: image/jpeg\r\n"
-				"Content-Size: %d\r\n"
-				"\r\n", (int)data_out_len);
+				"Content-Length: %zu\r\n"
+				"\r\n", data_out_len);
 			if (WRITE(cfd, img_h, len) <= 0)
 			{
 				log("short write on boundary header");
