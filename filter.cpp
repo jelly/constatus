@@ -36,6 +36,9 @@ void scale(const uint8_t *in, const int win, const int hin, uint8_t **out, const
 	const double houts = hout / maxh;
 	const double wouts = wout / maxw;
 
+	const double wins3 = wins * 3;
+	const double wouts3 = wouts * 3;
+
 	for(int y=0; y<maxh; y++) {
 		const int in_scaled_y = y * hins;
 		const int in_scaled_o = in_scaled_y * win * 3;
@@ -43,10 +46,8 @@ void scale(const uint8_t *in, const int win, const int hin, uint8_t **out, const
 		const int out_scaled_o = out_scaled_y * wout * 3;
 
 		for(int x=0; x<maxw; x++) {
-			int in_scaled_x = x * wins;
-			int out_scaled_x = x * wouts;
-			int ino = in_scaled_o + in_scaled_x * 3;
-			int outo = out_scaled_o + out_scaled_x * 3;
+			int ino = in_scaled_o + x * wins3;
+			int outo = out_scaled_o + x * wouts3;
 
 			(*out)[outo + 0] = in[ino + 0];
 			(*out)[outo + 1] = in[ino + 1];
