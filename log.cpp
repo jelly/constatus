@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <curl/curl.h>
 #include <sys/time.h>
 
 #include "error.h"
@@ -51,4 +52,54 @@ void log(const char *const what, ...)
 
 	printf("%s\n", temp);
 	free(temp);
+}
+
+int curl_log(CURL *handle, curl_infotype type, char *data, size_t size, void *userp)
+{
+	switch(type) {
+		case CURLINFO_TEXT:
+			log("CURL: %s", data);
+			return 0;
+		case CURLINFO_HEADER_OUT:
+			log("CURL: Send header");
+			break;
+		/*case CURLINFO_DATA_OUT:
+			log("CURL: Send data");
+			break; */
+		/*case CURLINFO_SSL_DATA_OUT:
+			log("CURL: Send SSL data");
+			break; */
+		case CURLINFO_HEADER_IN:
+			log("CURL: Recv header");
+			break;
+		/*case CURLINFO_DATA_IN:
+			log("CURL: Recv data");
+			break;*/
+		/*case CURLINFO_SSL_DATA_IN:
+			log("CURL: Recv SSL data");*/
+			break;
+		default:
+			return 0;
+	}
+
+	std::string buffer;
+
+	for(size_t i=0; i<size; i++) {
+		if (data[i] >= 32 && data[i] < 127)
+			buffer += data[i];
+		else if (data[i] == 10) {
+			log("CURL: %s", buffer.c_str());
+			buffer.clear();
+		}
+		else if (data[i] == 13) {
+		}
+		else {
+			buffer += '.';
+		}
+	}
+
+	if (!buffer.empty())
+		log("CURL: %s", buffer.c_str());
+
+	return 0;
 }

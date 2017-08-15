@@ -143,6 +143,8 @@ void source_http_mjpeg::operator()()
 		if (curl_easy_setopt(curl_handle, CURLOPT_ERRORBUFFER, error))
 			error_exit(false, "curl_easy_setopt(CURLOPT_ERRORBUFFER) failed: %s", error);
 
+		curl_easy_setopt(curl_handle, CURLOPT_DEBUGFUNCTION, curl_log);
+
 		curl_easy_setopt(curl_handle, CURLOPT_URL, url.c_str());
 
 		std::string useragent = NAME " " VERSION;

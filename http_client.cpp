@@ -43,6 +43,8 @@ bool http_get(const std::string & url, const bool ignore_cert, const char *const
 	if (curl_easy_setopt(ch, CURLOPT_ERRORBUFFER, error))
 		error_exit(false, "curl_easy_setopt(CURLOPT_ERRORBUFFER) failed: %s", error);
 
+	curl_easy_setopt(ch, CURLOPT_DEBUGFUNCTION, curl_log);
+
 	long timeout = 15;
 	curl_data_t data = { NULL, 0 };
 
