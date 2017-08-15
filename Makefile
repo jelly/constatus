@@ -25,3 +25,6 @@ uninstall:
 
 clean:
 	rm -f $(OBJS) constatus
+
+check:
+	cppcheck -v --force -j 3 --enable=all --std=c++11 --inconclusive -I. . 2> err.txt
