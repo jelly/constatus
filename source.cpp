@@ -68,7 +68,11 @@ void source::set_frame(const encoding_t pe, const uint8_t *const data, const siz
 
 bool source::get_frame(const encoding_t pe, const int jpeg_quality, uint64_t *ts, int *width, int *height, uint8_t **frame, size_t *frame_len)
 {
-	struct timespec tc = { 5, 0 }; // FIXME hardcoded timeout
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+
+	struct timespec tc = { tv.tv_sec + 5, 0 }; // FIXME hardcoded timeout
+
 	bool err = false;
 
 	pthread_mutex_lock(&lock);
