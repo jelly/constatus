@@ -1,4 +1,5 @@
 // (C) 2017 by folkert van heusden, released under AGPL v3.0
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
@@ -67,10 +68,45 @@ void source::set_frame(const encoding_t pe, const uint8_t *const data, const siz
 
 bool source::get_frame(const encoding_t pe, const int jpeg_quality, uint64_t *ts, int *width, int *height, uint8_t **frame, size_t *frame_len)
 {
+	struct timespec tc = { 5, 0 }; // FIXME hardcoded timeout
+	bool err = false;
+
 	pthread_mutex_lock(&lock);
 
-	while(this -> ts <= *ts)
-		pthread_cond_wait(&cond, &lock);
+	while(this -> ts <= *ts) {
+		if (pthread_cond_timedwait(&cond, &lock, &tc) == ETIMEDOUT) {
+			err = true;
+			break;
+		}
+	}
+
+	if (err) {
+		if (this -> width == -1) {
+			*width = 352;
+			*height = 288;
+		}
+		else {
+			*width = this -> width;
+			*height = this -> height;
+		}
+
+		size_t bytes = *width * *height * 3;
+		uint8_t *fail = (uint8_t *)malloc(bytes);
+		memset(fail, 0x80, bytes);
+
+		if (pe == E_RGB) {
+			*frame = fail;
+			*frame_len = bytes;
+			fail = NULL;
+		}
+		else {
+			write_JPEG_memory(*width, *height, jpeg_quality, fail, (char **)frame, frame_len);
+		}
+
+		free(fail);
+
+		return true;
+	}
 
 	*ts = this -> ts;
 

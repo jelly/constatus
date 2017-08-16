@@ -341,6 +341,7 @@ int main(int argc, char *argv[])
 	if (j_hl) {
 		const char *listen_adapter = json_str(j_hl, "listen-adapter", "network interface to listen on or 0.0.0.0 for all");
 		int listen_port = json_int(j_hl, "listen-port", "port to listen on");
+		printf(" HTTP server listening on %s:%d\n", listen_adapter, listen_port);
 		int fps = json_int(j_hl, "fps", "number of frames per second to record");
 		int jpeg_quality = json_int(j_hl, "quality", "JPEG quality, this influences the size");
 		int time_limit = json_int(j_hl, "time-limit", "how long (in seconds) to stream before the connection is closed");
