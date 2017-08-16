@@ -1443,11 +1443,11 @@ void add_text(unsigned char *img, int width, int height, char *text, int xpos, i
 	}
 }
 
-void print_timestamp(unsigned char *const img, const int width, const int height, const char *const text, const text_pos_t n_pos)
+void print_timestamp(unsigned char *const img, const int width, const int height, const char *const text, const text_pos_t n_pos, const uint64_t ts)
 {
 	int x = 0, y = 0;
 
-	time_t now = time(NULL);
+	time_t now = (time_t)(ts / 1000 / 1000);
 	struct tm ptm;
 	localtime_r(&now, &ptm);
 
@@ -1489,5 +1489,5 @@ void filter_add_text::apply(const uint64_t ts, const int w, const int h, const u
 {
 	memcpy(out, in, w * h * 3);
 
-	print_timestamp(out, w, h, what.c_str(), tp);
+	print_timestamp(out, w, h, what.c_str(), tp, ts);
 }
