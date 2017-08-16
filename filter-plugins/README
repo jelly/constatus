@@ -6,8 +6,8 @@ constatus configuration example:
 ...
                 "filters" : [
                                 {
-                                        "type" : "ext-filter",
-                                        "file" : "ext-filters/demoocv.so.0.1",
+                                        "type" : "filter-plugin",
+                                        "file" : "filter-plugins/demoocv.so.0.1",
                                         "par" : ""
                                 }
                         ]

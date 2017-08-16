@@ -162,7 +162,7 @@ source_v4l::source_v4l(const std::string & dev, bool prefer_jpeg_in, bool rpi_wo
 {
 	fd = open(dev.c_str(), O_RDWR);
 	if (fd == -1)
-		error_exit(true, "Cannot access %s", dev.c_str());
+		error_exit(true, "Cannot access video4linux device '%s'", dev.c_str());
 
 	// verify that it is a capture device
 	struct v4l2_capability cap;
@@ -312,8 +312,8 @@ void source_v4l::operator()()
 			if (resize_h != -1 || resize_w != -1) {
 				int dw = -1, dh = -1;
 				unsigned char *temp = NULL;
-				read_JPEG_memory(io_buffer, cur_n_bytes, &dw, &dh, &temp);
-				set_scaled_frame(temp, dw, dh);
+				if (read_JPEG_memory(io_buffer, cur_n_bytes, &dw, &dh, &temp))
+					set_scaled_frame(temp, dw, dh);
 				free(temp);
 			}
 			else {

@@ -9,18 +9,20 @@
 
 extern "C" {
 
-void init_filter(const char *const parameter)
+void * init_filter(const char *const parameter)
 {
 	// you can use the parameter for anything you want
 	// e.g. the filename of a configuration file or
 	// maybe a variable or whatever
 
 	printf("OpenCV build info: %s, number of threads: %u, using optimized code: %d\n", cv::getBuildInformation().c_str(), cv::getNumThreads(), cv::useOptimized());
+
+	return NULL;
 }
 
 cv::RNG rng(12345);
 
-void apply_filter(const uint64_t ts, const int w, const int h, const uint8_t *const prev_frame, const uint8_t *const current_frame, uint8_t *const result)
+void apply_filter(void *arg, const uint64_t ts, const int w, const int h, const uint8_t *const prev_frame, const uint8_t *const current_frame, uint8_t *const result)
 {
 	cv::Mat imageWithData = cv::Mat(w * h, 1, CV_8UC3, (void *)current_frame);
 	cv::Mat reshapedImage = imageWithData.reshape(0, h);

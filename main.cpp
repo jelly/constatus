@@ -256,7 +256,7 @@ int main(int argc, char *argv[])
 
 	FILE *fh = fopen(cfg_file, "r");
 	if (!fh)
-		error_exit(true, "Cannot access configuration file %s", cfg_file);
+		error_exit(true, "Cannot access configuration file '%s'", cfg_file);
 
 	std::atomic_bool global_stopflag(false);
 

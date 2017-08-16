@@ -75,20 +75,25 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 		if (w -> first) {
 			int width = -1, height = -1;
 			unsigned char *temp = NULL;
-			read_JPEG_memory(w -> data, w -> req_len, &width, &height, &temp);
+			bool rc = read_JPEG_memory(w -> data, w -> req_len, &width, &height, &temp);
 			free(temp);
 
-			w -> first = false;
-			log("first frame received, mjpeg size: %dx%d", width, height);
+			if (rc) {
+				w -> first = false;
+				log("first frame received, mjpeg size: %dx%d", width, height);
 
-			w -> s -> set_size(width, height);
+				w -> s -> set_size(width, height);
+			}
+			else {
+				log("JPEG decode error");
+			}
 		}
 
 		if (w -> s -> need_scale()) {
 			int dw, dh;
 			unsigned char *temp = NULL;
-			read_JPEG_memory(w -> data, w -> req_len, &dw, &dh, &temp);
-			w -> s -> set_scaled_frame(temp, dw, dh);
+			if (read_JPEG_memory(w -> data, w -> req_len, &dw, &dh, &temp))
+				w -> s -> set_scaled_frame(temp, dw, dh);
 			free(temp);
 		}
 		else {

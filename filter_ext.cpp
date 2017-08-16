@@ -18,6 +18,8 @@ filter_ext::filter_ext(const std::string & filter_filename, const std::string & 
 	apply_filter = (apply_filter_t)dlsym(library, "apply_filter");
 	if (!apply_filter)
 		error_exit(true, "Failed finding external filter \"apply_filter\" in %s", filter_filename.c_str());
+
+	arg = init_filter(parameter.c_str());
 }
 
 filter_ext::~filter_ext()
@@ -27,5 +29,5 @@ filter_ext::~filter_ext()
 
 void filter_ext::apply(const uint64_t ts, const int w, const int h, const uint8_t *const prev, const uint8_t *const in, uint8_t *const out)
 {
-	apply_filter(ts, w, h, prev, in, out);
+	apply_filter(arg, ts, w, h, prev, in, out);
 }

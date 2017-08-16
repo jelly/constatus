@@ -35,7 +35,7 @@ typedef struct
 	const char *const exec_start, *const exec_cycle, *const exec_end;
 	const uint8_t *pixel_select_bitmap;
 	o_format_t of;
-	const ext_trigger_t *const et;
+	ext_trigger_t *const et;
 	std::atomic_bool *const global_stopflag;
 } mt_pars_t;
 
@@ -46,7 +46,7 @@ void * motion_trigger_thread(void *pin)
 	set_thread_name("motion_trigger");
 
 	if (p -> et)
-		p -> et -> init_motion_trigger(p -> et -> par);
+		p -> et -> arg = p -> et -> init_motion_trigger(p -> et -> par);
 
 	int w = -1, h = -1;
 	uint64_t prev_ts = 0;
@@ -85,7 +85,7 @@ void * motion_trigger_thread(void *pin)
 			bool triggered = false;
 
 			if (p -> et) {
-				triggered = p -> et -> detect_motion(prev_ts, w, h, prev_frame, work, p -> pixel_select_bitmap);
+				triggered = p -> et -> detect_motion(p -> et -> arg, prev_ts, w, h, prev_frame, work, p -> pixel_select_bitmap);
 			}
 			else if (p -> pixel_select_bitmap) {
 				int cnt = 0;
@@ -187,7 +187,7 @@ void * motion_trigger_thread(void *pin)
 	return NULL;
 }
 
-void start_motion_trigger_thread(source *const s, const int quality, const int noise_factor, const double percentage_pixels_changed, const int keep_recording_n_frames, const int ignore_n_frames_after_recording, const std::string & store_path, const std::string & prefix, const int max_file_time, const int camera_warm_up, const int pre_record_count, const std::vector<filter *> *const before, const std::vector<filter *> *const after, const int fps, const char *const exec_start, const char *const exec_cycle, const char *const exec_end, const o_format_t of, std::atomic_bool *const global_stopflag, const uint8_t *pixel_select_bitmap, const ext_trigger_t *const et, pthread_t *th)
+void start_motion_trigger_thread(source *const s, const int quality, const int noise_factor, const double percentage_pixels_changed, const int keep_recording_n_frames, const int ignore_n_frames_after_recording, const std::string & store_path, const std::string & prefix, const int max_file_time, const int camera_warm_up, const int pre_record_count, const std::vector<filter *> *const before, const std::vector<filter *> *const after, const int fps, const char *const exec_start, const char *const exec_cycle, const char *const exec_end, const o_format_t of, std::atomic_bool *const global_stopflag, const uint8_t *pixel_select_bitmap, ext_trigger_t *const et, pthread_t *th)
 {
 	// FIXME static
 	static mt_pars_t p = { s, noise_factor, percentage_pixels_changed, keep_recording_n_frames, ignore_n_frames_after_recording, store_path, prefix, quality, max_file_time, camera_warm_up, pre_record_count, before, after, fps, exec_start, exec_cycle, exec_end, pixel_select_bitmap, of, et, global_stopflag };

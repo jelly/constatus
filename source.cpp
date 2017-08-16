@@ -83,7 +83,7 @@ bool source::get_frame(const encoding_t pe, const int jpeg_quality, uint64_t *ts
 		rc = false;
 	else if (pe == E_RGB) {
 		if (!frame_rgb) {
-			read_JPEG_memory(frame_jpeg, frame_jpeg_len, width, height, &frame_rgb);
+			rc = read_JPEG_memory(frame_jpeg, frame_jpeg_len, width, height, &frame_rgb);
 			frame_rgb_len = *width * *height * 3;
 		}
 

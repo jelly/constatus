@@ -45,7 +45,7 @@ void log(const char *const what, ...)
 
 	FILE *fh = fopen(logfile, "a+");
 	if (!fh)
-		error_exit(true, "Cannot access %s", logfile);
+		error_exit(true, "Cannot access logfile '%s'", logfile);
 
 	fprintf(fh, "%s\n", temp);
 	fclose(fh);

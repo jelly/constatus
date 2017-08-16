@@ -45,7 +45,10 @@ void source_http_jpeg::operator()()
 		unsigned char *temp = NULL;
 		int dw = -1, dh = -1;
 		if (first || resize) {
-                        read_JPEG_memory(work, work_len, &dw, &dh, &temp);
+                        if (!read_JPEG_memory(work, work_len, &dw, &dh, &temp)) {
+				log("JPEG decode error");
+				continue;
+			}
 
 			if (resize) {
 				width = resize_w;

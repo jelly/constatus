@@ -25,8 +25,10 @@
 extern "C" {
 #include <pbm.h>
 }
+#include <stdexcept>
 
 #include "error.h"
+#include "log.h"
 
 static void writepng_error_handler(png_structp png, png_const_charp msg)
 {
@@ -44,8 +46,10 @@ void read_PNG_file_rgba(FILE *fh, int *w, int *h, uint8_t **pixels)
 	if (!info)
 		error_exit(false, "png_create_info_struct failed");
 
-	if (setjmp(png_jmpbuf(png)))
-		error_exit(false, "setjmp failed");
+	if (setjmp(png_jmpbuf(png))) {
+		log("PNG decode error");
+		return;
+	}
 
 	png_init_io(png, fh);
 
@@ -177,42 +181,66 @@ void write_JPEG_memory(const int ncols, const int nrows, const int quality, cons
 	fclose(fh);
 }
 
-void read_JPEG_memory(unsigned char *in, int n_bytes_in, int *w, int *h, unsigned char **pixels)
+void jpegErrorExit(j_common_ptr cinfo)
 {
+	char err[JMSG_LENGTH_MAX];
+	(*(cinfo->err->format_message))(cinfo, err);
+	//log("JPEG error: %s", err);
+
+	throw std::runtime_error(err);
+}
+
+bool read_JPEG_memory(unsigned char *in, int n_bytes_in, int *w, int *h, unsigned char **pixels)
+{
+	bool ok = true;
 	FILE *fh = fmemopen(in, n_bytes_in, "rb");
 
 	struct jpeg_decompress_struct info;
 
 	struct jpeg_error_mgr err;
+	err.error_exit = jpegErrorExit;
 	info.err = jpeg_std_error(&err);
-	jpeg_create_decompress(&info);
 
-	jpeg_stdio_src(&info, fh);
-	jpeg_read_header(&info, true);
+	try {
+		jpeg_create_decompress(&info);
 
-	jpeg_start_decompress(&info);
+		jpeg_stdio_src(&info, fh);
+		jpeg_read_header(&info, true);
 
-	*pixels = NULL;
-	*w = info.output_width;
-	*h = info.output_height;
+		jpeg_start_decompress(&info);
 
-	if (info.num_components != 3)
-		return;
+		*pixels = NULL;
+		*w = info.output_width;
+		*h = info.output_height;
 
-	unsigned long dataSize = *w * *h * info.num_components;
+		if (info.num_components != 3) {
+			log("JPEG: unexpected number of color components (%u) - RGB is required", info.num_components);
+			return false;
+		}
 
-	*pixels = (unsigned char *)valloc(dataSize);
-	while(info.output_scanline < *h) {
-		unsigned char *rowptr = *pixels + info.output_scanline * *w * info.num_components;
+		unsigned long dataSize = *w * *h * info.num_components;
 
-		jpeg_read_scanlines(&info, &rowptr, 1);
+		*pixels = (unsigned char *)valloc(dataSize);
+		while(info.output_scanline < *h) {
+			unsigned char *rowptr = *pixels + info.output_scanline * *w * info.num_components;
+
+			jpeg_read_scanlines(&info, &rowptr, 1);
+		}
+
+		jpeg_finish_decompress(&info);    
 	}
-
-	jpeg_finish_decompress(&info);    
+	catch(std::runtime_error & e) {
+		log("JPEG runtime error: %s", e.what());
+		free(*pixels);
+		*pixels = NULL;
+		ok = false;
+	}
 
 	fclose(fh);
 
 	jpeg_destroy_decompress(&info);
+
+	return ok;
 }
 
 void load_PBM_file(FILE *const fh, int *const w, int *const h, uint8_t **out)
