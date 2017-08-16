@@ -7,6 +7,7 @@
 #include "source.h"
 #include "picio.h"
 #include "filter.h"
+#include "filter_add_text.h"
 
 source::source(std::atomic_bool *const global_stopflagIn, const int resize_w, const int resize_h) : resize_w(resize_w), resize_h(resize_h), global_stopflag(global_stopflagIn)
 {
@@ -97,6 +98,9 @@ bool source::get_frame(const encoding_t pe, const int jpeg_quality, uint64_t *ts
 		size_t bytes = *width * *height * 3;
 		uint8_t *fail = (uint8_t *)malloc(bytes);
 		memset(fail, 0x80, bytes);
+
+		filter_add_text fat("Camera down", upper_left);
+		fat.apply(this -> ts, *width, *height, NULL, fail, fail);
 
 		if (pe == E_RGB) {
 			*frame = fail;
