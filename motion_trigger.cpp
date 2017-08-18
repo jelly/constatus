@@ -59,7 +59,7 @@ void * motion_trigger_thread(void *pin)
 	std::vector<frame_t> prerecord;
 
 	for(int i=0; i<p -> camera_warm_up && !*p -> global_stopflag; i++) {
-		log("Warm-up... %d", i);
+		log(LL_DEBUG, "Warm-up... %d", i);
 
 		uint8_t *frame = NULL;
 		size_t frame_len = 0;
@@ -68,7 +68,7 @@ void * motion_trigger_thread(void *pin)
 		free(frame);
 	}
 
-	log("Go!");
+	log(LL_INFO, "Go!");
 
 	pthread_t th;
 
@@ -82,13 +82,13 @@ void * motion_trigger_thread(void *pin)
 		apply_filters(p -> before, prev_frame, work, prev_ts, w, h);
 
 		if (prev_frame) {
+			int cnt = 0;
 			bool triggered = false;
 
 			if (p -> et) {
 				triggered = p -> et -> detect_motion(p -> et -> arg, prev_ts, w, h, prev_frame, work, p -> pixel_select_bitmap);
 			}
 			else if (p -> pixel_select_bitmap) {
-				int cnt = 0;
 				const uint8_t *pw = work, *pp = prev_frame;
 				for(int i=0; i<w*h; i++) {
 					if (!p -> pixel_select_bitmap[i])
@@ -110,7 +110,6 @@ void * motion_trigger_thread(void *pin)
 				triggered = cnt > (p -> percentage_changed / 100) * w * h;
 			}
 			else {
-				int cnt = 0;
 				const uint8_t *pw = work, *pp = prev_frame;
 				for(int i=0; i<w*h; i++) {
 					int lc = *pw++;
@@ -130,14 +129,14 @@ void * motion_trigger_thread(void *pin)
 			}
 
 			if (mute) {
-				log("mute");
+				log(LL_DEBUG, "mute");
 				mute--;
 			}
 			else if (triggered) {
-				log("motion detected");
+				log(LL_INFO, "motion detected (%f%% of the pixels changed)", cnt * 100.0 / (w * h));
 
 				if (!motion) {
-					log(" starting store");
+					log(LL_DEBUG, " starting store");
 
 					std::vector<frame_t> *pr = new std::vector<frame_t>(prerecord);
 					prerecord.clear();
@@ -150,11 +149,11 @@ void * motion_trigger_thread(void *pin)
 			}
 			else if (stop_flag) {
 				if (motion) {
-					log("stop motion");
+					log(LL_DEBUG, "stop motion");
 					stopping++;
 
 					if (stopping > p -> stop_after_frame_count) {
-						log(" stopping");
+						log(LL_INFO, " stopping");
 						*stop_flag = true;
 						stop_flag = NULL;
 						void *dummy = NULL;

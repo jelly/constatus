@@ -11,7 +11,7 @@
 #include "log.h"
 #include "utils.h"
 
-source_http_jpeg::source_http_jpeg(const std::string & urlIn, const bool ignoreCertIn, const std::string & authIn, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const bool verbose) : source(global_stopflag, resize_w, resize_h), url(urlIn), auth(authIn), ignore_cert(ignoreCertIn), verbose(verbose)
+source_http_jpeg::source_http_jpeg(const std::string & urlIn, const bool ignoreCertIn, const std::string & authIn, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const int ll) : source(global_stopflag, resize_w, resize_h, ll), url(urlIn), auth(authIn), ignore_cert(ignoreCertIn)
 {
 	th = new std::thread(std::ref(*this));
 }
@@ -24,7 +24,7 @@ source_http_jpeg::~source_http_jpeg()
 
 void source_http_jpeg::operator()()
 {
-	log("source http jpeg thread started");
+	log(LL_INFO, "source http jpeg thread started");
 
 	set_thread_name("src_h_jpeg");
 
@@ -35,9 +35,9 @@ void source_http_jpeg::operator()()
 		uint8_t *work = NULL;
 		size_t work_len = 0;
 
-		if (!http_get(url, ignore_cert, auth.empty() ? NULL : auth.c_str(), verbose, &work, &work_len))
+		if (!http_get(url, ignore_cert, auth.empty() ? NULL : auth.c_str(), loglevel == LL_DEBUG_VERBOSE, &work, &work_len))
 		{
-			log("did not get a frame");
+			log(LL_INFO, "did not get a frame");
 			usleep(101000);
 			continue;
 		}
@@ -46,7 +46,7 @@ void source_http_jpeg::operator()()
 		int dw = -1, dh = -1;
 		if (first || resize) {
                         if (!read_JPEG_memory(work, work_len, &dw, &dh, &temp)) {
-				log("JPEG decode error");
+				log(LL_INFO, "JPEG decode error");
 				continue;
 			}
 
@@ -72,5 +72,5 @@ void source_http_jpeg::operator()()
 		free(work);
 	}
 
-	log("source http jpeg thread terminating");
+	log(LL_INFO, "source http jpeg thread terminating");
 }

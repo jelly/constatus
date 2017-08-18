@@ -58,7 +58,7 @@ void *p2vl_thread(void *pin)
 		p -> s -> get_frame(E_RGB, -1, &prev_ts, &w, &h, &work, &work_len);
 
 		if (work == NULL || work_len == 0) {
-			log("did not get a frame");
+			log(LL_INFO, "did not get a frame");
 			continue;
 		}
 

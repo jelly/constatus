@@ -47,7 +47,7 @@ void read_PNG_file_rgba(FILE *fh, int *w, int *h, uint8_t **pixels)
 		error_exit(false, "png_create_info_struct failed");
 
 	if (setjmp(png_jmpbuf(png))) {
-		log("PNG decode error");
+		log(LL_INFO, "PNG decode error");
 		return;
 	}
 
@@ -214,7 +214,7 @@ bool read_JPEG_memory(unsigned char *in, int n_bytes_in, int *w, int *h, unsigne
 		*h = info.output_height;
 
 		if (info.num_components != 3) {
-			log("JPEG: unexpected number of color components (%u) - RGB is required", info.num_components);
+			log(LL_FATAL, "JPEG: unexpected number of color components (%u) - RGB is required", info.num_components);
 			return false;
 		}
 
@@ -230,7 +230,7 @@ bool read_JPEG_memory(unsigned char *in, int n_bytes_in, int *w, int *h, unsigne
 		jpeg_finish_decompress(&info);    
 	}
 	catch(std::runtime_error & e) {
-		log("JPEG runtime error: %s", e.what());
+		log(LL_ERR, "JPEG runtime error: %s", e.what());
 		free(*pixels);
 		*pixels = NULL;
 		ok = false;

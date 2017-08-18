@@ -55,7 +55,7 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 
 		char *cl = strstr((char *)w -> data, "Content-Length:");
 		if (!cl)
-			log("Content-Length missing in header");
+			log(LL_INFO, "Content-Length missing in header");
 
 		w -> req_len = atoi(&cl[15]);
 		//printf("needed len: %zu\n", w -> req_len);
@@ -80,12 +80,12 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 
 			if (rc) {
 				w -> first = false;
-				log("first frame received, mjpeg size: %dx%d", width, height);
+				log(LL_INFO, "first frame received, mjpeg size: %dx%d", width, height);
 
 				w -> s -> set_size(width, height);
 			}
 			else {
-				log("JPEG decode error");
+				log(LL_INFO, "JPEG decode error");
 			}
 		}
 
@@ -113,7 +113,7 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 	}
 
 	if (w -> n > 16 * 1024 * 1024) { // sanity limit
-		log("frame too big");
+		log(LL_INFO, "frame too big");
 		return 0;
 	}
 
@@ -121,7 +121,7 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 }
 
 
-source_http_mjpeg::source_http_mjpeg(const std::string & urlIn, const bool ic, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const bool verbose) : source(global_stopflag, resize_w, resize_h), url(urlIn), ignore_cert(ic), verbose(verbose)
+source_http_mjpeg::source_http_mjpeg(const std::string & urlIn, const bool ic, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const int loglevel) : source(global_stopflag, resize_w, resize_h, loglevel), url(urlIn), ignore_cert(ic)
 {
 	th = new std::thread(std::ref(*this));
 }
@@ -134,13 +134,13 @@ source_http_mjpeg::~source_http_mjpeg()
 
 void source_http_mjpeg::operator()()
 {
-	log("source http mjpeg thread started");
+	log(LL_INFO, "source http mjpeg thread started");
 
 	set_thread_name("src_h_mjpeg");
 
 	for(;!*global_stopflag;)
 	{
-		log("(re-)connect to MJPEG source %s", url.c_str());
+		log(LL_INFO, "(re-)connect to MJPEG source %s", url.c_str());
 
 		CURL *curl_handle = curl_easy_init();
 
@@ -165,7 +165,7 @@ void source_http_mjpeg::operator()()
 				error_exit(false, "curl_easy_setopt(CURLOPT_SSL_VERIFYHOST) failed: %s", error);
 		}
 
-		curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, verbose);
+		curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, loglevel >= LL_DEBUG);
 
 		curl_easy_setopt(curl_handle, CURLOPT_NOPROGRESS, 1L);
 
@@ -187,5 +187,5 @@ void source_http_mjpeg::operator()()
 		curl_easy_cleanup(curl_handle);
 	}
 
-	log("source http mjpeg thread terminating");
+	log(LL_INFO, "source http mjpeg thread terminating");
 }

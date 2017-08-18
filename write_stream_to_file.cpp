@@ -55,12 +55,12 @@ void *store_thread_avi(void *pin)
 		p -> s -> get_frame(p -> filters -> empty() ? E_JPEG : E_RGB, p -> quality, &prev_ts, &w, &h, &work, &work_len);
 
 		if (work == NULL || work_len == 0) {
-			log("did not get a frame");
+			log(LL_INFO, "did not get a frame");
 			continue;
 		}
 
 		if (p -> max_time > 0 && time(NULL) >= cut_ts) {
-			log("new file");
+			log(LL_DEBUG, "new file");
 
 			if (gwavi)
 				gwavi_close(gwavi);
@@ -187,7 +187,7 @@ void *store_thread_jpeg(void *pin)
 		p -> s -> get_frame(p -> filters -> empty() ? E_JPEG : E_RGB, p -> quality, &prev_ts, &w, &h, &work, &work_len);
 
 		if (work == NULL || work_len == 0) {
-			log("did not get a frame");
+			log(LL_INFO, "did not get a frame");
 			continue;
 		}
 

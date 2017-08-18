@@ -250,7 +250,7 @@ int main(int argc, char *argv[])
 
 	signal(SIGCHLD, SIG_IGN);
 
-	log("Loading %s...", cfg_file);
+	log(LL_INFO, "Loading %s...", cfg_file);
 
 	curl_global_init(CURL_GLOBAL_ALL);
 
@@ -271,8 +271,32 @@ int main(int argc, char *argv[])
 
 	json_t *j_gen = json_object_get(cfg, "general");
 	const char *logfile = json_str(j_gen, "logfile", "file where to store logging");
-	setlogfile(logfile[0] ? logfile : NULL);
-	log(" *** " NAME " v" VERSION " starting ***");
+
+	int loglevel = 255;
+
+	if (verbose)
+		setlogfile(logfile[0] ? logfile : NULL, LL_DEBUG_VERBOSE);
+	else {
+		const char *ll = json_str(j_gen, "log-level", "log level (fatal, error, warning, info, debug, debug-verbose)");
+		if (strcasecmp(ll, "fatal") == 0)
+			loglevel = LL_FATAL;
+		else if (strcasecmp(ll, "error") == 0)
+			loglevel = LL_ERR;
+		else if (strcasecmp(ll, "warning") == 0)
+			loglevel = LL_WARNING;
+		else if (strcasecmp(ll, "info") == 0)
+			loglevel = LL_INFO;
+		else if (strcasecmp(ll, "debug") == 0)
+			loglevel = LL_DEBUG;
+		else if (strcasecmp(ll, "debug-verbose") == 0)
+			loglevel = LL_DEBUG_VERBOSE;
+		else
+			error_exit(false, "Log level '%s' not recognized", ll);
+
+		setlogfile(logfile[0] ? logfile : NULL, loglevel);
+	}
+
+	log(LL_INFO, " *** " NAME " v" VERSION " starting ***");
 
 	//***
 
@@ -288,7 +312,7 @@ int main(int argc, char *argv[])
 	json_t *j_source = json_object_get(cfg, "source");
 
 	source *s = NULL;
-	log("Configuring the video-source...");
+	log(LL_INFO, "Configuring the video-source...");
 	const char *s_type = json_str(j_source, "type", "source-type");
 	if (strcasecmp(s_type, "v4l") == 0) {
 		bool pref_jpeg = json_bool(j_source, "prefer-jpeg", "if the camera is capable of JPEG, should that be used");
@@ -299,7 +323,7 @@ int main(int argc, char *argv[])
 		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
 		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
 
-		s = new source_v4l(json_str(j_source, "device", "linux v4l2 device"), pref_jpeg, rpi_wa, jpeg_quality, w, h, &global_stopflag, resize_w, resize_h);
+		s = new source_v4l(json_str(j_source, "device", "linux v4l2 device"), pref_jpeg, rpi_wa, jpeg_quality, w, h, &global_stopflag, resize_w, resize_h, loglevel);
 	}
 	else if (strcasecmp(s_type, "jpeg") == 0) {
 		bool ign_cert = json_bool(j_source, "ignore-cert", "ignore SSL errors");
@@ -308,7 +332,7 @@ int main(int argc, char *argv[])
 		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
 		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
 
-		s = new source_http_jpeg(url, ign_cert, auth, &global_stopflag, resize_w, resize_h, verbose);
+		s = new source_http_jpeg(url, ign_cert, auth, &global_stopflag, resize_w, resize_h, loglevel);
 	}
 	else if (strcasecmp(s_type, "mjpeg") == 0) {
 		const char *url = json_str(j_source, "url", "address of MJPEG stream");
@@ -316,17 +340,17 @@ int main(int argc, char *argv[])
 		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
 		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
 
-		s = new source_http_mjpeg(url, ign_cert, &global_stopflag, resize_w, resize_h, verbose);
+		s = new source_http_mjpeg(url, ign_cert, &global_stopflag, resize_w, resize_h, loglevel);
 	}
 	else if (strcasecmp(s_type, "rtsp") == 0) {
 		const char *url = json_str(j_source, "url", "address of JPEG stream");
 		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
 		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
 
-		s = new source_rtsp(url, &global_stopflag, resize_w, resize_h, verbose);
+		s = new source_rtsp(url, &global_stopflag, resize_w, resize_h, loglevel);
 	}
 	else {
-		log(" no source defined!");
+		log(LL_FATAL, " no source defined!");
 	}
 
 	//***
@@ -336,7 +360,7 @@ int main(int argc, char *argv[])
 	std::vector<filter *> af;
 
 	// listen adapter, listen port, source, fps, jpeg quality, time limit (in seconds)
-	log("Configuring the HTTP listener...");
+	log(LL_INFO, "Configuring the HTTP listener...");
 	json_t *j_hl = json_object_get(cfg, "http-listener");
 	if (j_hl) {
 		const char *listen_adapter = json_str(j_hl, "listen-adapter", "network interface to listen on or 0.0.0.0 for all");
@@ -355,12 +379,12 @@ int main(int argc, char *argv[])
 		ths.push_back(th);
 	}
 	else {
-		log(" no HTTP listener");
+		log(LL_INFO, " no HTTP listener");
 	}
 
 	//***
 
-	log("Configuring the video-loopback...");
+	log(LL_INFO, "Configuring the video-loopback...");
 	json_t *j_vl = json_object_get(cfg, "video-loopback");
 	if (j_vl) {
 		const char *dev = json_str(j_vl, "device", "Linux v4l2 device to connect to");
@@ -373,7 +397,7 @@ int main(int argc, char *argv[])
 		ths.push_back(th);
 	}
 	else {
-		log(" no video loopback");
+		log(LL_INFO, " no video loopback");
 	}
 
 
@@ -381,7 +405,7 @@ int main(int argc, char *argv[])
 
 	// source, jpeg quality, noise factor, pixels changed % trigger, record min n frames, ignore n frames after record, path to store mjpeg files in, filename prefix, max file duration, camera-warm-up(ignore first x frames), pre-record-count(how many frames to store of just-before-the-motion-started)
 	//start_motion_trigger_thread(s, 75, 32, 0.6, 15, 5, "./", "motion-", 3600, 10, 15, &filters_before, &filters_after);
-	log("Configuring the motion trigger...");
+	log(LL_INFO, "Configuring the motion trigger...");
 	ext_trigger_t *et = NULL;
 	json_t *j_mt = json_object_get(cfg, "motion-trigger");
 	if (j_mt) {
@@ -437,7 +461,7 @@ int main(int argc, char *argv[])
 		ths.push_back(th);
 	}
 	else {
-		log(" no motion trigger defined");
+		log(LL_INFO, " no motion trigger defined");
 	}
 
 	//***
@@ -450,11 +474,11 @@ int main(int argc, char *argv[])
 	// store all there's to see in a file, timelapse
 	// source, path, filename prefix, jpeg quality, max duration per file, time lapse interval/fps
 	//start_store_thread(s, "./", "tl-", 100, 86400, 60, NULL, &filters_after);
-	log("Configuring the stream-to-disk backend(s)...");
+	log(LL_INFO, "Configuring the stream-to-disk backend(s)...");
 	json_t *j_std = json_object_get(cfg, "stream-to-disk");
 	if (j_std) {
 		size_t n_std = json_array_size(j_std);
-		log(" %zu disk streams", n_std);
+		log(LL_DEBUG, " %zu disk streams", n_std);
 
 		for(size_t i=0; i<n_std; i++) {
 			json_t *ae = json_array_get(j_std, i);
@@ -484,7 +508,7 @@ int main(int argc, char *argv[])
 		}
 	}
 	else {
-		log(" no stream-to-disk backends defined");
+		log(LL_INFO, " no stream-to-disk backends defined");
 	}
 
 	if (!s)
@@ -498,15 +522,15 @@ int main(int argc, char *argv[])
 			sleep(86400);
 	}
 
-	log("System started");
+	log(LL_INFO, "System started");
 
 	getchar();
 
-	log("Terminating");
+	log(LL_INFO, "Terminating");
 
 	global_stopflag = true;
 
-	log("Waiting for threads to terminate");
+	log(LL_DEBUG, "Waiting for threads to terminate");
 
 	for(pthread_t t : ths) {
 		void *dummy = NULL;
@@ -523,7 +547,7 @@ int main(int argc, char *argv[])
 
 	free_filters(&af);
 
-	log("Bye bye");
+	log(LL_INFO, "Bye bye");
 
 	return 0;
 }

@@ -12,7 +12,7 @@ class source
 {
 protected:
 	int width, height;
-	const int resize_w, resize_h;
+	const int resize_w, resize_h, loglevel;
 
 	pthread_mutex_t lock;
 	pthread_cond_t cond;
@@ -22,7 +22,7 @@ protected:
 	std::atomic_bool *const global_stopflag;
 
 public:
-	source(std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h);
+	source(std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const int loglevel);
 	virtual ~source();
 
 	bool get_frame(const encoding_t pe, const int jpeg_quality, uint64_t *ts, int *width, int *height, uint8_t **frame, size_t *frame_len);

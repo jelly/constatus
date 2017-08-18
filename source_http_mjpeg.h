@@ -10,11 +10,11 @@ class source_http_mjpeg : public source
 {
 private:
 	const std::string url;
-	const bool ignore_cert, verbose;
+	const bool ignore_cert;
 	std::thread *th;
 
 public:
-	source_http_mjpeg(const std::string & url, const bool ignore_cert, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const bool verbose);
+	source_http_mjpeg(const std::string & url, const bool ignore_cert, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const int loglevel);
 	virtual ~source_http_mjpeg();
 
 	void operator()();

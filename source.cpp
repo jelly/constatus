@@ -9,7 +9,7 @@
 #include "filter.h"
 #include "filter_add_text.h"
 
-source::source(std::atomic_bool *const global_stopflagIn, const int resize_w, const int resize_h) : resize_w(resize_w), resize_h(resize_h), global_stopflag(global_stopflagIn)
+source::source(std::atomic_bool *const global_stopflagIn, const int resize_w, const int resize_h, const int loglevel) : resize_w(resize_w), resize_h(resize_h), global_stopflag(global_stopflagIn), loglevel(loglevel)
 {
 	width = height = -1;
 	ts = 0;

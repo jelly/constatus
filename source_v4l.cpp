@@ -150,7 +150,7 @@ bool source_v4l::try_v4l_configuration(int fd, int *width, int *height, unsigned
 
 	char buffer[5] = { 0 };
 	memcpy(buffer, &fmt.fmt.pix.pixelformat, 4);
-	log("available format: %dx%d %s", *width, *height, buffer);
+	log(LL_DEBUG, "available format: %dx%d %s", *width, *height, buffer);
 
 	if (fmt.fmt.pix.pixelformat != prev)
 		return false;
@@ -158,7 +158,7 @@ bool source_v4l::try_v4l_configuration(int fd, int *width, int *height, unsigned
 	return true;
 }
 
-source_v4l::source_v4l(const std::string & dev, bool prefer_jpeg_in, bool rpi_workaround_in, int jpeg_quality, int w_override, int h_override, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h) : source(global_stopflag, resize_w, resize_h), prefer_jpeg(prefer_jpeg_in), rpi_workaround(rpi_workaround_in)
+source_v4l::source_v4l(const std::string & dev, bool prefer_jpeg_in, bool rpi_workaround_in, int jpeg_quality, int w_override, int h_override, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const int loglevel) : source(global_stopflag, resize_w, resize_h, loglevel), prefer_jpeg(prefer_jpeg_in), rpi_workaround(rpi_workaround_in)
 {
 	fd = open(dev.c_str(), O_RDWR);
 	if (fd == -1)
@@ -227,7 +227,7 @@ source_v4l::source_v4l(const std::string & dev, bool prefer_jpeg_in, bool rpi_wo
 
 	char buffer[5] = { 0 };
 	memcpy(buffer, &pixelformat, 4);
-	log("chosen: %dx%d %s", width, height, buffer);
+	log(LL_INFO, "chosen: %dx%d %s", width, height, buffer);
 
 	// set how we retrieve data (using mmaped thingy)
 	struct v4l2_requestbuffers req;
@@ -288,7 +288,7 @@ source_v4l::~source_v4l()
 
 void source_v4l::operator()()
 {
-	log("source v4l2 thread started");
+	log(LL_INFO, "source v4l2 thread started");
 
 	set_thread_name("src_v4l2");
 
@@ -302,7 +302,7 @@ void source_v4l::operator()()
 	for(;!*global_stopflag;)
 	{
 		if (ioctl(fd, VIDIOC_DQBUF, &buf) == -1) {
-			log("VIDIOC_DQBUF failed: %s", strerror(errno));
+			log(LL_ERR, "VIDIOC_DQBUF failed: %s", strerror(errno));
 			continue;
 		}
 
@@ -342,5 +342,5 @@ void source_v4l::operator()()
 
 	free(conv_buffer);
 
-	log("source v4l2 thread terminating");
+	log(LL_INFO, "source v4l2 thread terminating");
 }

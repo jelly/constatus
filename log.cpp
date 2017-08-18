@@ -9,17 +9,23 @@
 
 #include "error.h"
 #include "utils.h"
+#include "log.h"
 
 static const char *logfile = NULL;
+static int loglevel = LL_INFO;
 
-void setlogfile(const char *const file)
+void setlogfile(const char *const file, const int ll)
 {
-	logfile = file;
+	logfile = strdup(file);
+	loglevel = ll;
 }
 
-void log(const char *const what, ...)
+void log(const int ll, const char *const what, ...)
 {
 	if (!logfile)
+		return;
+
+	if (ll > loglevel)
 		return;
 
 	struct timeval tv;
@@ -35,10 +41,33 @@ void log(const char *const what, ...)
 	(void)vasprintf(&msg, what, ap);
 	va_end(ap);
 
+	const char *lls = "???";
+	switch(ll) {
+		case LL_FATAL:
+			lls = "FATAL";
+			break;
+		case LL_ERR:
+			lls = "ERROR";
+			break;
+		case LL_WARNING:
+			lls = "WARN";
+			break;
+		case LL_INFO:
+			lls = "INFO";
+			break;
+		case LL_DEBUG:
+			lls = "DEBUG";
+			break;
+		case LL_DEBUG_VERBOSE:
+			lls = "DEBVR";
+			break;
+	}
+
 	char *temp = NULL;
-	asprintf(&temp, "%04d-%02d-%02d %02d:%02d:%02d.%06ld %9s %s", 
+	asprintf(&temp, "%04d-%02d-%02d %02d:%02d:%02d.%06ld %5s %9s %s", 
 			tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
 			tm.tm_hour, tm.tm_min, tm.tm_sec, tv.tv_usec,
+			lls,
 			get_thread_name().c_str(),
 			msg);
 	free(msg);
@@ -58,25 +87,25 @@ int curl_log(CURL *handle, curl_infotype type, char *data, size_t size, void *us
 {
 	switch(type) {
 		case CURLINFO_TEXT:
-			log("CURL: %s", data);
+			log(LL_DEBUG, "CURL: %s", data);
 			return 0;
 		case CURLINFO_HEADER_OUT:
-			log("CURL: Send header");
+			log(LL_DEBUG, "CURL: Send header");
 			break;
-		/*case CURLINFO_DATA_OUT:
-			log("CURL: Send data");
-			break; */
-		/*case CURLINFO_SSL_DATA_OUT:
-			log("CURL: Send SSL data");
-			break; */
+		case CURLINFO_DATA_OUT:
+			log(LL_DEBUG_VERBOSE, "CURL: Send data");
+			break;
+		case CURLINFO_SSL_DATA_OUT:
+			log(LL_DEBUG_VERBOSE, "CURL: Send SSL data");
+			break;
 		case CURLINFO_HEADER_IN:
-			log("CURL: Recv header");
+			log(LL_DEBUG, "CURL: Recv header");
 			break;
-		/*case CURLINFO_DATA_IN:
-			log("CURL: Recv data");
-			break;*/
-		/*case CURLINFO_SSL_DATA_IN:
-			log("CURL: Recv SSL data");*/
+		case CURLINFO_DATA_IN:
+			log(LL_DEBUG_VERBOSE, "CURL: Recv data");
+			break;
+		case CURLINFO_SSL_DATA_IN:
+			log(LL_DEBUG_VERBOSE, "CURL: Recv SSL data");
 			break;
 		default:
 			return 0;
@@ -88,7 +117,7 @@ int curl_log(CURL *handle, curl_infotype type, char *data, size_t size, void *us
 		if (data[i] >= 32 && data[i] < 127)
 			buffer += data[i];
 		else if (data[i] == 10) {
-			log("CURL: %s", buffer.c_str());
+			log(LL_DEBUG_VERBOSE, "CURL: %s", buffer.c_str());
 			buffer.clear();
 		}
 		else if (data[i] == 13) {
@@ -99,7 +128,7 @@ int curl_log(CURL *handle, curl_infotype type, char *data, size_t size, void *us
 	}
 
 	if (!buffer.empty())
-		log("CURL: %s", buffer.c_str());
+		log(LL_DEBUG_VERBOSE, "CURL: %s", buffer.c_str());
 
 	return 0;
 }

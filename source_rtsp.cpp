@@ -18,9 +18,10 @@ extern "C" {
 
 static bool v = false;
 
-source_rtsp::source_rtsp(const std::string & urlIn, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const bool verbose) : source(global_stopflag, resize_w, resize_h), url(urlIn), verbose(verbose)
+source_rtsp::source_rtsp(const std::string & urlIn, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const int loglevel) : source(global_stopflag, resize_w, resize_h, loglevel), url(urlIn)
 {
-	v = verbose;
+	v = loglevel >= LL_DEBUG;
+
 	th = new std::thread(std::ref(*this));
 }
 
@@ -40,7 +41,7 @@ void my_log_callback(void *ptr, int level, const char *fmt, va_list vargs)
 		if (lf)
 			*lf = ' ';
 
-		log(buffer);
+		log(LL_DEBUG, buffer);
 
 		free(buffer);
 	}
@@ -48,11 +49,26 @@ void my_log_callback(void *ptr, int level, const char *fmt, va_list vargs)
 
 void source_rtsp::operator()()
 {
-	log("source rtsp thread started");
+	log(LL_INFO, "source rtsp thread started");
 
 	set_thread_name("src_h_rtsp");
 
-	av_log_set_level(verbose ? AV_LOG_VERBOSE : AV_LOG_ERROR);
+	int ll = AV_LOG_DEBUG;
+	if (loglevel == LL_FATAL)
+		ll = AV_LOG_FATAL;
+	else if (loglevel == LL_ERR)
+		ll = AV_LOG_ERROR;
+	else if (loglevel == LL_WARNING)
+		ll = AV_LOG_WARNING;
+	else if (loglevel == LL_INFO)
+		ll = AV_LOG_INFO;
+	else if (loglevel == LL_DEBUG)
+		ll = AV_LOG_VERBOSE;
+	else if (loglevel == LL_DEBUG_VERBOSE)
+		ll = AV_LOG_DEBUG;
+
+	av_log_set_level(ll);
+
 	av_log_set_callback(my_log_callback);
 
 	// Open the initial context variables that are needed
@@ -132,7 +148,7 @@ void source_rtsp::operator()()
 		if (packet.stream_index == video_stream_index) {    //packet is video
 
 			if (stream == NULL) {    //create stream in file
-				log("Create stream");
+				log(LL_DEBUG, "Create stream");
 
 				stream = avformat_new_stream(output_ctx, NULL);
 
@@ -144,13 +160,13 @@ void source_rtsp::operator()()
 			packet.stream_index = stream->id;
 
 			if (avcodec_send_packet(codec_ctx, &packet) < 0) {
-				log("rtsp error");
+				log(LL_INFO, "rtsp error");
 				break;
 			}
 
 			int result = avcodec_receive_frame(codec_ctx, picture); //avcodec_decode_video2(codec_ctx, picture, &check, &packet);
 			if (result < 0 && result != AVERROR(EAGAIN) && result != AVERROR_EOF) {
-				log("rtsp error %d", result);
+				log(LL_INFO, "rtsp error %d", result);
 				break;
 			}
 
@@ -190,5 +206,5 @@ void source_rtsp::operator()()
 
 	free(pixels);
 
-	log("source rtsp thread terminating");
+	log(LL_INFO, "source rtsp thread terminating");
 }

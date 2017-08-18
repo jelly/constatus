@@ -109,7 +109,7 @@ void filter_marker_simple::apply(const uint64_t ts, const int w, const int h, co
 	int xmin = std::max(0, cx - xdist), xmax = std::min(w - 1, cx + xdist);
 	int ymin = std::max(0, cy - ydist), ymax = std::min(h - 1, cy + ydist);
 
-	log("%d,%d - %d,%d", xmin, ymin, xmax, ymax);
+	log(LL_DEBUG, "%d,%d - %d,%d", xmin, ymin, xmax, ymax);
 
 	for(int y=ymin; y<ymax; y++) {
 		updatePixel(out, xmin, y, w);
