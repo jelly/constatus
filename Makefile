@@ -26,5 +26,11 @@ uninstall:
 clean:
 	rm -f $(OBJS) constatus
 
+package: clean
+	mkdir constatus-$(VERSION)
+	cp -a *.cpp *.h constatus*conf Makefile constatus-$(VERSION)
+	tar czf constatus-$(VERSION).tgz constatus-$(VERSION)
+	rm -rf constatus-$(VERSION)
+
 check:
 	cppcheck -v --force -j 3 --enable=all --std=c++11 --inconclusive -I. . 2> err.txt

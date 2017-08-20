@@ -78,9 +78,20 @@ void source_rtsp::operator()()
 	av_register_all();
 	avformat_network_init();
 
+	AVDictionary *opts = NULL;
+//	av_dict_set(&opts, "rtsp_transport", "udp", 0);
+	av_dict_set(&opts, "max_delay", "500000", 0);  //100000 is the default
+
 	// open RTSP
-	if (avformat_open_input(&format_ctx, url.c_str(), NULL, NULL) != 0)
-		error_exit(false, "Cannot open %s", url.c_str());
+	int err = 0;
+	if ((err = avformat_open_input(&format_ctx, url.c_str(), NULL, &opts)) != 0) {
+		char err_buffer[4096];
+		av_strerror(err, err_buffer, sizeof err_buffer);
+
+		error_exit(false, "Cannot open %s (%s)", url.c_str(), err_buffer);
+	}
+
+	av_dict_free(&opts);
 
 	if (avformat_find_stream_info(format_ctx, NULL) < 0)
 		error_exit(false, "avformat_find_stream_info failed (rtsp)");
@@ -106,9 +117,10 @@ void source_rtsp::operator()()
 	//start reading packets from stream and write them to file
 	av_read_play(format_ctx);    //play RTSP
 
+///////
 	// Get the codec
 	AVCodec *codec = NULL;
-	codec = avcodec_find_decoder(AV_CODEC_ID_H264);
+	codec = avcodec_find_decoder(format_ctx->streams[video_stream_index]->codecpar->codec_id);
 	if (!codec)
 		error_exit(false, "Decoder AV_CODEC_ID_H264 not found (rtsp)");
 
@@ -121,6 +133,7 @@ void source_rtsp::operator()()
 
 	if (avcodec_open2(codec_ctx, codec, NULL) < 0)
 		error_exit(false, "avcodec_open2 failed");
+///////////
 
 	if (need_scale()) {
 		width = resize_w;
