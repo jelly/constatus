@@ -29,6 +29,7 @@ typedef struct
 	std::vector<frame_t> *pre_record;
 	const std::vector<filter *> *filters;
 	const char *exec_start, *exec_cycle, *exec_end;
+	stream_plugin_t *sp;
 	std::atomic_bool *global_stopflag;
 } store_thread_pars_t;
 
@@ -170,8 +171,6 @@ void *store_thread_jpeg(void *pin)
 
 	set_thread_name("storej_" + p -> prefix);
 
-	time_t cut_ts = time(NULL) + p -> max_time;
-
 	uint64_t prev_ts = 0;
 	bool is_start = true;
 	std::string name;
@@ -258,7 +257,110 @@ void *store_thread_jpeg(void *pin)
 	return NULL;
 }
 
-void start_store_thread(source *const s, const std::string & store_path, const std::string & prefix, const int quality, const int max_time, const double interval, std::vector<frame_t> *const pre_record, const std::vector<filter *> *const filters, const char *const exec_start, const char *const exec_cycle, const char *const exec_end, std::atomic_bool *const global_stopflag, const o_format_t of, std::atomic_bool **local_stop_flag, pthread_t *th)
+void *store_thread_plugin(void *pin)
+{
+	store_thread_pars_t *p = (store_thread_pars_t *)pin;
+
+	set_thread_name("storep_" + p -> prefix);
+
+	p -> sp -> arg = p -> sp -> init_plugin(p -> sp -> par.c_str());
+
+	time_t cut_ts = time(NULL) + p -> max_time;
+
+	uint64_t prev_ts = 0;
+	bool is_start = true, is_open = false;
+	std::string name;
+
+	uint8_t *prev_frame = NULL;
+
+	for(;!p -> stop_flag && !*p -> global_stopflag;) {
+		int w = -1, h = -1;
+		uint8_t *work = NULL;
+		size_t work_len = 0;
+		p -> s -> get_frame(E_RGB, p -> quality, &prev_ts, &w, &h, &work, &work_len);
+
+		if (work == NULL || work_len == 0) {
+			log(LL_INFO, "did not get a frame");
+			continue;
+		}
+
+		if (p -> max_time > 0 && time(NULL) >= cut_ts) {
+			log(LL_DEBUG, "new file");
+
+			p -> sp -> close_file(p -> sp -> arg);
+			is_open = false;
+
+			cut_ts = time(NULL) + p -> max_time;
+		}
+
+		if (!is_open) {
+			double fps = p -> interval <= 0 ? 25.0 : (1 / p -> interval);
+
+			p -> sp -> open_file(p -> sp -> arg, (p -> path + p -> prefix).c_str(), fps, p -> quality);
+			is_open = true;
+
+			if (p -> exec_start && is_start) {
+				exec(p -> exec_start, name);
+				is_start = false;
+			}
+			else if (p -> exec_cycle) {
+				exec(p -> exec_cycle, name);
+			}
+
+			if (p -> pre_record) {
+				for(frame_t pair : *p -> pre_record) {
+					p -> sp -> write_frame(p -> sp -> arg, pair.ts, w, h, prev_frame, pair.data);
+
+					free(pair.data);
+				}
+
+				delete p -> pre_record;
+				p -> pre_record = NULL;
+			}
+		}
+
+		apply_filters(p -> filters, prev_frame, work, prev_ts, w, h);
+
+		p -> sp -> write_frame(p -> sp -> arg, prev_ts, w, h, prev_frame, work);
+
+		free(prev_frame);
+		prev_frame = work;
+
+		double slp = p -> interval;
+		while(slp > 0 && !*p -> global_stopflag) {
+			double cur = std::min(slp, 0.1);
+			slp -= cur;
+
+			int s = cur;
+
+			uint64_t us = (cur - s) * 1000 * 1000;
+
+			// printf("%d, %lu\n", s, us);
+
+			if (s)
+				sleep(s); // FIXME handle signals
+
+			if (us)
+				usleep(us); // FIXME handle signals
+		}
+	}
+
+	if (is_open)
+		p -> sp -> close_file(p -> sp -> arg);
+
+	free(prev_frame);
+
+	if (p -> exec_end)
+		exec(p -> exec_end, name);
+
+	p -> sp -> uninit_plugin(p -> sp -> arg);
+
+	delete p;
+
+	return NULL;
+}
+
+void start_store_thread(source *const s, const std::string & store_path, const std::string & prefix, const int quality, const int max_time, const double interval, std::vector<frame_t> *const pre_record, const std::vector<filter *> *const filters, const char *const exec_start, const char *const exec_cycle, const char *const exec_end, std::atomic_bool *const global_stopflag, const o_format_t of, stream_plugin_t *sp, std::atomic_bool **local_stop_flag, pthread_t *th)
 {
 	store_thread_pars_t *p = new store_thread_pars_t;
 
@@ -274,6 +376,7 @@ void start_store_thread(source *const s, const std::string & store_path, const s
 	p -> exec_start = exec_start;
 	p -> exec_cycle = exec_cycle;
 	p -> exec_end = exec_end;
+	p -> sp = sp;
 	p -> global_stopflag = global_stopflag;
 
 	if (of == OF_AVI) {
@@ -290,6 +393,14 @@ void start_store_thread(source *const s, const std::string & store_path, const s
 		{
 			errno = rc;
 			error_exit(true, "pthread_create failed (jpeg store thread)");
+		}
+	}
+	else if (of == OF_PLUGIN) {
+		int rc = -1;
+		if ((rc = pthread_create(th, NULL, store_thread_plugin, p)) != 0)
+		{
+			errno = rc;
+			error_exit(true, "pthread_create failed (plugin store thread)");
 		}
 	}
 

@@ -199,6 +199,39 @@ std::vector<filter *> *load_filters(const json_t *const in)
 	return filters;
 }
 
+void *find_symbol(void *library, const char *const symbol, const char *const what, const char *const library_name)
+{
+	void *ret = dlsym(library, symbol);
+
+	if (!ret)
+		error_exit(true, "Failed finding %s \"%s\" in %s", what, symbol, library_name);
+
+	return ret;
+}
+
+stream_plugin_t * load_stream_plugin(const json_t *const in)
+{
+	const char *file = json_str(in, "stream-writer-plugin-file", "filename of stream writer plugin");
+	if (file[0] == 0x00)
+		return NULL;
+
+	stream_plugin_t *sp = new stream_plugin_t;
+
+	sp -> par = json_str(in, "stream-writer-plugin-parameter", "parameter for stream writer plugin");
+
+	void *library = dlopen(file, RTLD_NOW);
+	if (!library)
+		error_exit(true, "Failed opening motion detection plugin library %s", file);
+
+	sp -> init_plugin = (init_plugin_t)find_symbol(library, "init_plugin", "stream writer plugin", file);
+	sp -> open_file = (open_file_t)find_symbol(library, "open_file", "stream writer plugin", file);
+	sp -> write_frame = (write_frame_t)find_symbol(library, "write_frame", "stream writer plugin", file);
+	sp -> close_file = (close_file_t)find_symbol(library, "close_file", "stream writer plugin", file);
+	sp -> uninit_plugin = (uninit_plugin_t)find_symbol(library, "uninit_plugin", "stream writer plugin", file);
+
+	return sp;
+}
+
 void version()
 {
 	printf(NAME " " VERSION "\n");
@@ -430,34 +463,36 @@ int main(int argc, char *argv[])
 		std::vector<filter *> *filters_after = load_filters(json_object_get(j_mt, "filters-after"));
 		add_filters(&af, filters_after);
 
-		const char *format = json_str(j_mt, "format", "either AVI or JPEG");
+		stream_plugin_t *sp = NULL;
+
+		const char *format = json_str(j_mt, "format", "AVI, JPEG or PLUGIN");
 		o_format_t of = OF_AVI;
 		if (strcasecmp(format, "AVI") == 0)
 			of = OF_AVI;
 		else if (strcasecmp(format, "JPEG") == 0)
 			of = OF_JPEG;
+		else if (strcasecmp(format, "PLUGIN") == 0) {
+			of = OF_PLUGIN;
 
-		const char *file = json_str(j_mt, "trigger-plugin-file", "filename of external motion trigger");
+			sp = load_stream_plugin(j_mt);
+		}
+
+		const char *file = json_str(j_mt, "trigger-plugin-file", "filename of motion detection plugin");
 		if (file[0]) {
 			et = new ext_trigger_t;
-			et -> par = json_str(j_mt, "trigger-plugin-parameter", "parameter for external motion trigger");
+			et -> par = json_str(j_mt, "trigger-plugin-parameter", "parameter for motion detection plugin");
 
 			et -> library = dlopen(file, RTLD_NOW);
 			if (!et -> library)
-				error_exit(true, "Failed opening external motion trigger library %s", file);
+				error_exit(true, "Failed opening motion detection plugin library %s", file);
 
-			et -> init_motion_trigger = (init_filter_t)dlsym(et -> library, "init_motion_trigger");
-			if (!et -> init_motion_trigger)
-				error_exit(true, "Failed finding external motion trigger \"init_motion_trigger_t\" in %s", file);
-
-			et -> detect_motion = (detect_motion_t)dlsym(et -> library, "detect_motion");
-			if (!et -> detect_motion)
-				error_exit(true, "Failed finding external motion trigger \"detect_motion\" in %s", file);
+			et -> init_motion_trigger = (init_filter_t)find_symbol(et -> library, "init_motion_trigger", "motion detection plugin", file);
+			et -> detect_motion = (detect_motion_t)find_symbol(et -> library, "detect_motion", "motion detection plugin", file);
 		}
 
 		const uint8_t *sb = load_selection_bitmap(selection_bitmap);
 
-		start_motion_trigger_thread(s, jpeg_quality, noise_factor, pixels_changed_perctange, min_duration, mute_duration, path, prefix, restart_interval, warmup_duration, pre_motion_record_duration, filters_before, filters_after, fps, exec_start, exec_cycle, exec_end, of, &global_stopflag, sb, et, &th);
+		start_motion_trigger_thread(s, jpeg_quality, noise_factor, pixels_changed_perctange, min_duration, mute_duration, path, prefix, restart_interval, warmup_duration, pre_motion_record_duration, filters_before, filters_after, fps, exec_start, exec_cycle, exec_end, of, sp, &global_stopflag, sb, et, &th);
 		ths.push_back(th);
 	}
 	else {
@@ -502,8 +537,10 @@ int main(int argc, char *argv[])
 			else if (strcasecmp(format, "JPEG") == 0)
 				of = OF_JPEG;
 
+			stream_plugin_t *sp = load_stream_plugin(ae);
+
 			std::atomic_bool *dummy = NULL;
-			start_store_thread(s, path, prefix, jpeg_quality, restart_interval, snapshot_interval, NULL, store_filters, exec_start, exec_cycle,   exec_end, &global_stopflag, of, &dummy, &th);
+			start_store_thread(s, path, prefix, jpeg_quality, restart_interval, snapshot_interval, NULL, store_filters, exec_start, exec_cycle, exec_end, &global_stopflag, of, sp, &dummy, &th);
 			ths.push_back(th);
 		}
 	}
