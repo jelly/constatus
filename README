@@ -37,6 +37,7 @@ Required:
 - libgwavi - from https://github.com/Rolinh/libgwavi.git
 - libavformat / libswscale / libavcodec / libavutil
 - libcairo
+- libnetpbm10-dev
 
 
 The program supports cameras that generate YUYV, JPEG, RGB or YUV420 output.

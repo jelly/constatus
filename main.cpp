@@ -253,7 +253,7 @@ int main(int argc, char *argv[])
 	bool do_fork = false, verbose = false;
 
 	int c = -1;
-	while((c = getopt(argc, argv, "c:f:hvV")) != -1) {
+	while((c = getopt(argc, argv, "c:fhvV")) != -1) {
 		switch(c) {
 			case 'c':
 				cfg_file = optarg;
