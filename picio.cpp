@@ -94,7 +94,7 @@ void read_PNG_file_rgba(FILE *fh, int *w, int *h, uint8_t **pixels)
 	png_read_image(png, row_pointers);
 	free(row_pointers);
 
-	png_destroy_info_struct(png, &info);
+	png_destroy_read_struct(&png, &info, nullptr);
 }
 
 void write_PNG_file(FILE *fh, int ncols, int nrows, unsigned char *pixels)
