@@ -10,7 +10,7 @@ extern "C" {
 #include "picio.h"
 #include "utils.h"
 
-target_avi::target_avi(source *const s, const std::string & store_path, const std::string & prefix, const int quality, const int max_time, const double interval, std::vector<frame_t> *const pre_record, const std::vector<filter *> *const filters, const char *const exec_start, const char *const exec_cycle, const char *const exec_end) : target(s, store_path, prefix, max_time, interval, pre_record, filters, exec_start, exec_cycle, exec_end), quality(quality)
+target_avi::target_avi(source *const s, const std::string & store_path, const std::string & prefix, const int quality, const int max_time, const double interval, const std::vector<filter *> *const filters, const char *const exec_start, const char *const exec_cycle, const char *const exec_end) : target(s, store_path, prefix, max_time, interval, filters, exec_start, exec_cycle, exec_end), quality(quality)
 {
 }
 

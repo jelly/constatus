@@ -10,7 +10,7 @@ extern "C" {
 #include "picio.h"
 #include "utils.h"
 
-target_plugin::target_plugin(source *const s, const std::string & store_path, const std::string & prefix, const int quality, const int max_time, const double interval, std::vector<frame_t> *const pre_record, const std::vector<filter *> *const filters, const char *const exec_start, const char *const exec_cycle, const char *const exec_end, stream_plugin_t *const sp) : target(s, store_path, prefix, max_time, interval, pre_record, filters, exec_start, exec_cycle, exec_end), quality(quality), sp(sp)
+target_plugin::target_plugin(source *const s, const std::string & store_path, const std::string & prefix, const int quality, const int max_time, const double interval, const std::vector<filter *> *const filters, const char *const exec_start, const char *const exec_cycle, const char *const exec_end, stream_plugin_t *const sp) : target(s, store_path, prefix, max_time, interval, filters, exec_start, exec_cycle, exec_end), quality(quality), sp(sp)
 {
 }
 

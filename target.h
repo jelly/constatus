@@ -24,18 +24,20 @@ protected:
 	const std::string store_path, prefix;
 	const int max_time;
 	const double interval;
-	std::vector<frame_t> *pre_record;
 	const std::vector<filter *> *const filters;
 	const char *const exec_start, *const exec_cycle, *const exec_end;
 	std::atomic_bool local_stop_flag;
 
+	std::vector<frame_t> *pre_record;
+
 	std::thread *th;
 
 public:
-	target(source *const s, const std::string & store_path, const std::string & prefix, const int max_time, const double interval, std::vector<frame_t> *const pre_record, const std::vector<filter *> *const filters, const char *const exec_start, const char *const exec_cycle, const char *const exec_end);
+	target(source *const s, const std::string & store_path, const std::string & prefix, const int max_time, const double interval, const std::vector<filter *> *const filters, const char *const exec_start, const char *const exec_cycle, const char *const exec_end);
 	virtual ~target();
 
 	void start();
+	void start(std::vector<frame_t> *const pre_record);
 	void stop();
 
 	virtual void operator()() = 0;

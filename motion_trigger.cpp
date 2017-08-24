@@ -140,7 +140,7 @@ void * motion_trigger_thread(void *pin)
 					std::vector<frame_t> *pr = new std::vector<frame_t>(prerecord);
 					prerecord.clear();
 
-					p -> t -> start();
+					p -> t -> start(pr);
 					motion = true;
 				}
 
@@ -180,6 +180,8 @@ void * motion_trigger_thread(void *pin)
 
 	if (p -> et)
 		p -> et -> uninit_motion_trigger(p -> et -> arg);
+
+	delete p -> t;
 
 	free((void *)p -> pixel_select_bitmap);
 

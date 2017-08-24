@@ -620,6 +620,7 @@ void * http_server_thread(void *p)
 		pthread_join(handles.at(i), NULL);
 
 	free_filters(st -> filters);
+	delete st -> filters;
 
 	delete st;
 

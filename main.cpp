@@ -248,13 +248,13 @@ target * load_target(const json_t *const j_in, source *const s, const double sna
 	const char *format = json_str(j_in, "format", "AVI, JPEG or PLUGIN");
 
 	if (strcasecmp(format, "AVI") == 0)
-		t = new target_avi(s, path, prefix, quality, restart_interval, snapshot_interval, NULL, filters, exec_start, exec_cycle, exec_end);
+		t = new target_avi(s, path, prefix, quality, restart_interval, snapshot_interval, filters, exec_start, exec_cycle, exec_end);
 	else if (strcasecmp(format, "JPEG") == 0)
-		t = new target_jpeg(s, path, prefix, quality, restart_interval, snapshot_interval, NULL, filters, exec_start, exec_cycle, exec_end);
+		t = new target_jpeg(s, path, prefix, quality, restart_interval, snapshot_interval, filters, exec_start, exec_cycle, exec_end);
 	else if (strcasecmp(format, "PLUGIN") == 0) {
 		stream_plugin_t *sp = load_stream_plugin(j_in);
 
-		t = new target_plugin(s, path, prefix, quality, restart_interval, snapshot_interval, NULL, filters, exec_start, exec_cycle, exec_end, sp);
+		t = new target_plugin(s, path, prefix, quality, restart_interval, snapshot_interval, filters, exec_start, exec_cycle, exec_end, sp);
 	}
 	else {
 		error_exit(false, "Format %s is unknown (stream to disk backends)", format);
@@ -492,7 +492,6 @@ int main(int argc, char *argv[])
 		double snapshot_interval = 1.0 / fps;
 
 		target *t = load_target(j_mt, s, snapshot_interval, filters_after, jpeg_quality);
-		interfaces.push_back(t);
 
 		const char *file = json_str(j_mt, "trigger-plugin-file", "filename of motion detection plugin");
 		if (file[0]) {
@@ -536,14 +535,8 @@ int main(int argc, char *argv[])
 		for(size_t i=0; i<n_std; i++) {
 			json_t *ae = json_array_get(j_std, i);
 
-			const char *path = json_str(ae, "path", "directory to write to");
-			const char *prefix = json_str(ae, "prefix", "string to begin filename with");
 			int jpeg_quality = json_int(ae, "quality", "JPEG quality, this influences the size");
 			double snapshot_interval = json_float(ae, "snapshot-interval", "store a snapshot every x seconds");
-			const char *exec_start = json_str(ae, "exec-start", "script to start when motion begins");
-			const char *exec_cycle = json_str(ae, "exec-cycle", "script to start when the output file is restarted");
-			const char *exec_end = json_str(ae, "exec-end", "script to start when the motion stops");
-			const char *format = json_str(ae, "format", "either AVI or JPEG");
 
 			std::vector<filter *> *store_filters = load_filters(json_object_get(ae, "filters"));
 
