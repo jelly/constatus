@@ -251,7 +251,7 @@ target * load_target(const json_t *const j_in, source *const s, const double sna
 		t = new target_avi(s, path, prefix, quality, restart_interval, snapshot_interval, NULL, filters, exec_start, exec_cycle, exec_end);
 	else if (strcasecmp(format, "JPEG") == 0)
 		t = new target_jpeg(s, path, prefix, quality, restart_interval, snapshot_interval, NULL, filters, exec_start, exec_cycle, exec_end);
-	else if (strcasecmp(format, "JPEG") == 0) {
+	else if (strcasecmp(format, "PLUGIN") == 0) {
 		stream_plugin_t *sp = load_stream_plugin(j_in);
 
 		t = new target_plugin(s, path, prefix, quality, restart_interval, snapshot_interval, NULL, filters, exec_start, exec_cycle, exec_end, sp);
