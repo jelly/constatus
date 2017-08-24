@@ -71,153 +71,182 @@ void source_rtsp::operator()()
 
 	av_log_set_callback(my_log_callback);
 
-	// Open the initial context variables that are needed
-	AVFormatContext* format_ctx = avformat_alloc_context();
+	for(;;) {
+		int err = 0, video_stream_index = -1;
+		AVDictionary *opts = NULL;
+		AVCodecContext *codec_ctx = NULL;
+		AVFormatContext *output_ctx = NULL, *format_ctx = NULL;
+		AVStream *stream = NULL;
+		AVPacket packet;
+		AVCodec *codec = NULL;
+		uint8_t *pixels = NULL;
+		SwsContext *img_convert_ctx = NULL;
+		int size = 0, size2 = 0;
+		AVFrame *picture = NULL, *picture_rgb = NULL;
+		uint8_t *picture_buffer = NULL, *picture_buffer_2 = NULL;
 
-	// Register everything
-	av_register_all();
-	avformat_network_init();
+		format_ctx = avformat_alloc_context();
+		if (!format_ctx)
+			goto fail;
 
-	AVDictionary *opts = NULL;
-//	av_dict_set(&opts, "rtsp_transport", "udp", 0);
-	av_dict_set(&opts, "max_delay", "500000", 0);  //100000 is the default
+		// Register everything
+		av_register_all();
+		avformat_network_init();
 
-	// open RTSP
-	int err = 0;
-	if ((err = avformat_open_input(&format_ctx, url.c_str(), NULL, &opts)) != 0) {
-		char err_buffer[4096];
-		av_strerror(err, err_buffer, sizeof err_buffer);
+		//av_dict_set(&opts, "rtsp_transport", "udp", 0);
+		av_dict_set(&opts, "max_delay", "500000", 0);  //100000 is the default
+		av_dict_set(&opts, "analyzeduration", "5000000", 0);
+		av_dict_set(&opts, "probesize", "32000000", 0);
 
-		error_exit(false, "Cannot open %s (%s)", url.c_str(), err_buffer);
-	}
+		// open RTSP
+		if ((err = avformat_open_input(&format_ctx, url.c_str(), NULL, &opts)) != 0) {
+			char err_buffer[4096];
+			av_strerror(err, err_buffer, sizeof err_buffer);
 
-	av_dict_free(&opts);
-
-	if (avformat_find_stream_info(format_ctx, NULL) < 0)
-		error_exit(false, "avformat_find_stream_info failed (rtsp)");
-
-	// search video stream
-	int video_stream_index = -1;
-	for (int i = 0; i < format_ctx->nb_streams; i++) {
-		if (format_ctx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
-			video_stream_index = i;
-	}
-
-	if (video_stream_index == -1)
-		error_exit(false, "No video stream in rstp feed");
-
-	AVPacket packet;
-	av_init_packet(&packet);
-
-	// open output file
-	AVFormatContext* output_ctx = avformat_alloc_context();
-
-	AVStream *stream = NULL;
-
-	//start reading packets from stream and write them to file
-	av_read_play(format_ctx);    //play RTSP
-
-///////
-	// Get the codec
-	AVCodec *codec = NULL;
-	codec = avcodec_find_decoder(format_ctx->streams[video_stream_index]->codecpar->codec_id);
-	if (!codec)
-		error_exit(false, "Decoder AV_CODEC_ID_H264 not found (rtsp)");
-
-	// Add this to allocate the context by codec
-	AVCodecContext *codec_ctx = avcodec_alloc_context3(codec);
-
-	avcodec_get_context_defaults3(codec_ctx, codec);
-
-	avcodec_parameters_to_context(codec_ctx, format_ctx->streams[video_stream_index]->codecpar);
-
-	if (avcodec_open2(codec_ctx, codec, NULL) < 0)
-		error_exit(false, "avcodec_open2 failed");
-///////////
-
-	if (need_scale()) {
-		width = resize_w;
-		height = resize_h;
-	}
-	else {
-		width = codec_ctx -> width;
-		height = codec_ctx -> height;
-	}
-
-	uint8_t *pixels = (uint8_t *)valloc(codec_ctx -> width * codec_ctx -> height * 3);
-
-	SwsContext *img_convert_ctx = sws_getContext(codec_ctx->width, codec_ctx->height, codec_ctx->pix_fmt, codec_ctx->width, codec_ctx->height, AV_PIX_FMT_RGB24, SWS_BICUBIC, NULL, NULL, NULL);
-
-	int size = av_image_get_buffer_size(AV_PIX_FMT_YUV420P, codec_ctx->width, codec_ctx->height, 1);
-	uint8_t* picture_buffer = (uint8_t*) (av_malloc(size));
-	AVFrame* picture = av_frame_alloc();
-	AVFrame* picture_rgb = av_frame_alloc();
-	int size2 = av_image_get_buffer_size(AV_PIX_FMT_RGB24, codec_ctx->width, codec_ctx->height, 1);
-	uint8_t* picture_buffer_2 = (uint8_t*) (av_malloc(size2));
-	av_image_fill_arrays(picture -> data, picture -> linesize, picture_buffer, AV_PIX_FMT_YUV420P, codec_ctx->width, codec_ctx->height, 1);
-	av_image_fill_arrays(picture_rgb -> data, picture_rgb -> linesize, picture_buffer_2, AV_PIX_FMT_RGB24, codec_ctx->width, codec_ctx->height, 1);
-
-	while(!*global_stopflag && av_read_frame(format_ctx, &packet) >= 0) {
-		if (packet.stream_index == video_stream_index) {    //packet is video
-
-			if (stream == NULL) {    //create stream in file
-				log(LL_DEBUG, "Create stream");
-
-				stream = avformat_new_stream(output_ctx, NULL);
-
-				avcodec_parameters_to_context(stream->codec, format_ctx->streams[video_stream_index]->codecpar);
-
-				stream->sample_aspect_ratio = format_ctx->streams[video_stream_index]->codecpar->sample_aspect_ratio;
-			}
-
-			packet.stream_index = stream->id;
-
-			if (avcodec_send_packet(codec_ctx, &packet) < 0) {
-				log(LL_INFO, "rtsp error");
-				break;
-			}
-
-			int result = avcodec_receive_frame(codec_ctx, picture); //avcodec_decode_video2(codec_ctx, picture, &check, &packet);
-			if (result < 0 && result != AVERROR(EAGAIN) && result != AVERROR_EOF) {
-				log(LL_INFO, "rtsp error %d", result);
-				break;
-			}
-
-			sws_scale(img_convert_ctx, picture->data, picture->linesize, 0, codec_ctx->height, picture_rgb->data, picture_rgb->linesize);
-
-			for(int y = 0; y < codec_ctx->height; y++) {
-				uint8_t *out_pointer = &pixels[y * codec_ctx -> width * 3];
-				uint8_t *in_pointer = picture_rgb->data[0] + y * picture_rgb->linesize[0];
-
-				for(int x = 0; x < codec_ctx->width * 3; x++)
-					out_pointer[x] = in_pointer[x];
-			}
-
-			if (need_scale())
-				set_scaled_frame(pixels, codec_ctx -> width, codec_ctx -> height);
-			else
-				set_frame(E_RGB, pixels, codec_ctx -> width * codec_ctx -> height * 3);
+			log(LL_ERR, "Cannot open %s (%s)", url.c_str(), err_buffer);
+			goto fail;
 		}
 
-		av_frame_unref(picture);
+		av_dict_free(&opts);
 
-		av_packet_unref(&packet);
+		if (avformat_find_stream_info(format_ctx, NULL) < 0) {
+			log(LL_ERR, "avformat_find_stream_info failed (rtsp)");
+			goto fail;
+		}
+
+		// search video stream
+		video_stream_index = av_find_best_stream(format_ctx, AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
+
+		if (video_stream_index == -1) {
+			log(LL_ERR, "No video stream in rstp feed");
+			goto fail;
+		}
+
 		av_init_packet(&packet);
+
+		output_ctx = avformat_alloc_context();
+
+		av_read_play(format_ctx);
+
+		///////
+		// Get the codec
+		codec = avcodec_find_decoder(format_ctx->streams[video_stream_index]->codecpar->codec_id);
+		if (!codec) {
+			log(LL_ERR, "Decoder not found (rtsp)");
+			goto fail;
+		}
+
+		// Add this to allocate the context by codec
+		codec_ctx = avcodec_alloc_context3(codec);
+		avcodec_get_context_defaults3(codec_ctx, codec);
+//		avcodec_parameters_to_context(codec_ctx, format_ctx->streams[video_stream_index]->codecpar);
+
+		if (avcodec_open2(codec_ctx, codec, NULL) < 0) {
+			log(LL_ERR, "avcodec_open2 failed");
+			goto fail;
+		}
+		///////////
+
+		if (need_scale()) {
+			width = resize_w;
+			height = resize_h;
+		}
+		else {
+			width = codec_ctx -> width;
+			height = codec_ctx -> height;
+
+			log(LL_INFO, "Resolution: %dx%d", width, height);
+
+			if (width <= 0 || height <= 0) {
+				log(LL_ERR, "Invalid resolution");
+				goto fail;
+			}
+		}
+
+		pixels = (uint8_t *)valloc(codec_ctx -> width * codec_ctx -> height * 3);
+
+		img_convert_ctx = sws_getContext(codec_ctx->width, codec_ctx->height, codec_ctx->pix_fmt, codec_ctx->width, codec_ctx->height, AV_PIX_FMT_RGB24, SWS_BICUBIC, NULL, NULL, NULL);
+
+		size = av_image_get_buffer_size(AV_PIX_FMT_YUV420P, codec_ctx->width, codec_ctx->height, 1);
+		picture_buffer = (uint8_t*) (av_malloc(size));
+		picture = av_frame_alloc();
+		picture_rgb = av_frame_alloc();
+		size2 = av_image_get_buffer_size(AV_PIX_FMT_RGB24, codec_ctx->width, codec_ctx->height, 1);
+		picture_buffer_2 = (uint8_t*) (av_malloc(size2));
+		av_image_fill_arrays(picture -> data, picture -> linesize, picture_buffer, AV_PIX_FMT_YUV420P, codec_ctx->width, codec_ctx->height, 1);
+		av_image_fill_arrays(picture_rgb -> data, picture_rgb -> linesize, picture_buffer_2, AV_PIX_FMT_RGB24, codec_ctx->width, codec_ctx->height, 1);
+
+		while(!*global_stopflag && av_read_frame(format_ctx, &packet) >= 0) {
+			if (packet.stream_index == video_stream_index) {    //packet is video
+
+				if (stream == NULL) {    //create stream in file
+					log(LL_DEBUG, "Create stream");
+
+					stream = avformat_new_stream(output_ctx, NULL);
+
+					avcodec_parameters_to_context(stream->codec, format_ctx->streams[video_stream_index]->codecpar);
+
+					stream->sample_aspect_ratio = format_ctx->streams[video_stream_index]->codecpar->sample_aspect_ratio;
+				}
+
+				packet.stream_index = stream->id;
+
+				if (avcodec_send_packet(codec_ctx, &packet) < 0) {
+					log(LL_INFO, "rtsp error");
+					goto fail;
+				}
+
+				int result = avcodec_receive_frame(codec_ctx, picture); //avcodec_decode_video2(codec_ctx, picture, &check, &packet);
+				if (result < 0 && result != AVERROR(EAGAIN) && result != AVERROR_EOF) {
+					log(LL_INFO, "rtsp error %d", result);
+					goto fail;
+				}
+
+				sws_scale(img_convert_ctx, picture->data, picture->linesize, 0, codec_ctx->height, picture_rgb->data, picture_rgb->linesize);
+
+				for(int y = 0; y < codec_ctx->height; y++) {
+					uint8_t *out_pointer = &pixels[y * codec_ctx -> width * 3];
+					uint8_t *in_pointer = picture_rgb->data[0] + y * picture_rgb->linesize[0];
+
+					for(int x = 0; x < codec_ctx->width * 3; x++)
+						out_pointer[x] = in_pointer[x];
+				}
+
+				if (need_scale())
+					set_scaled_frame(pixels, codec_ctx -> width, codec_ctx -> height);
+				else
+					set_frame(E_RGB, pixels, codec_ctx -> width * codec_ctx -> height * 3);
+			}
+
+			av_frame_unref(picture);
+
+			av_packet_unref(&packet);
+			av_init_packet(&packet);
+		}
+
+	fail:
+		av_packet_unref(&packet);
+
+		av_free(picture);
+		av_free(picture_rgb);
+		av_free(picture_buffer);
+		av_free(picture_buffer_2);
+
+		av_read_pause(format_ctx);
+		avformat_close_input(&format_ctx);
+
+		avio_close(output_ctx->pb);
+		avformat_free_context(output_ctx);
+
+		sws_freeContext(img_convert_ctx);
+
+		avcodec_free_context(&codec_ctx);
+
+		free(pixels);
+
+		if (*global_stopflag)
+			break;
 	}
-
-	av_packet_unref(&packet);
-
-	av_free(picture);
-	av_free(picture_rgb);
-	av_free(picture_buffer);
-	av_free(picture_buffer_2);
-	av_read_pause(format_ctx);
-	avio_close(output_ctx->pb);
-	avformat_free_context(output_ctx);
-	sws_freeContext(img_convert_ctx);
-	avcodec_free_context(&codec_ctx);
-
-	free(pixels);
 
 	log(LL_INFO, "source rtsp thread terminating");
 }
