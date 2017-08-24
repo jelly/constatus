@@ -588,6 +588,8 @@ int main(int argc, char *argv[])
 
 	free_filters(&af);
 
+	curl_global_cleanup();
+
 	log(LL_INFO, "Bye bye");
 
 	return 0;
