@@ -76,4 +76,9 @@ bool detect_motion(void *arg, const uint64_t ts, const int w, const int h, const
 	return false;
 }
 
+void uninit_motion_trigger(void *arg)
+{
+	// free memory etc
+}
+
 }

@@ -1,4 +1,5 @@
 // (C) 2017 by folkert van heusden, released under AGPL v3.0
+#include <atomic>
 #include <string>
 
 void set_no_delay(int fd);
@@ -11,3 +12,4 @@ std::string myformat(const char *const fmt, ...);
 unsigned char *memstr(unsigned char *haystack, unsigned int haystack_len, unsigned char *needle, unsigned int needle_len);
 void set_thread_name(const std::string & name);
 std::string get_thread_name();
+void mysleep(double slp, std::atomic_bool *const stop_flag);

@@ -15,7 +15,7 @@
 #include "source.h"
 #include "utils.h"
 #include "picio.h"
-#include "write_stream_to_file.h"
+#include "target.h"
 #include "filter.h"
 #include "log.h"
 #include "motion_trigger.h"
@@ -27,17 +27,14 @@ typedef struct
 	double percentage_changed;
 	int stop_after_frame_count;
 	int mute_after_record_frame_count;
-	std::string store_path, prefix;
-	int quality, max_file_time;
+	int quality;
 	int camera_warm_up, pre_record_count;
-	const std::vector<filter *> *const before, *const after;
+	const std::vector<filter *> *const before;
 	int fps;
-	const char *const exec_start, *const exec_cycle, *const exec_end;
 	const uint8_t *pixel_select_bitmap;
-	o_format_t of;
-	stream_plugin_t *sp;
 	ext_trigger_t *const et;
 	std::atomic_bool *const global_stopflag;
+	target *t;
 } mt_pars_t;
 
 void * motion_trigger_thread(void *pin)
@@ -59,6 +56,9 @@ void * motion_trigger_thread(void *pin)
 
 	std::vector<frame_t> prerecord;
 
+	if (p -> camera_warm_up)
+		log(LL_INFO, "Warming up...");
+
 	for(int i=0; i<p -> camera_warm_up && !*p -> global_stopflag; i++) {
 		log(LL_DEBUG, "Warm-up... %d", i);
 
@@ -70,8 +70,6 @@ void * motion_trigger_thread(void *pin)
 	}
 
 	log(LL_INFO, "Go!");
-
-	pthread_t th;
 
 	for(;!*p -> global_stopflag;) {
 		uint8_t *work = NULL;
@@ -142,7 +140,7 @@ void * motion_trigger_thread(void *pin)
 					std::vector<frame_t> *pr = new std::vector<frame_t>(prerecord);
 					prerecord.clear();
 
-					start_store_thread(p -> s, p -> store_path, p -> prefix, p -> quality, p -> max_file_time, p -> fps, pr, p -> after, p -> exec_start, p -> exec_cycle, p -> exec_end, p -> global_stopflag, p -> of, p -> sp, &stop_flag, &th);
+					p -> t -> start();
 					motion = true;
 				}
 
@@ -155,10 +153,8 @@ void * motion_trigger_thread(void *pin)
 
 					if (stopping > p -> stop_after_frame_count) {
 						log(LL_INFO, " stopping");
-						*stop_flag = true;
-						stop_flag = NULL;
-						void *dummy = NULL;
-						pthread_join(th, &dummy);
+
+						p -> t -> stop();
 
 						motion = false;
 						mute = p -> mute_after_record_frame_count;
@@ -182,15 +178,18 @@ void * motion_trigger_thread(void *pin)
 		prerecord.erase(prerecord.begin() + 0);
 	}
 
+	if (p -> et)
+		p -> et -> uninit_motion_trigger(p -> et -> arg);
+
 	free((void *)p -> pixel_select_bitmap);
 
 	return NULL;
 }
 
-void start_motion_trigger_thread(source *const s, const int quality, const int noise_factor, const double percentage_pixels_changed, const int keep_recording_n_frames, const int ignore_n_frames_after_recording, const std::string & store_path, const std::string & prefix, const int max_file_time, const int camera_warm_up, const int pre_record_count, const std::vector<filter *> *const before, const std::vector<filter *> *const after, const int fps, const char *const exec_start, const char *const exec_cycle, const char *const exec_end, const o_format_t of, stream_plugin_t *sp, std::atomic_bool *const global_stopflag, const uint8_t *pixel_select_bitmap, ext_trigger_t *const et, pthread_t *th)
+void start_motion_trigger_thread(source *const s, const int quality, const int noise_factor, const double percentage_pixels_changed, const int keep_recording_n_frames, const int ignore_n_frames_after_recording, const int camera_warm_up, const int pre_record_count, const std::vector<filter *> *const before, const int fps, target *const t, std::atomic_bool *const global_stopflag, const uint8_t *pixel_select_bitmap, ext_trigger_t *const et, pthread_t *th)
 {
 	// FIXME static
-	static mt_pars_t p = { s, noise_factor, percentage_pixels_changed, keep_recording_n_frames, ignore_n_frames_after_recording, store_path, prefix, quality, max_file_time, camera_warm_up, pre_record_count, before, after, fps, exec_start, exec_cycle, exec_end, pixel_select_bitmap, of, sp, et, global_stopflag };
+	static mt_pars_t p = { s, noise_factor, percentage_pixels_changed, keep_recording_n_frames, ignore_n_frames_after_recording, quality, camera_warm_up, pre_record_count, before, fps, pixel_select_bitmap, et, global_stopflag, t };
 
 	int rc = -1;
 	if ((rc = pthread_create(th, NULL, motion_trigger_thread, &p)) != 0)

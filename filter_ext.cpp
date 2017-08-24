@@ -19,11 +19,17 @@ filter_ext::filter_ext(const std::string & filter_filename, const std::string & 
 	if (!apply_filter)
 		error_exit(true, "Failed finding filter plugin \"apply_filter\" in %s", filter_filename.c_str());
 
+	uninit_filter = (uninit_filter_t)dlsym(library, "uninit_filter");
+	if (!uninit_filter)
+		error_exit(true, "Failed finding filter plugin \"uninit_filter\" in %s", filter_filename.c_str());
+
 	arg = init_filter(parameter.c_str());
 }
 
 filter_ext::~filter_ext()
 {
+	uninit_filter(arg);
+
 	dlclose(library);
 }
 

@@ -16,3 +16,8 @@ void * init_filter(const char *const parameter)
 void apply_filter(void *arg, const uint64_t ts, const int w, const int h, const uint8_t *const prev_frame, const uint8_t *const current_frame, uint8_t *const result)
 {
 }
+
+void uninit_filter(void *arg)
+{
+	// free memory etc
+}

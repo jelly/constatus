@@ -23,3 +23,8 @@ void apply_filter(void *arg, const uint64_t ts, const int w, const int h, const 
 	for(size_t i=0; i<bytes; i += 3)
 		result[i + 0] ^= 0xff;
 }
+
+void uninit_filter(void *arg)
+{
+	// free memory etc
+}

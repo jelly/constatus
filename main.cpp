@@ -18,7 +18,10 @@
 #include "source_rtsp.h"
 #include "http_server.h"
 #include "motion_trigger.h"
-#include "write_stream_to_file.h"
+#include "target.h"
+#include "target_avi.h"
+#include "target_jpeg.h"
+#include "target_plugin.h"
 #include "filter.h"
 #include "filter_mirror_v.h"
 #include "filter_mirror_h.h"
@@ -28,7 +31,7 @@
 #include "filter_grayscale.h"
 #include "filter_boost_contrast.h"
 #include "filter_marker_simple.h"
-#include "push_to_vloopback.h"
+#include "v4l2_loopback.h"
 #include "filter_overlay.h"
 #include "picio.h"
 #include "filter_ext.h"
@@ -232,6 +235,34 @@ stream_plugin_t * load_stream_plugin(const json_t *const in)
 	return sp;
 }
 
+target * load_target(const json_t *const j_in, source *const s, const double snapshot_interval, std::vector<filter *> *const filters, const int quality)
+{
+	target *t = NULL;
+
+	const char *path = json_str(j_in, "path", "directory to write to");
+	const char *prefix = json_str(j_in, "prefix", "string to begin filename with");
+	const char *exec_start = json_str(j_in, "exec-start", "script to start when recording starts");
+	const char *exec_cycle = json_str(j_in, "exec-cycle", "script to start when the record file is restarted");
+	const char *exec_end = json_str(j_in, "exec-end", "script to start when the recording stops");
+	int restart_interval = json_int(j_in, "restart-interval", "after how many seconds should the stream-file be restarted");
+	const char *format = json_str(j_in, "format", "AVI, JPEG or PLUGIN");
+
+	if (strcasecmp(format, "AVI") == 0)
+		t = new target_avi(s, path, prefix, quality, restart_interval, snapshot_interval, NULL, filters, exec_start, exec_cycle, exec_end);
+	else if (strcasecmp(format, "JPEG") == 0)
+		t = new target_jpeg(s, path, prefix, quality, restart_interval, snapshot_interval, NULL, filters, exec_start, exec_cycle, exec_end);
+	else if (strcasecmp(format, "JPEG") == 0) {
+		stream_plugin_t *sp = load_stream_plugin(j_in);
+
+		t = new target_plugin(s, path, prefix, quality, restart_interval, snapshot_interval, NULL, filters, exec_start, exec_cycle, exec_end, sp);
+	}
+	else {
+		error_exit(false, "Format %s is unknown (stream to disk backends)", format);
+	}
+
+	return t;
+}
+
 void version()
 {
 	printf(NAME " " VERSION "\n");
@@ -388,7 +419,10 @@ int main(int argc, char *argv[])
 
 	//***
 
-	std::vector<pthread_t> ths;
+	std::vector<interface *> interfaces;
+
+	std::vector<pthread_t> ths; // FIXME remove
+
 	pthread_t th;
 	std::vector<filter *> af;
 
@@ -406,7 +440,6 @@ int main(int argc, char *argv[])
 		int resize_h = json_int(j_hl, "resize-height", "resize picture height to this (-1 to disable)");
 
 		std::vector<filter *> *http_filters = load_filters(json_object_get(j_hl, "filters"));
-		add_filters(&af, http_filters);
 
 		start_http_server(listen_adapter, listen_port, s, fps, jpeg_quality, time_limit, http_filters, &global_stopflag, resize_w, resize_h, &th);
 		ths.push_back(th);
@@ -424,15 +457,14 @@ int main(int argc, char *argv[])
 		double fps = json_float(j_vl, "fps", "nubmer of frames per second");
 
 		std::vector<filter *> *loopback_filters = load_filters(json_object_get(j_vl, "filters"));
-		add_filters(&af, loopback_filters);
 
-		start_p2vl_thread(s, fps, dev, loopback_filters, &global_stopflag, &th);
-		ths.push_back(th);
+		interface *f = new v4l2_loopback(s, fps, dev, loopback_filters);
+		f -> start();
+		interfaces.push_back(f);
 	}
 	else {
 		log(LL_INFO, " no video loopback");
 	}
-
 
 	//***
 
@@ -447,35 +479,20 @@ int main(int argc, char *argv[])
 		double pixels_changed_perctange = json_float(j_mt, "pixels-changed-percentage", "what %% of pixels need to be changed before the motion trigger is triggered");
 		int min_duration = json_int(j_mt, "min-duration", "minimum number of frames to record");
 		int mute_duration = json_int(j_mt, "mute-duration", "how long not to record (in frames) after motion has stopped");
-		const char *path = json_str(j_mt, "path", "directory to write to");
-		const char *prefix = json_str(j_mt, "prefix", "string to begin filename with");
-		int restart_interval = json_int(j_mt, "restart-interval", "after how many seconds should the stream-file be restarted");
 		int warmup_duration = json_int(j_mt, "warmup-duration", "how many frames to ignore so that the camera can warm-up");
 		int pre_motion_record_duration = json_int(j_mt, "pre-motion-record-duration", "how many frames to record that happened before the motion started");
 		int fps = json_int(j_mt, "fps", "number of frames per second to analyze");
-		const char *exec_start = json_str(j_mt, "exec-start", "script to start when motion begins");
-		const char *exec_cycle = json_str(j_mt, "exec-cycle", "script to start when the output file is restarted");
-		const char *exec_end = json_str(j_mt, "exec-end", "script to start when the motion stops");
 		const char *selection_bitmap = json_str(j_mt, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.");
 
 		std::vector<filter *> *filters_before = load_filters(json_object_get(j_mt, "filters-before"));
 		add_filters(&af, filters_before);
-		std::vector<filter *> *filters_after = load_filters(json_object_get(j_mt, "filters-after"));
-		add_filters(&af, filters_after);
 
-		stream_plugin_t *sp = NULL;
+		std::vector<filter *> *filters_after = load_filters(json_object_get(j_mt, "filters-after")); // freed by target
 
-		const char *format = json_str(j_mt, "format", "AVI, JPEG or PLUGIN");
-		o_format_t of = OF_AVI;
-		if (strcasecmp(format, "AVI") == 0)
-			of = OF_AVI;
-		else if (strcasecmp(format, "JPEG") == 0)
-			of = OF_JPEG;
-		else if (strcasecmp(format, "PLUGIN") == 0) {
-			of = OF_PLUGIN;
+		double snapshot_interval = 1.0 / fps;
 
-			sp = load_stream_plugin(j_mt);
-		}
+		target *t = load_target(j_mt, s, snapshot_interval, filters_after, jpeg_quality);
+		interfaces.push_back(t);
 
 		const char *file = json_str(j_mt, "trigger-plugin-file", "filename of motion detection plugin");
 		if (file[0]) {
@@ -486,13 +503,14 @@ int main(int argc, char *argv[])
 			if (!et -> library)
 				error_exit(true, "Failed opening motion detection plugin library %s", file);
 
-			et -> init_motion_trigger = (init_filter_t)find_symbol(et -> library, "init_motion_trigger", "motion detection plugin", file);
+			et -> init_motion_trigger = (init_motion_trigger_t)find_symbol(et -> library, "init_motion_trigger", "motion detection plugin", file);
 			et -> detect_motion = (detect_motion_t)find_symbol(et -> library, "detect_motion", "motion detection plugin", file);
+			et -> uninit_motion_trigger = (uninit_motion_trigger_t)find_symbol(et -> library, "uninit_motion_trigger", "motion detection plugin", file);
 		}
 
 		const uint8_t *sb = load_selection_bitmap(selection_bitmap);
 
-		start_motion_trigger_thread(s, jpeg_quality, noise_factor, pixels_changed_perctange, min_duration, mute_duration, path, prefix, restart_interval, warmup_duration, pre_motion_record_duration, filters_before, filters_after, fps, exec_start, exec_cycle, exec_end, of, sp, &global_stopflag, sb, et, &th);
+		start_motion_trigger_thread(s, jpeg_quality, noise_factor, pixels_changed_perctange, min_duration, mute_duration, warmup_duration, pre_motion_record_duration, filters_before, fps, t, &global_stopflag, sb, et, &th);
 		ths.push_back(th);
 	}
 	else {
@@ -521,7 +539,6 @@ int main(int argc, char *argv[])
 			const char *path = json_str(ae, "path", "directory to write to");
 			const char *prefix = json_str(ae, "prefix", "string to begin filename with");
 			int jpeg_quality = json_int(ae, "quality", "JPEG quality, this influences the size");
-			int restart_interval = json_int(ae, "restart-interval", "after how many seconds should the stream-file be restarted");
 			double snapshot_interval = json_float(ae, "snapshot-interval", "store a snapshot every x seconds");
 			const char *exec_start = json_str(ae, "exec-start", "script to start when motion begins");
 			const char *exec_cycle = json_str(ae, "exec-cycle", "script to start when the output file is restarted");
@@ -529,19 +546,10 @@ int main(int argc, char *argv[])
 			const char *format = json_str(ae, "format", "either AVI or JPEG");
 
 			std::vector<filter *> *store_filters = load_filters(json_object_get(ae, "filters"));
-			add_filters(&af, store_filters);
 
-			o_format_t of = OF_AVI;
-			if (strcasecmp(format, "AVI") == 0)
-				of = OF_AVI;
-			else if (strcasecmp(format, "JPEG") == 0)
-				of = OF_JPEG;
-
-			stream_plugin_t *sp = load_stream_plugin(ae);
-
-			std::atomic_bool *dummy = NULL;
-			start_store_thread(s, path, prefix, jpeg_quality, restart_interval, snapshot_interval, NULL, store_filters, exec_start, exec_cycle, exec_end, &global_stopflag, of, sp, &dummy, &th);
-			ths.push_back(th);
+			target *t = load_target(ae, s, snapshot_interval, store_filters, jpeg_quality);
+			t -> start();
+			interfaces.push_back(t);
 		}
 	}
 	else {
@@ -566,6 +574,9 @@ int main(int argc, char *argv[])
 	log(LL_INFO, "Terminating");
 
 	global_stopflag = true;
+
+	for(interface *t : interfaces)
+		delete t;
 
 	log(LL_DEBUG, "Waiting for threads to terminate");
 

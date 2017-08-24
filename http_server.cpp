@@ -574,6 +574,8 @@ void * http_server_thread(void *p)
 
 	struct pollfd fds[] = { { st -> fd, POLLIN, 0 } };
 
+	std::vector<pthread_t> handles;
+
 	for(;!*st -> global_stopflag;) {
 		if (poll(fds, 1, 100) == 0)
 			continue;
@@ -596,18 +598,28 @@ void * http_server_thread(void *p)
 		ct -> resize_w = st -> resize_w;
 		ct -> resize_h = st -> resize_h;
 
-		pthread_attr_t tattr;
-		pthread_attr_init(&tattr);
-		pthread_attr_setdetachstate(&tattr, PTHREAD_CREATE_DETACHED);
-
 		pthread_t th;
 		int rc = -1;
-		if ((rc = pthread_create(&th, &tattr, handle_http_client_thread, ct)) != 0)
+		if ((rc = pthread_create(&th, NULL, handle_http_client_thread, ct)) != 0)
 		{
 			errno = rc;
 			error_exit(true, "pthread_create failed (http server)");
 		}
+
+		handles.push_back(th);
+
+		for(size_t i=0; i<handles.size();) {
+			if (pthread_tryjoin_np(handles.at(i), NULL) == 0)
+				handles.erase(handles.begin() + i);
+			else
+				i++;
+		}
 	}
+
+	for(size_t i=0; i<handles.size(); i++)
+		pthread_join(handles.at(i), NULL);
+
+	free_filters(st -> filters);
 
 	delete st;
 

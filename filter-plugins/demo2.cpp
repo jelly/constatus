@@ -27,4 +27,9 @@ void apply_filter(void *arg, const uint64_t ts, const int w, const int h, const 
 		std::swap(result[i + 0], result[i + 2]);
 }
 
+void uninit_filter(void *arg)
+{
+	// free memory etc
+}
+
 }

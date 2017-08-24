@@ -1,6 +1,7 @@
 // (C) 2017 by folkert van heusden, released under AGPL v3.0
 #include <algorithm>
 #include <assert.h>
+#include <atomic>
 #include <errno.h>
 #include <fcntl.h>
 #include <netdb.h>
@@ -223,4 +224,24 @@ std::string get_thread_name()
 	pthread_getname_np(pthread_self(), buffer, sizeof buffer);
 
 	return buffer;
+}
+
+void mysleep(double slp, std::atomic_bool *const stop_flag)
+{
+	while(slp > 0 && !*stop_flag) {
+		double cur = std::min(slp, 0.1);
+		slp -= cur;
+
+		int s = cur;
+
+		uint64_t us = (cur - s) * 1000 * 1000;
+
+		// printf("%d, %lu\n", s, us);
+
+		if (s)
+			::sleep(s); // FIXME handle signals
+
+		if (us)
+			usleep(us); // FIXME handle signals
+	}
 }

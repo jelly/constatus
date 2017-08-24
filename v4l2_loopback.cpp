@@ -19,25 +19,49 @@
 #include "utils.h"
 #include "filter.h"
 #include "log.h"
+#include "v4l2_loopback.h"
 
-typedef struct
+v4l2_loopback::v4l2_loopback(source *const s, const double fps, const std::string & dev, const std::vector<filter *> *const filters) : s(s), fps(fps), dev(dev), filters(filters)
 {
-	source *s;
-	double fps;
-	std::string dev;
-	const std::vector<filter *> *filters;
-	std::atomic_bool *global_stopflag;
-} p2vl_thread_pars_t;
+	th = NULL;
+	local_stop_flag = false;
+}
 
-void *p2vl_thread(void *pin)
+v4l2_loopback::~v4l2_loopback()
 {
-	p2vl_thread_pars_t *p = (p2vl_thread_pars_t *)pin;
+	stop();
+	free_filters(filters);
+}
 
+void v4l2_loopback::start()
+{
+	if (th)
+		error_exit(false, "v4l2-loopback thread already running");
+
+	local_stop_flag = false;
+
+	th = new std::thread(std::ref(*this));
+}
+
+void v4l2_loopback::stop()
+{
+	if (th) {
+		local_stop_flag = true;
+
+		th -> join();
+		delete th;
+
+		th = NULL;
+	}
+}
+
+void v4l2_loopback::operator()()
+{
 	set_thread_name("p2vl");
 
-	int v4l2sink = open(p -> dev.c_str(), O_WRONLY);
+	int v4l2sink = open(dev.c_str(), O_WRONLY);
 	if (v4l2sink == -1)
-        	error_exit(true, "Failed to open v4l2sink device (%s)", p -> dev.c_str());
+        	error_exit(true, "Failed to open v4l2sink device (%s)", dev.c_str());
 
 	// setup video for proper format
 	struct v4l2_format v;
@@ -51,11 +75,11 @@ void *p2vl_thread(void *pin)
 	uint64_t prev_ts = 0;
 	bool first = true;
 
-	for(;!*p -> global_stopflag;) {
+	for(;!local_stop_flag;) {
 		int w = -1, h = -1;
 		uint8_t *work = NULL;
 		size_t work_len = 0;
-		p -> s -> get_frame(E_RGB, -1, &prev_ts, &w, &h, &work, &work_len);
+		s -> get_frame(E_RGB, -1, &prev_ts, &w, &h, &work, &work_len);
 
 		if (work == NULL || work_len == 0) {
 			log(LL_INFO, "did not get a frame");
@@ -73,7 +97,7 @@ void *p2vl_thread(void *pin)
 				error_exit(true, "VIDIOC_S_FMT failed");
 		}
 
-		apply_filters(p -> filters, prev_frame, work, prev_ts, w, h);
+		apply_filters(filters, prev_frame, work, prev_ts, w, h);
 
 		if (write(v4l2sink, work, work_len) == -1)
 			error_exit(true, "write to video loopback failed");
@@ -81,34 +105,9 @@ void *p2vl_thread(void *pin)
 		free(prev_frame);
 		prev_frame = work;
 
-		if (p -> fps > 0) {
-			double us = 1000000.0 / p -> fps;
-			if (us)
-				usleep((useconds_t)us);
-		}
+		if (fps > 0)
+			mysleep(1.0 / fps, &local_stop_flag);
 	}
 
 	free(prev_frame);
-
-	delete p;
-
-	return NULL;
-}
-
-void start_p2vl_thread(source *const s, const double fps, const std::string & dev, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, pthread_t *th)
-{
-	p2vl_thread_pars_t *p = new p2vl_thread_pars_t;
-
-	p -> s = s;
-	p -> fps = fps;
-	p -> dev = dev;
-	p -> filters = filters;
-	p -> global_stopflag = global_stopflag;
-
-	int rc = -1;
-	if ((rc = pthread_create(th, NULL, p2vl_thread, p)) != 0)
-	{
-		errno = rc;
-		error_exit(true, "pthread_create failed (vloopback thread)");
-	}
 }
