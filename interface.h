@@ -12,7 +12,7 @@ protected:
 
 public:
 	interface();
-	~interface();
+	virtual ~interface();
 
 	virtual void start() = 0;
 	void pause();
