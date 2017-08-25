@@ -25,6 +25,7 @@ source_rtsp::source_rtsp(const std::string & urlIn, const int resize_w, const in
 
 source_rtsp::~source_rtsp()
 {
+	stop();
 }
 
 void my_log_callback(void *ptr, int level, const char *fmt, va_list vargs)
@@ -90,7 +91,7 @@ void source_rtsp::operator()()
 		avformat_network_init();
 
 		//av_dict_set(&opts, "rtsp_transport", "udp", 0);
-		av_dict_set(&opts, "max_delay", "500000", 0);  //100000 is the default
+		av_dict_set(&opts, "max_delay", "100000", 0);  //100000 is the default
 		av_dict_set(&opts, "analyzeduration", "5000000", 0);
 		av_dict_set(&opts, "probesize", "32000000", 0);
 

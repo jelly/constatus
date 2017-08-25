@@ -432,7 +432,6 @@ int main(int argc, char *argv[])
 	std::vector<pthread_t> ths; // FIXME remove
 
 	pthread_t th;
-	std::vector<filter *> af;
 
 	// listen adapter, listen port, source, fps, jpeg quality, time limit (in seconds)
 	log(LL_INFO, "Configuring the HTTP listener...");
@@ -493,7 +492,6 @@ int main(int argc, char *argv[])
 		const char *selection_bitmap = json_str(j_mt, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.");
 
 		std::vector<filter *> *filters_before = load_filters(json_object_get(j_mt, "filters-before"));
-		add_filters(&af, filters_before);
 
 		std::vector<filter *> *filters_after = load_filters(json_object_get(j_mt, "filters-after")); // freed by target
 
@@ -580,6 +578,9 @@ int main(int argc, char *argv[])
 	log(LL_DEBUG, "Waiting for threads to terminate");
 
 	for(interface *t : interfaces)
+		t -> stop();
+
+	for(interface *t : interfaces)
 		delete t;
 
 	for(pthread_t t : ths) {
@@ -587,15 +588,12 @@ int main(int argc, char *argv[])
 		pthread_join(t, &dummy);
 	}
 
-	delete s;
 	json_decref(cfg);
 
 	if (et) {
 		dlclose(et -> library);
 		delete et;
 	}
-
-	free_filters(&af);
 
 	curl_global_cleanup();
 

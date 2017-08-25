@@ -16,6 +16,7 @@ target_plugin::target_plugin(source *const s, const std::string & store_path, co
 
 target_plugin::~target_plugin()
 {
+	stop();
 }
 
 void target_plugin::operator()()

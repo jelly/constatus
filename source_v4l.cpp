@@ -278,6 +278,8 @@ source_v4l::source_v4l(const std::string & dev, bool prefer_jpeg_in, bool rpi_wo
 
 source_v4l::~source_v4l()
 {
+	stop();
+
 	close(fd);
 
 	munmap(io_buffer, unmap_size);

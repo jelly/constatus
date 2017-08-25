@@ -28,8 +28,6 @@ source::source(const int resize_w, const int resize_h, const int loglevel) : res
 
 source::~source()
 {
-	stop();
-
 	free(frame_rgb);
 	free(frame_jpeg);
 }

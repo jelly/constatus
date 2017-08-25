@@ -13,6 +13,7 @@ target_jpeg::target_jpeg(source *const s, const std::string & store_path, const 
 
 target_jpeg::~target_jpeg()
 {
+	stop();
 }
 
 void target_jpeg::operator()()

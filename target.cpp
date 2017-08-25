@@ -12,8 +12,6 @@ target::target(source *const s, const std::string & store_path, const std::strin
 
 target::~target()
 {
-	stop();
-
 	free_filters(filters);
 	delete filters;
 }

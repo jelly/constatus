@@ -17,6 +17,7 @@ source_http_jpeg::source_http_jpeg(const std::string & urlIn, const bool ignoreC
 
 source_http_jpeg::~source_http_jpeg()
 {
+	stop();
 }
 
 void source_http_jpeg::operator()()

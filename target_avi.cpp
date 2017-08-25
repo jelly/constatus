@@ -16,6 +16,7 @@ target_avi::target_avi(source *const s, const std::string & store_path, const st
 
 target_avi::~target_avi()
 {
+	stop();
 }
 
 void target_avi::operator()()

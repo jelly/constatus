@@ -137,6 +137,7 @@ source_http_mjpeg::source_http_mjpeg(const std::string & urlIn, const bool ic, c
 
 source_http_mjpeg::~source_http_mjpeg()
 {
+	stop();
 }
 
 void source_http_mjpeg::operator()()
