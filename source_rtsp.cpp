@@ -30,7 +30,7 @@ source_rtsp::~source_rtsp()
 
 void my_log_callback(void *ptr, int level, const char *fmt, va_list vargs)
 {
-	if (level <= (v ? AV_LOG_VERBOSE : AV_LOG_ERROR)) {
+	if (level >= (v ? AV_LOG_VERBOSE : AV_LOG_ERROR)) {
 		char *buffer = NULL;
 		vasprintf(&buffer, fmt, vargs);
 
@@ -68,6 +68,9 @@ void source_rtsp::operator()()
 
 	av_log_set_callback(my_log_callback);
 
+	av_register_all();
+	avformat_network_init();
+
 	for(;;) {
 		int err = 0, video_stream_index = -1;
 		AVDictionary *opts = NULL;
@@ -88,21 +91,18 @@ void source_rtsp::operator()()
 		if (!format_ctx)
 			goto fail;
 
-		// Register everything
-		av_register_all();
-		avformat_network_init();
-
-		//av_dict_set(&opts, "rtsp_transport", "udp", 0);
+//		av_dict_set(&opts, "rtsp_transport", "udp", 0);
 		av_dict_set(&opts, "max_delay", "100000", 0);  //100000 is the default
 		av_dict_set(&opts, "analyzeduration", "5000000", 0);
 		av_dict_set(&opts, "probesize", "32000000", 0);
+		av_dict_set(&opts, "user-agent", NAME " " VERSION, 0);
 
 		// open RTSP
 		if ((err = avformat_open_input(&format_ctx, url.c_str(), NULL, &opts)) != 0) {
 			char err_buffer[4096];
 			av_strerror(err, err_buffer, sizeof err_buffer);
 
-			log(LL_ERR, "Cannot open %s (%s)", url.c_str(), err_buffer);
+			log(LL_ERR, "Cannot open %s (%s (%d))", url.c_str(), err_buffer, err);
 			goto fail;
 		}
 
@@ -115,7 +115,6 @@ void source_rtsp::operator()()
 
 		// search video stream
 		video_stream_index = av_find_best_stream(format_ctx, AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
-
 		if (video_stream_index == -1) {
 			log(LL_ERR, "No video stream in rstp feed");
 			goto fail;
@@ -123,7 +122,7 @@ void source_rtsp::operator()()
 
 		output_ctx = avformat_alloc_context();
 
-		av_read_play(format_ctx);
+//		av_read_play(format_ctx);
 
 		///////
 		// Get the codec
@@ -135,7 +134,7 @@ void source_rtsp::operator()()
 
 		// Add this to allocate the context by codec
 		codec_ctx = avcodec_alloc_context3(codec);
-		avcodec_get_context_defaults3(codec_ctx, codec);
+		//avcodec_get_context_defaults3(codec_ctx, codec);
 		avcodec_parameters_to_context(codec_ctx, format_ctx->streams[video_stream_index]->codecpar);
 
 		if (avcodec_open2(codec_ctx, codec, NULL) < 0) {
@@ -193,7 +192,7 @@ void source_rtsp::operator()()
 					goto fail;
 				}
 
-				int result = avcodec_receive_frame(codec_ctx, picture); //avcodec_decode_video2(codec_ctx, picture, &check, &packet);
+				int result = avcodec_receive_frame(codec_ctx, picture);
 				if (result < 0 && result != AVERROR(EAGAIN) && result != AVERROR_EOF) {
 					log(LL_INFO, "rtsp error %d", result);
 					goto fail;
