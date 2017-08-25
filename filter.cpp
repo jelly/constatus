@@ -28,6 +28,8 @@ void scale(const uint8_t *in, const int win, const int hin, uint8_t **out, const
 {
 	*out = (uint8_t *)malloc(wout * hout * 3);
 
+	const int max_offset = wout * hout * 3 - 3;
+
 	const double maxw = std::max(win, wout);
 	const double maxh = std::max(hin, hout);
 
@@ -48,6 +50,8 @@ void scale(const uint8_t *in, const int win, const int hin, uint8_t **out, const
 		for(int x=0; x<maxw; x++) {
 			int ino = in_scaled_o + x * wins3;
 			int outo = out_scaled_o + x * wouts3;
+
+			outo = std::min(max_offset, outo);
 
 			(*out)[outo + 0] = in[ino + 0];
 			(*out)[outo + 1] = in[ino + 1];
