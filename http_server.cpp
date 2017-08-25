@@ -39,7 +39,7 @@ typedef struct {
 	const std::vector<filter *> *filters;
 	std::atomic_bool *global_stopflag;
 	int resize_w, resize_h;
-	bool mjpeg_only;
+	bool motion_compatible;
 } http_thread_t;
 
 void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h)
@@ -439,7 +439,7 @@ void send_jpg_frame(int cfd, source *s, bool get, int quality, const std::vector
 	free(work);
 }
 
-void handle_http_client(int cfd, source *s, double fps, int quality, int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const bool mjpeg_only)
+void handle_http_client(int cfd, source *s, double fps, int quality, int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const bool motion_compatible)
 {
 	sigset_t all_sigs;
 	sigfillset(&all_sigs);
@@ -452,7 +452,7 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 
 	struct pollfd fds[1] = { { cfd, POLLIN, 0 } };
 
-	for(;!*global_stopflag;) {
+	for(;!*global_stopflag && !motion_compatible;) {
 		if (poll(fds, 1, 250) == 0)
 			continue;
 
@@ -484,7 +484,9 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 	char *path = NULL;
 
 	bool get = true;
-	if (strncmp(request_headers, "GET ", 4) == 0)
+	if (motion_compatible) {
+	}
+	else if (strncmp(request_headers, "GET ", 4) == 0)
 	{
 		get = true;
 		path = strdup(&request_headers[4]);
@@ -500,19 +502,21 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 		return;
 	}
 
-	char *dummy = strchr(path, '\r');
-	if (!dummy)
-		dummy = strchr(path, '\n');
-	if (dummy)
-		*dummy = 0x00;
+	if (!motion_compatible) {
+		char *dummy = strchr(path, '\r');
+		if (!dummy)
+			dummy = strchr(path, '\n');
+		if (dummy)
+			*dummy = 0x00;
 
-	dummy = strchr(path, ' ');
-	if (dummy)
-		*dummy = 0x00;
+		dummy = strchr(path, ' ');
+		if (dummy)
+			*dummy = 0x00;
 
-	log(LL_DEBUG, "URL: %s", path);
+		log(LL_DEBUG, "URL: %s", path);
+	}
 
-	if (strcmp(path, "/stream.mjpeg") == 0 || mjpeg_only)
+	if (strcmp(path, "/stream.mjpeg") == 0 || motion_compatible)
 		send_mjpeg_stream(cfd, s, fps, quality, get, time_limit, filters, global_stopflag, resize_w, resize_h);
 	else if (strcmp(path, "/stream.mpng") == 0)
 		send_mpng_stream(cfd, s, fps, get, time_limit, filters, global_stopflag, resize_w, resize_h);
@@ -564,7 +568,7 @@ void * handle_http_client_thread(void *ct_in)
 
 	set_thread_name("http_client");
 
-	handle_http_client(ct -> fd, ct -> s, ct -> fps, ct -> quality, ct -> time_limit, ct -> filters, ct -> global_stopflag, ct -> resize_w, ct -> resize_h, ct -> mjpeg_only);
+	handle_http_client(ct -> fd, ct -> s, ct -> fps, ct -> quality, ct -> time_limit, ct -> filters, ct -> global_stopflag, ct -> resize_w, ct -> resize_h, ct -> motion_compatible);
 
 	delete ct;
 
@@ -602,7 +606,7 @@ void * http_server_thread(void *p)
 		ct -> global_stopflag = st -> global_stopflag;
 		ct -> resize_w = st -> resize_w;
 		ct -> resize_h = st -> resize_h;
-		ct -> mjpeg_only = st -> mjpeg_only;
+		ct -> motion_compatible = st -> motion_compatible;
 
 		pthread_t th;
 		int rc = -1;
@@ -635,7 +639,7 @@ void * http_server_thread(void *p)
 	return NULL;
 }
 
-void start_http_server(const char *const http_adapter, const int http_port, source *const src, const double fps, const int quality, const int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, pthread_t *th, const bool mjpeg_only)
+void start_http_server(const char *const http_adapter, const int http_port, source *const src, const double fps, const int quality, const int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, pthread_t *th, const bool motion_compatible)
 {
 	if (http_port != -1)
 	{
@@ -652,7 +656,7 @@ void start_http_server(const char *const http_adapter, const int http_port, sour
 		st -> global_stopflag = global_stopflag;
 		st -> resize_w = resize_w;
 		st -> resize_h = resize_h;
-		st -> mjpeg_only = mjpeg_only;
+		st -> motion_compatible = motion_compatible;
 
 		int rc = -1;
 		if ((rc = pthread_create(th, NULL, http_server_thread, st)) != 0)
