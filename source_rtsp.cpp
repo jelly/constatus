@@ -204,8 +204,7 @@ void source_rtsp::operator()()
 					uint8_t *out_pointer = &pixels[y * codec_ctx -> width * 3];
 					uint8_t *in_pointer = picture_rgb->data[0] + y * picture_rgb->linesize[0];
 
-					for(int x = 0; x < codec_ctx->width * 3; x++)
-						out_pointer[x] = in_pointer[x];
+					memcpy(&out_pointer[0], &in_pointer[0], codec_ctx->width * 3);
 				}
 
 				if (need_scale())
