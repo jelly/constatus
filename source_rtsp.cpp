@@ -161,16 +161,16 @@ void source_rtsp::operator()()
 
 		pixels = (uint8_t *)valloc(codec_ctx -> width * codec_ctx -> height * 3);
 
-		img_convert_ctx = sws_getContext(codec_ctx->width, codec_ctx->height, codec_ctx->pix_fmt, codec_ctx->width, codec_ctx->height, AV_PIX_FMT_RGB24, SWS_BICUBIC, NULL, NULL, NULL);
+		img_convert_ctx = sws_getContext(codec_ctx->width, codec_ctx->height, codec_ctx->pix_fmt, resize_w, resize_h, AV_PIX_FMT_RGB24, SWS_BICUBIC, NULL, NULL, NULL);
 
 		size = av_image_get_buffer_size(AV_PIX_FMT_YUV420P, codec_ctx->width, codec_ctx->height, 1);
 		picture_buffer = (uint8_t*) (av_malloc(size));
 		picture = av_frame_alloc();
 		picture_rgb = av_frame_alloc();
-		size2 = av_image_get_buffer_size(AV_PIX_FMT_RGB24, codec_ctx->width, codec_ctx->height, 1);
+		size2 = av_image_get_buffer_size(AV_PIX_FMT_RGB24, resize_w, resize_h, 1);
 		picture_buffer_2 = (uint8_t*) (av_malloc(size2));
 		av_image_fill_arrays(picture -> data, picture -> linesize, picture_buffer, AV_PIX_FMT_YUV420P, codec_ctx->width, codec_ctx->height, 1);
-		av_image_fill_arrays(picture_rgb -> data, picture_rgb -> linesize, picture_buffer_2, AV_PIX_FMT_RGB24, codec_ctx->width, codec_ctx->height, 1);
+		av_image_fill_arrays(picture_rgb -> data, picture_rgb -> linesize, picture_buffer_2, AV_PIX_FMT_RGB24, resize_w, resize_h, 1);
 
 		while(!local_stop_flag && av_read_frame(format_ctx, &packet) >= 0) {
 			if (packet.stream_index == video_stream_index) {    //packet is video
@@ -200,17 +200,14 @@ void source_rtsp::operator()()
 
 				sws_scale(img_convert_ctx, picture->data, picture->linesize, 0, codec_ctx->height, picture_rgb->data, picture_rgb->linesize);
 
-				for(int y = 0; y < codec_ctx->height; y++) {
-					uint8_t *out_pointer = &pixels[y * codec_ctx -> width * 3];
+				for(int y = 0; y < resize_h; y++) {
+					uint8_t *out_pointer = &pixels[y * resize_w * 3];
 					uint8_t *in_pointer = picture_rgb->data[0] + y * picture_rgb->linesize[0];
 
-					memcpy(&out_pointer[0], &in_pointer[0], codec_ctx->width * 3);
+					memcpy(&out_pointer[0], &in_pointer[0], resize_w * 3);
 				}
 
-				if (need_scale())
-					set_scaled_frame(pixels, codec_ctx -> width, codec_ctx -> height);
-				else
-					set_frame(E_RGB, pixels, codec_ctx -> width * codec_ctx -> height * 3);
+				set_frame(E_RGB, pixels, resize_w * resize_h * 3);
 			}
 
 			av_frame_unref(picture);
