@@ -447,7 +447,7 @@ int main(int argc, char *argv[])
 		int time_limit = json_int(j_hl, "time-limit", "how long (in seconds) to stream before the connection is closed");
 		int resize_w = json_int(j_hl, "resize-width", "resize picture width to this (-1 to disable)");
 		int resize_h = json_int(j_hl, "resize-height", "resize picture height to this (-1 to disable)");
-		bool mjpeg_only = json_bool(j_source, "mjpeg-only", "only stream MJPEG");
+		bool mjpeg_only = json_bool(j_hl, "mjpeg-only", "only stream MJPEG");
 
 		std::vector<filter *> *http_filters = load_filters(json_object_get(j_hl, "filters"));
 
