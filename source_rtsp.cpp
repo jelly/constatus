@@ -82,6 +82,8 @@ void source_rtsp::operator()()
 		AVFrame *picture = NULL, *picture_rgb = NULL;
 		uint8_t *picture_buffer = NULL, *picture_buffer_2 = NULL;
 
+		av_init_packet(&packet);
+
 		format_ctx = avformat_alloc_context();
 		if (!format_ctx)
 			goto fail;
@@ -118,8 +120,6 @@ void source_rtsp::operator()()
 			log(LL_ERR, "No video stream in rstp feed");
 			goto fail;
 		}
-
-		av_init_packet(&packet);
 
 		output_ctx = avformat_alloc_context();
 
@@ -229,10 +229,12 @@ void source_rtsp::operator()()
 		av_free(picture_buffer);
 		av_free(picture_buffer_2);
 
-		av_read_pause(format_ctx);
+//		av_read_pause(format_ctx);
 		avformat_close_input(&format_ctx);
 
-		avio_close(output_ctx->pb);
+		if (output_ctx)
+			avio_close(output_ctx->pb);
+
 		avformat_free_context(output_ctx);
 
 		sws_freeContext(img_convert_ctx);
