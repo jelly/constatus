@@ -1,4 +1,5 @@
 // (C) 2017 by folkert van heusden, released under AGPL v3.0
+#include <atomic>
 #include <string>
 
 #include "filter.h"
@@ -23,4 +24,25 @@ typedef struct
 	void *arg;
 } ext_trigger_t;
 
-void start_motion_trigger_thread(source *const s, const int quality, const int noise_factor, const double percentage_pixels_changed, const int keep_recording_n_frames, const int ignore_n_frames_after_recording, const int camera_warm_up, const int pre_record_count, const std::vector<filter *> *const before, const int fps, target *const t, std::atomic_bool *const global_stopflag, const uint8_t *pixel_select_bitmap, ext_trigger_t *const et, pthread_t *th);
+class motion_trigger : public interface
+{
+private:
+	source *s;
+	int noise_level;
+	double percentage_pixels_changed;
+	int keep_recording_n_frames;
+	int ignore_n_frames_after_recording;
+	int quality;
+	int camera_warm_up, pre_record_count;
+	const std::vector<filter *> *const filters;
+	int fps;
+	const uint8_t *pixel_select_bitmap;
+	ext_trigger_t *const et;
+	target *t;
+
+public:
+	motion_trigger(source *const s, const int quality, const int noise_level, const double percentage_pixels_changed, const int keep_recording_n_frames, const int ignore_n_frames_after_recording, const int camera_warm_up, const int pre_record_count, const std::vector<filter *> *const before, const int fps, target *const t, const uint8_t *pixel_select_bitmap, ext_trigger_t *const et);
+	virtual ~motion_trigger();
+
+	void operator()();
+};

@@ -15,7 +15,7 @@
 
 typedef struct
 {
-	std::atomic_bool *global_stopflag;
+	std::atomic_bool *stop_flag;
 	source *s;
 	bool first;
 	bool header;
@@ -24,12 +24,22 @@ typedef struct
 	size_t req_len;
 } work_data_t;
 
+static int xfer_callback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow)
+{
+	work_data_t *w = (work_data_t *)clientp;
+
+	if (*w -> stop_flag)
+		return 1;
+
+	return 0;
+}
+
 static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 {
 	work_data_t *w = (work_data_t *)mypt;
 	const size_t full_size = size * nmemb;
 
-	if (*w -> global_stopflag)
+	if (*w -> stop_flag)
 		return 0;
 
 	w -> data = (uint8_t *)realloc(w -> data, w -> n + full_size + 1);
@@ -121,15 +131,12 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 }
 
 
-source_http_mjpeg::source_http_mjpeg(const std::string & urlIn, const bool ic, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const int loglevel) : source(global_stopflag, resize_w, resize_h, loglevel), url(urlIn), ignore_cert(ic)
+source_http_mjpeg::source_http_mjpeg(const std::string & urlIn, const bool ic, const int resize_w, const int resize_h, const int loglevel) : source(resize_w, resize_h, loglevel), url(urlIn), ignore_cert(ic)
 {
-	th = new std::thread(std::ref(*this));
 }
 
 source_http_mjpeg::~source_http_mjpeg()
 {
-	th -> join();
-	delete th;
 }
 
 void source_http_mjpeg::operator()()
@@ -138,7 +145,7 @@ void source_http_mjpeg::operator()()
 
 	set_thread_name("src_h_mjpeg");
 
-	for(;!*global_stopflag;)
+	for(;!local_stop_flag;)
 	{
 		log(LL_INFO, "(re-)connect to MJPEG source %s", url.c_str());
 
@@ -167,17 +174,19 @@ void source_http_mjpeg::operator()()
 
 		curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, loglevel >= LL_DEBUG);
 
-		curl_easy_setopt(curl_handle, CURLOPT_NOPROGRESS, 1L);
-
 		curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_data);
 
 		work_data_t *w = new work_data_t;
-		w -> global_stopflag = global_stopflag;
+		w -> stop_flag = &local_stop_flag;
 		w -> s = this;
 		w -> first = w -> header = true;
 		w -> data = NULL;
 		w -> n = 0;
 		curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, w);
+
+		curl_easy_setopt(curl_handle, CURLOPT_XFERINFODATA, w);
+		curl_easy_setopt(curl_handle, CURLOPT_XFERINFOFUNCTION, xfer_callback);
+		curl_easy_setopt(curl_handle, CURLOPT_NOPROGRESS, 0L);
 
 		curl_easy_perform(curl_handle);
 

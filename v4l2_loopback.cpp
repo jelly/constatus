@@ -33,28 +33,6 @@ v4l2_loopback::~v4l2_loopback()
 	free_filters(filters);
 }
 
-void v4l2_loopback::start()
-{
-	if (th)
-		error_exit(false, "v4l2-loopback thread already running");
-
-	local_stop_flag = false;
-
-	th = new std::thread(std::ref(*this));
-}
-
-void v4l2_loopback::stop()
-{
-	if (th) {
-		local_stop_flag = true;
-
-		th -> join();
-		delete th;
-
-		th = NULL;
-	}
-}
-
 void v4l2_loopback::operator()()
 {
 	set_thread_name("p2vl");

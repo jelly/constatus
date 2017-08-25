@@ -18,31 +18,9 @@ target::~target()
 	delete filters;
 }
 
-void target::start()
-{
-	if (th)
-		error_exit(false, "Record thread already running");
-
-	local_stop_flag = false;
-
-	th = new std::thread(std::ref(*this));
-}
-
 void target::start(std::vector<frame_t> *const pre_record)
 {
 	this -> pre_record = pre_record;
 
-	start();
-}
-
-void target::stop()
-{
-	if (th) {
-		local_stop_flag = true;
-
-		th -> join();
-		delete th;
-
-		th = NULL;
-	}
+	interface::start();
 }

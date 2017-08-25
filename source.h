@@ -5,10 +5,13 @@
 #include <atomic>
 #include <pthread.h>
 #include <stdint.h>
+#include <thread>
+
+#include "interface.h"
 
 typedef enum { E_RGB, E_JPEG } encoding_t;
 
-class source
+class source : public interface
 {
 protected:
 	int width, height;
@@ -19,10 +22,9 @@ protected:
 	uint64_t ts;
 	uint8_t *frame_jpeg, *frame_rgb;
 	size_t frame_jpeg_len, frame_rgb_len;
-	std::atomic_bool *const global_stopflag;
 
 public:
-	source(std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const int loglevel);
+	source(const int resize_w, const int resize_h, const int loglevel);
 	virtual ~source();
 
 	bool get_frame(const encoding_t pe, const int jpeg_quality, uint64_t *ts, int *width, int *height, uint8_t **frame, size_t *frame_len);
@@ -30,6 +32,8 @@ public:
 	void set_scaled_frame(const uint8_t *const in, const int sourcew, const int sourceh);
 	void set_size(const int w, const int h) { width = w; height = h; }
 	bool need_scale() const { return resize_h != -1 || resize_w != -1; }
+
+	virtual void operator()() = 0;
 };
 
 #endif

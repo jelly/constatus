@@ -373,6 +373,8 @@ int main(int argc, char *argv[])
 	//
 	//source_http_mjpeg *s = new source_http_mjpeg("10.42.42.104", 80, "/mjpg/video.mjpg");
 
+	std::vector<interface *> interfaces;
+
 	json_t *j_source = json_object_get(cfg, "source");
 
 	source *s = NULL;
@@ -387,7 +389,9 @@ int main(int argc, char *argv[])
 		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
 		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
 
-		s = new source_v4l(json_str(j_source, "device", "linux v4l2 device"), pref_jpeg, rpi_wa, jpeg_quality, w, h, &global_stopflag, resize_w, resize_h, loglevel);
+		s = new source_v4l(json_str(j_source, "device", "linux v4l2 device"), pref_jpeg, rpi_wa, jpeg_quality, w, h, resize_w, resize_h, loglevel);
+		s -> start();
+		interfaces.push_back(s);
 	}
 	else if (strcasecmp(s_type, "jpeg") == 0) {
 		bool ign_cert = json_bool(j_source, "ignore-cert", "ignore SSL errors");
@@ -396,7 +400,9 @@ int main(int argc, char *argv[])
 		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
 		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
 
-		s = new source_http_jpeg(url, ign_cert, auth, &global_stopflag, resize_w, resize_h, loglevel);
+		s = new source_http_jpeg(url, ign_cert, auth, resize_w, resize_h, loglevel);
+		s -> start();
+		interfaces.push_back(s);
 	}
 	else if (strcasecmp(s_type, "mjpeg") == 0) {
 		const char *url = json_str(j_source, "url", "address of MJPEG stream");
@@ -404,22 +410,24 @@ int main(int argc, char *argv[])
 		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
 		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
 
-		s = new source_http_mjpeg(url, ign_cert, &global_stopflag, resize_w, resize_h, loglevel);
+		s = new source_http_mjpeg(url, ign_cert, resize_w, resize_h, loglevel);
+		s -> start();
+		interfaces.push_back(s);
 	}
 	else if (strcasecmp(s_type, "rtsp") == 0) {
 		const char *url = json_str(j_source, "url", "address of JPEG stream");
 		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
 		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
 
-		s = new source_rtsp(url, &global_stopflag, resize_w, resize_h, loglevel);
+		s = new source_rtsp(url, resize_w, resize_h, loglevel);
+		s -> start();
+		interfaces.push_back(s);
 	}
 	else {
 		log(LL_FATAL, " no source defined!");
 	}
 
 	//***
-
-	std::vector<interface *> interfaces;
 
 	std::vector<pthread_t> ths; // FIXME remove
 
@@ -475,7 +483,7 @@ int main(int argc, char *argv[])
 	json_t *j_mt = json_object_get(cfg, "motion-trigger");
 	if (j_mt) {
 		int jpeg_quality = json_int(j_mt, "quality", "JPEG quality, this influences the size");
-		int noise_factor = json_int(j_mt, "noise-factor", "at what difference levell is the pixel considered to be changed");
+		int noise_level = json_int(j_mt, "noise-factor", "at what difference levell is the pixel considered to be changed");
 		double pixels_changed_perctange = json_float(j_mt, "pixels-changed-percentage", "what %% of pixels need to be changed before the motion trigger is triggered");
 		int min_duration = json_int(j_mt, "min-duration", "minimum number of frames to record");
 		int mute_duration = json_int(j_mt, "mute-duration", "how long not to record (in frames) after motion has stopped");
@@ -509,8 +517,9 @@ int main(int argc, char *argv[])
 
 		const uint8_t *sb = load_selection_bitmap(selection_bitmap);
 
-		start_motion_trigger_thread(s, jpeg_quality, noise_factor, pixels_changed_perctange, min_duration, mute_duration, warmup_duration, pre_motion_record_duration, filters_before, fps, t, &global_stopflag, sb, et, &th);
-		ths.push_back(th);
+		motion_trigger *m = new motion_trigger(s, jpeg_quality, noise_level, pixels_changed_perctange, min_duration, mute_duration, warmup_duration, pre_motion_record_duration, filters_before, fps, t, sb, et);
+		m -> start();
+		interfaces.push_back(m);
 	}
 	else {
 		log(LL_INFO, " no motion trigger defined");
@@ -540,7 +549,7 @@ int main(int argc, char *argv[])
 
 			std::vector<filter *> *store_filters = load_filters(json_object_get(ae, "filters"));
 
-			target *t = load_target(ae, s, snapshot_interval, store_filters, jpeg_quality);
+			interface *t = load_target(ae, s, snapshot_interval, store_filters, jpeg_quality);
 			t -> start();
 			interfaces.push_back(t);
 		}
@@ -568,10 +577,10 @@ int main(int argc, char *argv[])
 
 	global_stopflag = true;
 
+	log(LL_DEBUG, "Waiting for threads to terminate");
+
 	for(interface *t : interfaces)
 		delete t;
-
-	log(LL_DEBUG, "Waiting for threads to terminate");
 
 	for(pthread_t t : ths) {
 		void *dummy = NULL;

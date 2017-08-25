@@ -158,7 +158,7 @@ bool source_v4l::try_v4l_configuration(int fd, int *width, int *height, unsigned
 	return true;
 }
 
-source_v4l::source_v4l(const std::string & dev, bool prefer_jpeg_in, bool rpi_workaround_in, int jpeg_quality, int w_override, int h_override, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const int loglevel) : source(global_stopflag, resize_w, resize_h, loglevel), prefer_jpeg(prefer_jpeg_in), rpi_workaround(rpi_workaround_in)
+source_v4l::source_v4l(const std::string & dev, bool prefer_jpeg_in, bool rpi_workaround_in, int jpeg_quality, int w_override, int h_override, const int resize_w, const int resize_h, const int loglevel) : source(resize_w, resize_h, loglevel), prefer_jpeg(prefer_jpeg_in), rpi_workaround(rpi_workaround_in)
 {
 	fd = open(dev.c_str(), O_RDWR);
 	if (fd == -1)
@@ -273,14 +273,11 @@ source_v4l::source_v4l(const std::string & dev, bool prefer_jpeg_in, bool rpi_wo
 		height = resize_h;
 	}
 
-	th = new std::thread(std::ref(*this));
+	th = NULL;
 }
 
 source_v4l::~source_v4l()
 {
-	th -> join();
-	delete th;
-
 	close(fd);
 
 	munmap(io_buffer, unmap_size);
@@ -299,7 +296,7 @@ void source_v4l::operator()()
 	buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	buf.memory = V4L2_MEMORY_MMAP;
 
-	for(;!*global_stopflag;)
+	for(;!local_stop_flag;)
 	{
 		if (ioctl(fd, VIDIOC_DQBUF, &buf) == -1) {
 			log(LL_ERR, "VIDIOC_DQBUF failed: %s", strerror(errno));

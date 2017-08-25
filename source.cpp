@@ -9,7 +9,7 @@
 #include "filter.h"
 #include "filter_add_text.h"
 
-source::source(std::atomic_bool *const global_stopflagIn, const int resize_w, const int resize_h, const int loglevel) : resize_w(resize_w), resize_h(resize_h), global_stopflag(global_stopflagIn), loglevel(loglevel)
+source::source(const int resize_w, const int resize_h, const int loglevel) : resize_w(resize_w), resize_h(resize_h), loglevel(loglevel)
 {
 	width = height = -1;
 	ts = 0;
@@ -28,6 +28,8 @@ source::source(std::atomic_bool *const global_stopflagIn, const int resize_w, co
 
 source::~source()
 {
+	stop();
+
 	free(frame_rgb);
 	free(frame_jpeg);
 }
@@ -86,7 +88,7 @@ bool source::get_frame(const encoding_t pe, const int jpeg_quality, uint64_t *ts
 	}
 
 	if (err) {
-		if (this -> width == -1) {
+		if (this -> width <= 0) {
 			*width = 352;
 			*height = 288;
 		}

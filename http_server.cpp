@@ -449,8 +449,12 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 	char request_headers[65536] = { 0 };
 	int h_n = 0;
 
-	for(;!*global_stopflag;)
-	{
+	struct pollfd fds[1] = { { cfd, POLLIN, 0 } };
+
+	for(;!*global_stopflag;) {
+		if (poll(fds, 1, 250) == 0)
+			continue;
+
 		int rc = read(cfd, &request_headers[h_n], sizeof request_headers - h_n - 1);
 		if (rc == -1)
 		{

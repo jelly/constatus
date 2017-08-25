@@ -18,17 +18,13 @@ extern "C" {
 
 static bool v = false;
 
-source_rtsp::source_rtsp(const std::string & urlIn, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const int loglevel) : source(global_stopflag, resize_w, resize_h, loglevel), url(urlIn)
+source_rtsp::source_rtsp(const std::string & urlIn, const int resize_w, const int resize_h, const int loglevel) : source(resize_w, resize_h, loglevel), url(urlIn)
 {
 	v = loglevel >= LL_DEBUG;
-
-	th = new std::thread(std::ref(*this));
 }
 
 source_rtsp::~source_rtsp()
 {
-	th -> join();
-	delete th;
 }
 
 void my_log_callback(void *ptr, int level, const char *fmt, va_list vargs)
@@ -139,7 +135,7 @@ void source_rtsp::operator()()
 		// Add this to allocate the context by codec
 		codec_ctx = avcodec_alloc_context3(codec);
 		avcodec_get_context_defaults3(codec_ctx, codec);
-//		avcodec_parameters_to_context(codec_ctx, format_ctx->streams[video_stream_index]->codecpar);
+		avcodec_parameters_to_context(codec_ctx, format_ctx->streams[video_stream_index]->codecpar);
 
 		if (avcodec_open2(codec_ctx, codec, NULL) < 0) {
 			log(LL_ERR, "avcodec_open2 failed");
@@ -176,7 +172,7 @@ void source_rtsp::operator()()
 		av_image_fill_arrays(picture -> data, picture -> linesize, picture_buffer, AV_PIX_FMT_YUV420P, codec_ctx->width, codec_ctx->height, 1);
 		av_image_fill_arrays(picture_rgb -> data, picture_rgb -> linesize, picture_buffer_2, AV_PIX_FMT_RGB24, codec_ctx->width, codec_ctx->height, 1);
 
-		while(!*global_stopflag && av_read_frame(format_ctx, &packet) >= 0) {
+		while(!local_stop_flag && av_read_frame(format_ctx, &packet) >= 0) {
 			if (packet.stream_index == video_stream_index) {    //packet is video
 
 				if (stream == NULL) {    //create stream in file
@@ -244,7 +240,7 @@ void source_rtsp::operator()()
 
 		free(pixels);
 
-		if (*global_stopflag)
+		if (local_stop_flag)
 			break;
 	}
 

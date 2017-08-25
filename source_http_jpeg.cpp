@@ -11,15 +11,12 @@
 #include "log.h"
 #include "utils.h"
 
-source_http_jpeg::source_http_jpeg(const std::string & urlIn, const bool ignoreCertIn, const std::string & authIn, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const int ll) : source(global_stopflag, resize_w, resize_h, ll), url(urlIn), auth(authIn), ignore_cert(ignoreCertIn)
+source_http_jpeg::source_http_jpeg(const std::string & urlIn, const bool ignoreCertIn, const std::string & authIn, const int resize_w, const int resize_h, const int ll) : source(resize_w, resize_h, ll), url(urlIn), auth(authIn), ignore_cert(ignoreCertIn)
 {
-	th = new std::thread(std::ref(*this));
 }
 
 source_http_jpeg::~source_http_jpeg()
 {
-	th -> join();
-	delete th;
 }
 
 void source_http_jpeg::operator()()
@@ -30,7 +27,7 @@ void source_http_jpeg::operator()()
 
 	bool first = true, resize = resize_h != -1 || resize_w != -1;
 
-	for(;!*global_stopflag;)
+	for(;!local_stop_flag;)
 	{
 		uint8_t *work = NULL;
 		size_t work_len = 0;
