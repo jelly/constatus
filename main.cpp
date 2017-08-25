@@ -338,8 +338,10 @@ int main(int argc, char *argv[])
 
 	int loglevel = 255;
 
-	if (verbose)
-		setlogfile(logfile[0] ? logfile : NULL, LL_DEBUG_VERBOSE);
+	if (verbose) {
+		loglevel = LL_DEBUG_VERBOSE;
+		setlogfile(logfile[0] ? logfile : NULL, loglevel);
+	}
 	else {
 		const char *ll = json_str(j_gen, "log-level", "log level (fatal, error, warning, info, debug, debug-verbose)");
 		if (strcasecmp(ll, "fatal") == 0)
