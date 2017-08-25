@@ -215,7 +215,8 @@ void send_mpng_stream(int cfd, source *s, double fps, bool get, const int time_l
 		int w = -1, h = -1;
 		uint8_t *work = NULL;
 		size_t work_len = 0;
-		s -> get_frame(E_RGB, -1, &prev, &w, &h, &work, &work_len);
+		if (!s -> get_frame(E_RGB, -1, &prev, &w, &h, &work, &work_len))
+			continue;
 
 		if (work == NULL || work_len == 0) {
 			log(LL_ERR, "did not get a frame");

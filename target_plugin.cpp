@@ -39,7 +39,8 @@ void target_plugin::operator()()
 		int w = -1, h = -1;
 		uint8_t *work = NULL;
 		size_t work_len = 0;
-		s -> get_frame(E_RGB, quality, &prev_ts, &w, &h, &work, &work_len);
+		if (!s -> get_frame(E_RGB, quality, &prev_ts, &w, &h, &work, &work_len))
+			continue;
 
 		if (work == NULL || work_len == 0) {
 			log(LL_INFO, "did not get a frame");

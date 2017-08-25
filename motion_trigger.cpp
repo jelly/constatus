@@ -76,7 +76,8 @@ void motion_trigger::operator()()
 
 		uint8_t *work = NULL;
 		size_t work_len = 0;
-		s -> get_frame(E_RGB, quality, &prev_ts, &w, &h, &work, &work_len);
+		if (!s -> get_frame(E_RGB, quality, &prev_ts, &w, &h, &work, &work_len))
+			continue;
 		if (work == NULL || work_len == 0)
 			continue;
 
