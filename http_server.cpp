@@ -69,6 +69,7 @@ void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, in
 
 	bool first = true;
 	uint8_t *prev_frame = NULL;
+	bool sc = resize_h != -1 || resize_w != -1;
 
 	uint64_t prev = 0;
 	time_t end = time(NULL) + time_limit;
@@ -77,7 +78,7 @@ void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, in
 		int w = -1, h = -1;
 		uint8_t *work = NULL;
 		size_t work_len = 0;
-		s -> get_frame(filters -> empty() ? E_JPEG : E_RGB, quality, &prev, &w, &h, &work, &work_len);
+		s -> get_frame(filters -> empty() && !sc ? E_JPEG : E_RGB, quality, &prev, &w, &h, &work, &work_len);
 		if (work == NULL || work_len == 0) {
 			log(LL_ERR, "did not get a frame");
 			continue;
@@ -94,7 +95,7 @@ void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, in
 		}
 
 		// decode, encode, etc frame
-		if (filters -> empty() && !s -> need_scale()) {
+		if (filters -> empty() && !sc) {
 			char img_h[4096] = { 0 };
 			int len = snprintf(img_h, sizeof img_h, 
 				"--myboundary\r\n"
@@ -234,7 +235,7 @@ void send_mpng_stream(int cfd, source *s, double fps, bool get, const int time_l
 		if (!fh)
 			error_exit(true, "open_memstream() failed");
 
-		if (s -> need_scale()) {
+		if (resize_w != -1 || resize_h != -1) {
 			int target_w = resize_w != -1 ? resize_w : w;
 			int target_h = resize_h != -1 ? resize_h : h;
 
@@ -342,7 +343,7 @@ void send_png_frame(int cfd, source *s, bool get, const std::vector<filter *> *c
 
 	apply_filters(filters, NULL, work, prev_ts, w, h);
 
-	if (s -> need_scale()) {
+	if (resize_h != -1 || resize_w != -1) {
 		int target_w = resize_w != -1 ? resize_w : w;
 		int target_h = resize_h != -1 ? resize_h : h;
 
@@ -393,11 +394,13 @@ void send_jpg_frame(int cfd, source *s, bool get, int quality, const std::vector
 
 	set_no_delay(cfd);
 
+	bool sc = resize_h != -1 || resize_w != -1;
+
 	uint64_t prev_ts = 0;
 	int w = -1, h = -1;
 	uint8_t *work = NULL;
 	size_t work_len = 0;
-	s -> get_frame(filters -> empty() ? E_JPEG : E_RGB, quality, &prev_ts, &w, &h, &work, &work_len);
+	s -> get_frame(filters -> empty() && !sc ? E_JPEG : E_RGB, quality, &prev_ts, &w, &h, &work, &work_len);
 
 	if (work == NULL || work_len == 0) {
 		log(LL_DEBUG, "did not get a frame");
@@ -410,7 +413,7 @@ void send_jpg_frame(int cfd, source *s, bool get, int quality, const std::vector
 	if (!fh)
 		error_exit(true, "open_memstream() failed");
 
-	if (filters -> empty() && !s -> need_scale())
+	if (filters -> empty() && !sc)
 		fwrite(work, work_len, 1, fh);
 	else {
 		apply_filters(filters, NULL, work, prev_ts, w, h);
