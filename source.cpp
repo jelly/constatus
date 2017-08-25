@@ -43,21 +43,35 @@ void source::set_frame(const encoding_t pe, const uint8_t *const data, const siz
 	gettimeofday(&tv, NULL);
 	ts = uint64_t(tv.tv_sec) * uint64_t(1000 * 1000) + uint64_t(tv.tv_usec);
 
-	free(frame_rgb);
-	frame_rgb = NULL;
+	if (pe != E_RGB) {
+		free(frame_rgb);
+		frame_rgb = NULL;
+	}
 
-	free(frame_jpeg);
-	frame_jpeg = NULL;
+	if (pe != E_JPEG) {
+		free(frame_jpeg);
+		frame_jpeg = NULL;
+	}
 
 	if (size) {
 		if (pe == E_RGB) {
-			frame_rgb = (uint8_t *)valloc(size);
-			frame_rgb_len = size;
+			if (size != frame_rgb_len) {
+				free(frame_rgb);
+
+				frame_rgb = (uint8_t *)valloc(size);
+				frame_rgb_len = size;
+			}
+
 			memcpy(frame_rgb, data, size);
 		}
 		else {
-			frame_jpeg = (uint8_t *)valloc(size);
-			frame_jpeg_len = size;
+			if (size != frame_jpeg_len) {
+				free(frame_jpeg);
+
+				frame_jpeg = (uint8_t *)valloc(size);
+				frame_jpeg_len = size;
+			}
+
 			memcpy(frame_jpeg, data, size);
 		}
 	}
