@@ -269,7 +269,7 @@ void send_mpng_stream(int cfd, source *s, double fps, bool get, const int time_l
 		snprintf(img_h, sizeof img_h, 
                         "--myboundary\r\n"
                         "Content-Type: image/png\r\n"
-			"Content-Size: %d\r\n"
+			"Content-Length: %d\r\n"
                         "\r\n", (int)data_out_len);
 		if (WRITE(cfd, img_h, strlen(img_h)) <= 0)
 		{
