@@ -110,7 +110,7 @@ bool source::get_frame(const encoding_t pe, const int jpeg_quality, uint64_t *ts
 		}
 
 		size_t bytes = *width * *height * 3;
-		uint8_t *fail = (uint8_t *)malloc(bytes);
+		uint8_t *fail = (uint8_t *)valloc(bytes);
 		memset(fail, 0x80, bytes);
 
 		filter_add_text fat("Camera down since %c", center_center);
