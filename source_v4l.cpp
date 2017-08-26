@@ -19,27 +19,21 @@
 
 inline unsigned char clamp_to_uchar(int in)
 {
-	if (in > 255)
-		return 255;
-
-	if (in < 0)
-		return 0;
-
-	return in;
+	return in > 255 ? 255 : (in < 0 ? 0 : in);
 }
 
 void image_yuv420_to_rgb(unsigned char *yuv420, unsigned char *rgb, int width, int height)
 {
-	int pos = width * height, outpos = 0;
+	int pos = width * height;
 	unsigned char *y_ptr = yuv420;
 	unsigned char *u_ptr = yuv420 + pos + (pos >> 2);
 	unsigned char *v_ptr = yuv420 + pos;
+	int wm1 = width - 1;
 
 	for (int y=0; y<height; y += 2)
 	{
 		int u_pos = y * width >> 2;
 		int y_w = y * width;
-		int wm1 = width - 1;
 
 		for (int x=0; x<width; x += 2)
 		{
@@ -53,9 +47,9 @@ void image_yuv420_to_rgb(unsigned char *yuv420, unsigned char *rgb, int width, i
 			int R = V + Y;
 			int B = U + Y;
 			int G = (Y * 1788871 - R * 533725 - B * 203424) >> 20; //G = 1.706 * Y - 0.509 * R - 0.194 * B
-			rgb[outpos++] = clamp_to_uchar(R);
-			rgb[outpos++] = clamp_to_uchar(G);
-			rgb[outpos++] = clamp_to_uchar(B);
+			*rgb++ = clamp_to_uchar(R);
+			*rgb++ = clamp_to_uchar(G);
+			*rgb++ = clamp_to_uchar(B);
 
 			/*second*/
 			y_pos++;
@@ -63,9 +57,9 @@ void image_yuv420_to_rgb(unsigned char *yuv420, unsigned char *rgb, int width, i
 			R = V + Y;
 			B = U + Y;
 			G = (Y * 1788871 - R * 533725 - B * 203424) >> 20; //G = 1.706 * Y - 0.509 * R - 0.194 * B
-			rgb[outpos++] = clamp_to_uchar(R);
-			rgb[outpos++] = clamp_to_uchar(G);
-			rgb[outpos++] = clamp_to_uchar(B);
+			*rgb++ = clamp_to_uchar(R);
+			*rgb++ = clamp_to_uchar(G);
+			*rgb++ = clamp_to_uchar(B);
 
 			/*third*/
 			y_pos += wm1;
@@ -73,9 +67,9 @@ void image_yuv420_to_rgb(unsigned char *yuv420, unsigned char *rgb, int width, i
 			R = V + Y;
 			B = U + Y;
 			G = (Y * 1788871 - R * 533725 - B * 203424) >> 20; //G = 1.706 * Y - 0.509 * R - 0.194 * B
-			rgb[outpos++] = clamp_to_uchar(R);
-			rgb[outpos++] = clamp_to_uchar(G);
-			rgb[outpos++] = clamp_to_uchar(B);
+			*rgb++ = clamp_to_uchar(R);
+			*rgb++ = clamp_to_uchar(G);
+			*rgb++ = clamp_to_uchar(B);
 
 			/*fourth*/
 			y_pos++;
@@ -83,38 +77,43 @@ void image_yuv420_to_rgb(unsigned char *yuv420, unsigned char *rgb, int width, i
 			R = V + Y;
 			B = U + Y;
 			G = (Y * 1788871 - R * 533725 - B * 203424) >> 20; //G = 1.706 * Y - 0.509 * R - 0.194 * B
-			rgb[outpos++] = clamp_to_uchar(R);
-			rgb[outpos++] = clamp_to_uchar(G);
-			rgb[outpos++] = clamp_to_uchar(B);
+			*rgb++ = clamp_to_uchar(R);
+			*rgb++ = clamp_to_uchar(G);
+			*rgb++ = clamp_to_uchar(B);
 
 			u_pos++;
 		}
 	}
 }
 
-void image_yuyv2_to_rgb(const unsigned char* src, int width, int height, unsigned char* dst)
+inline uint8_t clamp_yuyv2(const int v)
+{
+	return v < 0 ? 0 : (v > 65535 ? 255 : (v >> 8));
+}
+
+void image_yuyv2_to_rgb(const unsigned char *__restrict src, const int width, const int height, unsigned char *__restrict dst)
 {
 	int len = width * height * 2;
-	const unsigned char *end = &src[len];
+	const unsigned char *const end = &src[len];
 
 	for(; src != end;)
 	{
 		int C = 298 * (*src++ - 16);
 		int D = *src++ - 128;
-		int D1 = 516 * D + 128;
 		int C2 = 298 * (*src++ - 16);
 		int E = *src++ - 128;
 
 		int Ex = E * 409 + 128;
+
+		*dst++ = clamp_yuyv2(C + Ex);
 		int Dx = D * 100 + E * 208 - 128;
+		*dst++ = clamp_yuyv2(C - Dx);
+		int D1 = 516 * D + 128;
+		*dst++ = clamp_yuyv2(C + D1);
 
-		*dst++ = clamp_to_uchar((C + Ex) >> 8);
-		*dst++ = clamp_to_uchar((C - Dx) >> 8);
-		*dst++ = clamp_to_uchar((C + D1) >> 8);
-
-		*dst++ = clamp_to_uchar((C2 + Ex) >> 8);
-		*dst++ = clamp_to_uchar((C2 - Dx) >> 8);
-		*dst++ = clamp_to_uchar((C2 + D1) >> 8);
+		*dst++ = clamp_yuyv2(C2 + Ex);
+		*dst++ = clamp_yuyv2(C2 - Dx);
+		*dst++ = clamp_yuyv2(C2 + D1);
 	}
 }
 
@@ -305,34 +304,36 @@ void source_v4l::operator()()
 			continue;
 		}
 
-		if (prefer_jpeg) {
-			int cur_n_bytes = buf.bytesused;
+		if (work_required()) {
+			if (prefer_jpeg) {
+				int cur_n_bytes = buf.bytesused;
 
-			if (resize_h != -1 || resize_w != -1) {
-				int dw = -1, dh = -1;
-				unsigned char *temp = NULL;
-				if (read_JPEG_memory(io_buffer, cur_n_bytes, &dw, &dh, &temp))
-					set_scaled_frame(temp, dw, dh);
-				free(temp);
+				if (resize_h != -1 || resize_w != -1) {
+					int dw = -1, dh = -1;
+					unsigned char *temp = NULL;
+					if (read_JPEG_memory(io_buffer, cur_n_bytes, &dw, &dh, &temp))
+						set_scaled_frame(temp, dw, dh);
+					free(temp);
+				}
+				else {
+					set_frame(E_JPEG, io_buffer, cur_n_bytes);
+				}
 			}
 			else {
-				set_frame(E_JPEG, io_buffer, cur_n_bytes);
-			}
-		}
-		else if (work_required()) {
-			if (pixelformat == V4L2_PIX_FMT_YUV420)
-				image_yuv420_to_rgb(io_buffer, conv_buffer, vw, vh);
-			else if (pixelformat == V4L2_PIX_FMT_YUYV)
-				image_yuyv2_to_rgb(io_buffer, vw, vh, conv_buffer);
-			else if (pixelformat == V4L2_PIX_FMT_RGB24)
-				memcpy(conv_buffer, io_buffer, vw * vh * 3);
-			else
-				error_exit(false, "video4linux: video source has unsupported pixel format");
+				if (pixelformat == V4L2_PIX_FMT_YUV420)
+					image_yuv420_to_rgb(io_buffer, conv_buffer, vw, vh);
+				else if (pixelformat == V4L2_PIX_FMT_YUYV)
+					image_yuyv2_to_rgb(io_buffer, vw, vh, conv_buffer);
+				else if (pixelformat == V4L2_PIX_FMT_RGB24)
+					memcpy(conv_buffer, io_buffer, vw * vh * 3);
+				else
+					error_exit(false, "video4linux: video source has unsupported pixel format");
 
-			if (need_scale())
-				set_scaled_frame(conv_buffer, vw, vh);
-			else
-				set_frame(E_RGB, conv_buffer, vw * vh * 3);
+				if (need_scale())
+					set_scaled_frame(conv_buffer, vw, vh);
+				else
+					set_frame(E_RGB, conv_buffer, vw * vh * 3);
+			}
 		}
 
 		if (ioctl(fd, VIDIOC_QBUF, &buf) == -1)
