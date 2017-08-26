@@ -15,7 +15,9 @@ source::source(const int resize_w, const int resize_h, const int loglevel) : res
 	ts = 0;
 
 	frame_rgb = NULL;
+	frame_rgb_len = 0;
 	frame_jpeg = NULL;
+	frame_jpeg_len = 0;
 
 	cond = PTHREAD_COND_INITIALIZER;
 
