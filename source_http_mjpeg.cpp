@@ -99,15 +99,17 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 			}
 		}
 
-		if (w -> s -> need_scale()) {
-			int dw, dh;
-			unsigned char *temp = NULL;
-			if (read_JPEG_memory(w -> data, w -> req_len, &dw, &dh, &temp))
-				w -> s -> set_scaled_frame(temp, dw, dh);
-			free(temp);
-		}
-		else {
-			w -> s -> set_frame(E_JPEG, w -> data, w -> req_len);
+		if (w -> s -> work_required()) {
+			if (w -> s -> need_scale()) {
+				int dw, dh;
+				unsigned char *temp = NULL;
+				if (read_JPEG_memory(w -> data, w -> req_len, &dw, &dh, &temp))
+					w -> s -> set_scaled_frame(temp, dw, dh);
+				free(temp);
+			}
+			else {
+				w -> s -> set_frame(E_JPEG, w -> data, w -> req_len);
+			}
 		}
 
 		size_t left = w -> n - w -> req_len;

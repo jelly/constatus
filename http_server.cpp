@@ -572,7 +572,11 @@ void * handle_http_client_thread(void *ct_in)
 
 	set_thread_name("http_client");
 
+	ct -> s -> register_user();
+
 	handle_http_client(ct -> fd, ct -> s, ct -> fps, ct -> quality, ct -> time_limit, ct -> filters, ct -> global_stopflag, ct -> resize_w, ct -> resize_h, ct -> motion_compatible);
+
+	ct -> s -> unregister_user();
 
 	delete ct;
 

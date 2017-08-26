@@ -2,6 +2,8 @@
 #include <atomic>
 #include <string>
 
+#include "source.h"
+
 void set_no_delay(int fd);
 int start_listen(const char *adapter, int portnr, int listen_queue_size);
 std::string get_endpoint_name(int fd);
@@ -12,4 +14,4 @@ std::string myformat(const char *const fmt, ...);
 unsigned char *memstr(unsigned char *haystack, unsigned int haystack_len, unsigned char *needle, unsigned int needle_len);
 void set_thread_name(const std::string & name);
 std::string get_thread_name();
-void mysleep(double slp, std::atomic_bool *const stop_flag);
+void mysleep(double slp, std::atomic_bool *const stop_flag, source *const s);

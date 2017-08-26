@@ -28,6 +28,8 @@ void target_jpeg::operator()()
 
 	int f_nr = 0;
 
+	s -> register_user();
+
 	// FIXME pre-recorded frames
 
 	for(;!local_stop_flag;) {
@@ -83,11 +85,13 @@ void target_jpeg::operator()()
 		free(prev_frame);
 		prev_frame = work;
 
-		mysleep(interval, &local_stop_flag);
+		mysleep(interval, &local_stop_flag, s);
 	}
 
 	free(prev_frame);
 
 	if (exec_end)
 		exec(exec_end, name);
+
+	s -> unregister_user();
 }

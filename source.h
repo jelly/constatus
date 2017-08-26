@@ -23,6 +23,8 @@ protected:
 	uint8_t *frame_jpeg, *frame_rgb;
 	size_t frame_jpeg_len, frame_rgb_len;
 
+	std::atomic_int user_count;
+
 public:
 	source(const int resize_w, const int resize_h, const int loglevel);
 	virtual ~source();
@@ -34,6 +36,10 @@ public:
 	bool need_scale() const { return resize_h != -1 || resize_w != -1; }
 
 	virtual void operator()() = 0;
+
+	void register_user() { user_count++; }
+	void unregister_user() { user_count--; }
+	bool work_required();
 };
 
 #endif

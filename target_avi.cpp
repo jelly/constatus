@@ -23,6 +23,8 @@ void target_avi::operator()()
 {
 	set_thread_name("storea_" + prefix);
 
+	s -> register_user();
+
 	time_t cut_ts = time(NULL) + max_time;
 
 	uint64_t prev_ts = 0;
@@ -123,7 +125,7 @@ void target_avi::operator()()
 		free(prev_frame);
 		prev_frame = work;
 
-		mysleep(interval, &local_stop_flag);
+		mysleep(interval, &local_stop_flag, s);
 	}
 
 	if (gwavi)
@@ -133,4 +135,6 @@ void target_avi::operator()()
 
 	if (exec_end)
 		exec(exec_end, name);
+
+	s -> unregister_user();
 }

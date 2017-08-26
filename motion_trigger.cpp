@@ -56,6 +56,8 @@ void motion_trigger::operator()()
 
 	std::vector<frame_t> prerecord;
 
+	s -> register_user();
+
 	if (camera_warm_up)
 		log(LL_INFO, "Warming up...");
 
@@ -178,4 +180,6 @@ void motion_trigger::operator()()
 		free(prerecord.at(0).data);
 		prerecord.erase(prerecord.begin() + 0);
 	}
+
+	s -> unregister_user();
 }

@@ -198,19 +198,21 @@ void source_rtsp::operator()()
 					goto fail;
 				}
 
-				sws_scale(img_convert_ctx, picture->data, picture->linesize, 0, codec_ctx->height, picture_rgb->data, picture_rgb->linesize);
+				if (work_required()) {
+					sws_scale(img_convert_ctx, picture->data, picture->linesize, 0, codec_ctx->height, picture_rgb->data, picture_rgb->linesize);
 
-				for(int y = 0; y < codec_ctx->height; y++) {
-					uint8_t *out_pointer = &pixels[y * codec_ctx -> width * 3];
-					uint8_t *in_pointer = picture_rgb->data[0] + y * picture_rgb->linesize[0];
+					for(int y = 0; y < codec_ctx->height; y++) {
+						uint8_t *out_pointer = &pixels[y * codec_ctx -> width * 3];
+						uint8_t *in_pointer = picture_rgb->data[0] + y * picture_rgb->linesize[0];
 
-					memcpy(&out_pointer[0], &in_pointer[0], codec_ctx->width * 3);
+						memcpy(&out_pointer[0], &in_pointer[0], codec_ctx->width * 3);
+					}
+
+					if (need_scale())
+						set_scaled_frame(pixels, codec_ctx -> width, codec_ctx -> height);
+					else
+						set_frame(E_RGB, pixels, codec_ctx -> width * codec_ctx -> height * 3);
 				}
-
-				if (need_scale())
-					set_scaled_frame(pixels, codec_ctx -> width, codec_ctx -> height);
-				else
-					set_frame(E_RGB, pixels, codec_ctx -> width * codec_ctx -> height * 3);
 			}
 
 			av_frame_unref(picture);

@@ -40,32 +40,34 @@ void source_http_jpeg::operator()()
 			continue;
 		}
 
-		unsigned char *temp = NULL;
-		int dw = -1, dh = -1;
-		if (first || resize) {
-                        if (!read_JPEG_memory(work, work_len, &dw, &dh, &temp)) {
-				log(LL_INFO, "JPEG decode error");
-				continue;
+		if (work_required()) {
+			unsigned char *temp = NULL;
+			int dw = -1, dh = -1;
+			if (first || resize) {
+				if (!read_JPEG_memory(work, work_len, &dw, &dh, &temp)) {
+					log(LL_INFO, "JPEG decode error");
+					continue;
+				}
+
+				if (resize) {
+					width = resize_w;
+					height = resize_h;
+				}
+				else {
+					width = dw;
+					height = dh;
+				}
+
+				first = false;
 			}
 
-			if (resize) {
-				width = resize_w;
-				height = resize_h;
-			}
-			else {
-				width = dw;
-				height = dh;
-			}
+			if (resize)
+				set_scaled_frame(temp, dw, dh);
+			else
+				set_frame(E_JPEG, work, work_len);
 
-			first = false;
+			free(temp);
 		}
-
-		if (resize)
-			set_scaled_frame(temp, dw, dh);
-		else
-			set_frame(E_JPEG, work, work_len);
-
-		free(temp);
 
 		free(work);
 	}

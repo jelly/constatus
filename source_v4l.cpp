@@ -319,7 +319,7 @@ void source_v4l::operator()()
 				set_frame(E_JPEG, io_buffer, cur_n_bytes);
 			}
 		}
-		else {
+		else if (work_required()) {
 			if (pixelformat == V4L2_PIX_FMT_YUV420)
 				image_yuv420_to_rgb(io_buffer, conv_buffer, vw, vh);
 			else if (pixelformat == V4L2_PIX_FMT_YUYV)

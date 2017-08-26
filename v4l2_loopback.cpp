@@ -37,6 +37,8 @@ void v4l2_loopback::operator()()
 {
 	set_thread_name("p2vl");
 
+	s -> register_user();
+
 	int v4l2sink = open(dev.c_str(), O_WRONLY);
 	if (v4l2sink == -1)
         	error_exit(true, "Failed to open v4l2sink device (%s)", dev.c_str());
@@ -85,8 +87,10 @@ void v4l2_loopback::operator()()
 		prev_frame = work;
 
 		if (fps > 0)
-			mysleep(1.0 / fps, &local_stop_flag);
+			mysleep(1.0 / fps, &local_stop_flag, s);
 	}
 
 	free(prev_frame);
+
+	s -> unregister_user();
 }

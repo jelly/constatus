@@ -24,12 +24,22 @@ source::source(const int resize_w, const int resize_h, const int loglevel) : res
 	pthread_mutexattr_init(&ma);
 	pthread_mutexattr_settype(&ma, PTHREAD_MUTEX_ERRORCHECK);
 	pthread_mutex_init(&lock, &ma);
+
+	user_count = 0;
 }
 
 source::~source()
 {
 	free(frame_rgb);
 	free(frame_jpeg);
+}
+
+bool source::work_required()
+{
+//	int t = user_count;
+//	printf("%d\n", t);
+
+	return user_count > 0;
 }
 
 void source::set_frame(const encoding_t pe, const uint8_t *const data, const size_t size)

@@ -25,6 +25,8 @@ void target_plugin::operator()()
 
 	sp -> arg = sp -> init_plugin(sp -> par.c_str());
 
+	s -> register_user();
+
 	time_t cut_ts = time(NULL) + max_time;
 
 	uint64_t prev_ts = 0;
@@ -91,7 +93,7 @@ void target_plugin::operator()()
 		free(prev_frame);
 		prev_frame = work;
 
-		mysleep(interval, &local_stop_flag);
+		mysleep(interval, &local_stop_flag, s);
 	}
 
 	if (is_open)
@@ -103,4 +105,6 @@ void target_plugin::operator()()
 		exec(exec_end, name);
 
 	sp -> uninit_plugin(sp -> arg);
+
+	s -> unregister_user();
 }
