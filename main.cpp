@@ -442,7 +442,7 @@ int main(int argc, char *argv[])
 		const char *listen_adapter = json_str(j_hl, "listen-adapter", "network interface to listen on or 0.0.0.0 for all");
 		int listen_port = json_int(j_hl, "listen-port", "port to listen on");
 		printf(" HTTP server listening on %s:%d\n", listen_adapter, listen_port);
-		int fps = json_int(j_hl, "fps", "number of frames per second to record");
+		double fps = json_float(j_hl, "fps", "number of frames per second to record");
 		int jpeg_quality = json_int(j_hl, "quality", "JPEG quality, this influences the size");
 		int time_limit = json_int(j_hl, "time-limit", "how long (in seconds) to stream before the connection is closed");
 		int resize_w = json_int(j_hl, "resize-width", "resize picture width to this (-1 to disable)");
@@ -491,7 +491,7 @@ int main(int argc, char *argv[])
 		int mute_duration = json_int(j_mt, "mute-duration", "how long not to record (in frames) after motion has stopped");
 		int warmup_duration = json_int(j_mt, "warmup-duration", "how many frames to ignore so that the camera can warm-up");
 		int pre_motion_record_duration = json_int(j_mt, "pre-motion-record-duration", "how many frames to record that happened before the motion started");
-		int fps = json_int(j_mt, "fps", "number of frames per second to analyze");
+		double fps = json_float(j_mt, "fps", "number of frames per second to analyze");
 		const char *selection_bitmap = json_str(j_mt, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.");
 
 		std::vector<filter *> *filters_before = load_filters(json_object_get(j_mt, "filters-before"));
