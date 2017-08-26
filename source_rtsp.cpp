@@ -174,7 +174,6 @@ void source_rtsp::operator()()
 
 		while(!local_stop_flag && av_read_frame(format_ctx, &packet) >= 0) {
 			if (packet.stream_index == video_stream_index) {    //packet is video
-
 				if (stream == NULL) {    //create stream in file
 					log(LL_DEBUG, "Create stream");
 

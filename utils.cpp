@@ -229,7 +229,9 @@ std::string get_thread_name()
 
 void mysleep(double slp, std::atomic_bool *const stop_flag, source *const s)
 {
-	if (slp >= 1.0)
+	bool unreg = slp >= 1.0;
+
+	if (unreg)
 		s -> unregister_user();
 
 	while(slp > 0 && !*stop_flag) {
@@ -249,6 +251,6 @@ void mysleep(double slp, std::atomic_bool *const stop_flag, source *const s)
 			usleep(us); // FIXME handle signals
 	}
 
-	if (slp >= 1.0)
+	if (unreg)
 		s -> register_user();
 }
