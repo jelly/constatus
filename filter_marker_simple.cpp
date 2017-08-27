@@ -37,10 +37,8 @@ void filter_marker_simple::updatePixel(uint8_t *const out, const int x, const in
 	}
 }
 
-void filter_marker_simple::apply(const uint64_t ts, const int w, const int h, const uint8_t *const prev, const uint8_t *const in, uint8_t *const out)
+void filter_marker_simple::apply(const uint64_t ts, const int w, const int h, const uint8_t *const prev, uint8_t *const in_out)
 {
-	memcpy(out, in, w * h * 3);
-
 	if (!prev)
 		return;
 
@@ -53,7 +51,7 @@ void filter_marker_simple::apply(const uint64_t ts, const int w, const int h, co
 
 			int i3 = i * 3;
 
-			int lc = (in[i3 + 0] + in[i3 + 1] + in[i3 + 2]) / 3;
+			int lc = (in_out[i3 + 0] + in_out[i3 + 1] + in_out[i3 + 2]) / 3;
 			int lp = (prev[i3 + 0] + prev[i3 + 1] + prev[i3 + 2]) / 3;
 
 			diffs[i / 3] = abs(lc - lp) >= 32; // FIXME
@@ -61,7 +59,7 @@ void filter_marker_simple::apply(const uint64_t ts, const int w, const int h, co
 	}
 	else {
 		for(int i=0; i<w*h*3; i += 3) {
-			int lc = (in[i + 0] + in[i + 1] + in[i + 2]) / 3;
+			int lc = (in_out[i + 0] + in_out[i + 1] + in_out[i + 2]) / 3;
 			int lp = (prev[i + 0] + prev[i + 1] + prev[i + 2]) / 3;
 
 			diffs[i / 3] = abs(lc - lp) >= 32; // FIXME
@@ -112,12 +110,12 @@ void filter_marker_simple::apply(const uint64_t ts, const int w, const int h, co
 	log(LL_DEBUG, "%d,%d - %d,%d", xmin, ymin, xmax, ymax);
 
 	for(int y=ymin; y<ymax; y++) {
-		updatePixel(out, xmin, y, w);
-		updatePixel(out, xmax, y, w);
+		updatePixel(in_out, xmin, y, w);
+		updatePixel(in_out, xmax, y, w);
 	}
 
 	for(int x=xmin; x<xmax; x++) {
-		updatePixel(out, x, ymin, w);
-		updatePixel(out, x, ymax, w);
+		updatePixel(in_out, x, ymin, w);
+		updatePixel(in_out, x, ymax, w);
 	}
 }

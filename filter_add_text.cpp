@@ -1485,9 +1485,7 @@ void print_timestamp(unsigned char *const img, const int width, const int height
 	free(text_out);
 }
 
-void filter_add_text::apply(const uint64_t ts, const int w, const int h, const uint8_t *const prev, const uint8_t *const in, uint8_t *const out)
+void filter_add_text::apply(const uint64_t ts, const int w, const int h, const uint8_t *const prev, uint8_t *const in_out)
 {
-	memcpy(out, in, w * h * 3);
-
-	print_timestamp(out, w, h, what.c_str(), tp, ts);
+	print_timestamp(in_out, w, h, what.c_str(), tp, ts);
 }

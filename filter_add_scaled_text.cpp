@@ -47,7 +47,7 @@ filter_add_scaled_text::~filter_add_scaled_text()
 {
 }
 
-void filter_add_scaled_text::apply(const uint64_t ts, const int w, const int h, const uint8_t *const prev, const uint8_t *const in, uint8_t *const out)
+void filter_add_scaled_text::apply_io(const uint64_t ts, const int w, const int h, const uint8_t *const prev, const uint8_t *const in, uint8_t *const out)
 {
 	time_t now = time(NULL);
 	struct tm ptm;

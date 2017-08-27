@@ -12,7 +12,9 @@ public:
 	filter();
 	virtual ~filter();
 
-	virtual void apply(const uint64_t ts, const int w, const int h, const uint8_t *const prev, const uint8_t *const in, uint8_t *const out);
+	virtual bool uses_in_out() const { return true; }
+	virtual void apply_io(const uint64_t ts, const int w, const int h, const uint8_t *const prev, const uint8_t *const in, uint8_t *const out);
+	virtual void apply(const uint64_t ts, const int w, const int h, const uint8_t *const prev, uint8_t *const in_out);
 };
 
 void apply_filters(const std::vector<filter *> *const filters, const uint8_t *const prev, uint8_t *const work, const uint64_t ts, const int w, const int h);

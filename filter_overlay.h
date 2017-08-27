@@ -1,4 +1,6 @@
 // (C) 2017 by folkert van heusden, released under AGPL v3.0
+#include <string>
+
 #include "filter.h"
 
 class filter_overlay : public filter
@@ -10,5 +12,6 @@ public:
 	filter_overlay(const std::string & file, const int x, const int y);
 	~filter_overlay();
 
-	void apply(const uint64_t ts, const int w, const int h, const uint8_t *const prev, const uint8_t *const in, uint8_t *const out);
+	bool uses_in_out() const { return true; }
+	void apply(const uint64_t ts, const int w, const int h, const uint8_t *const prev, uint8_t *const in_out);
 };

@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "filter.h"
+#include "log.h"
 
 void apply_filters(const std::vector<filter *> *const filters, const uint8_t *const prev, uint8_t *const work, const uint64_t ts, const int w, const int h)
 {
@@ -11,12 +12,20 @@ void apply_filters(const std::vector<filter *> *const filters, const uint8_t *co
 
 	bool flag = false;
 	for(filter *f : *filters) {
-		if (flag == false)
-			f -> apply(ts, w, h, prev, work, temp);
-		else
-			f -> apply(ts, w, h, prev, temp, work);
+		if (f -> uses_in_out()) {
+			if (flag == false)
+				f -> apply_io(ts, w, h, prev, work, temp);
+			else
+				f -> apply_io(ts, w, h, prev, temp, work);
 
-		flag = !flag;
+			flag = !flag;
+		}
+		else {
+			if (flag == false)
+				f -> apply(ts, w, h, prev, work);
+			else
+				f -> apply(ts, w, h, prev, temp);
+		}
 	}
 
 	if (flag == true)
@@ -72,7 +81,12 @@ filter::~filter()
 {
 }
 
-void filter::apply(const uint64_t ts, const int w, const int h, const uint8_t *const prev, const uint8_t *const in, uint8_t *const out)
+void filter::apply_io(const uint64_t ts, const int w, const int h, const uint8_t *const prev, const uint8_t *const in, uint8_t *const out)
 {
-	memcpy(out, in, w * h * 3);
+	log(LL_FATAL, "filter::apply_io should not be called");
+}
+
+void filter::apply(const uint64_t ts, const int w, const int h, const uint8_t *const prev, uint8_t *const in_out)
+{
+	log(LL_FATAL, "filter::apply should not be called");
 }

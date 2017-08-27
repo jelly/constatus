@@ -20,7 +20,8 @@ public:
 	filter_marker_simple(const sm_mode_t modeIn, const uint8_t *pixel_select_bitmap);
 	virtual ~filter_marker_simple();
 
-	void apply(const uint64_t ts, const int w, const int h, const uint8_t *const prev, const uint8_t *const in, uint8_t *const out);
+	bool uses_in_out() const { return false; }
+	void apply(const uint64_t ts, const int w, const int h, const uint8_t *const prev, uint8_t *const in_out);
 };
 
 #endif

@@ -24,10 +24,8 @@ filter_overlay::~filter_overlay()
 	free(pixels);
 }
 
-void filter_overlay::apply(const uint64_t ts, const int w, const int h, const uint8_t *const prev, const uint8_t *const in, uint8_t *const out)
+void filter_overlay::apply(const uint64_t ts, const int w, const int h, const uint8_t *const prev, uint8_t *const in_out)
 {
-	memcpy(out, in, w * h * 3);
-
 	int cw = std::min(this -> w, w);
 	int ch = std::min(this -> h, h);
 
@@ -49,9 +47,9 @@ void filter_overlay::apply(const uint64_t ts, const int w, const int h, const ui
 			int pic_offset = y * this -> w * 4 + x * 4;
 
 			uint8_t alpha = pixels[pic_offset + 3], ialpha = 255 - alpha;
-			out[out_offset + 0] = (int(pixels[pic_offset + 0]) * alpha + (out[out_offset + 0] * ialpha)) / 256;
-			out[out_offset + 1] = (int(pixels[pic_offset + 1]) * alpha + (out[out_offset + 1] * ialpha)) / 256;
-			out[out_offset + 2] = (int(pixels[pic_offset + 2]) * alpha + (out[out_offset + 2] * ialpha)) / 256;
+			in_out[out_offset + 0] = (int(pixels[pic_offset + 0]) * alpha + (in_out[out_offset + 0] * ialpha)) / 256;
+			in_out[out_offset + 1] = (int(pixels[pic_offset + 1]) * alpha + (in_out[out_offset + 1] * ialpha)) / 256;
+			in_out[out_offset + 2] = (int(pixels[pic_offset + 2]) * alpha + (in_out[out_offset + 2] * ialpha)) / 256;
 		}
 	}
 }

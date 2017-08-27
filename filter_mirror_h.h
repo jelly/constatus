@@ -7,5 +7,6 @@ public:
 	filter_mirror_h();
 	~filter_mirror_h();
 
-	void apply(const uint64_t ts, const int w, const int h, const uint8_t *const prev, const uint8_t *const in, uint8_t *const out);
+	bool uses_in_out() const { return true; }
+	void apply_io(const uint64_t ts, const int w, const int h, const uint8_t *const prev, const uint8_t *const in, uint8_t *const out);
 };

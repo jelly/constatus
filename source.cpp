@@ -126,7 +126,7 @@ bool source::get_frame(const encoding_t pe, const int jpeg_quality, uint64_t *ts
 		memset(fail, 0x80, bytes);
 
 		filter_add_text fat("Camera down since %c", center_center);
-		fat.apply(this -> ts, *width, *height, NULL, fail, fail);
+		fat.apply(this -> ts, *width, *height, NULL, fail);
 
 		if (pe == E_RGB) {
 			*frame = fail;
