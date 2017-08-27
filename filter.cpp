@@ -9,11 +9,18 @@ void apply_filters(const std::vector<filter *> *const filters, const uint8_t *co
 	const size_t bytes = w * h * 3;
 	uint8_t *const temp = (uint8_t *)valloc(bytes);
 
+	bool flag = false;
 	for(filter *f : *filters) {
-		f -> apply(ts, w, h, prev, work, temp);
+		if (flag == false)
+			f -> apply(ts, w, h, prev, work, temp);
+		else
+			f -> apply(ts, w, h, prev, temp, work);
 
-		memcpy(work, temp, bytes);
+		flag = !flag;
 	}
+
+	if (flag == true)
+		memcpy(work, temp, bytes);
 
 	free(temp);
 }
