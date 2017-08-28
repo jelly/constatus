@@ -30,7 +30,34 @@ void target_jpeg::operator()()
 
 	s -> register_user();
 
-	// FIXME pre-recorded frames
+	// pre-recorded frames
+	if (pre_record) {
+		for(frame_t pair : *pre_record) {
+			name = gen_filename(store_path, prefix, "jpg", pair.ts, f_nr++);
+
+			FILE *fh = fopen(name.c_str(), "wb");
+			if (!fh)
+				error_exit(true, "Cannot create file %s", name.c_str());
+
+			if (pair.e == E_JPEG)
+				fwrite(pair.data, pair.len, 1, fh);
+			else {
+				char *data = NULL;
+				size_t data_size = 0;
+				write_JPEG_memory(pair.w, pair.h, quality, pair.data, &data, &data_size);
+
+				fwrite(data, data_size, 1, fh);
+
+				free(data);
+			}
+
+			fclose(fh);
+
+			free(pair.data);
+		}
+
+		delete pre_record;
+	}
 
 	for(;!local_stop_flag;) {
 		pauseCheck();
@@ -48,15 +75,8 @@ void target_jpeg::operator()()
 
 		struct timeval tv;
 		gettimeofday(&tv, NULL);
-		struct tm tm;
-		localtime_r(&tv.tv_sec, &tm);
 
-		name = myformat("%s/%s%04d-%02d-%02d_%02d:%02d:%02d.%03d-%d.jpg",
-				store_path.c_str(), prefix.c_str(),
-				tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-				tm.tm_hour, tm.tm_min, tm.tm_sec,
-				tv.tv_usec / 1000,
-				f_nr++);
+		name = gen_filename(store_path, prefix, "jpg", tv.tv_sec * 1000 * 1000 + tv.tv_usec, f_nr++);
 
 		if (exec_start && is_start) {
 			exec(exec_start, name);

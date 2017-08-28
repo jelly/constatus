@@ -1,7 +1,24 @@
 #include <unistd.h>
 
 #include "target.h"
+#include "utils.h"
 #include "error.h"
+
+std::string gen_filename(const std::string & store_path, const std::string & prefix, const std::string & ext, const uint64_t ts, const unsigned f_nr)
+{
+	time_t tv_sec = ts / 1000 / 1000;
+	uint64_t tv_usec = ts % (1000 * 1000);
+
+	struct tm tm;
+	localtime_r(&tv_sec, &tm);
+
+	return myformat("%s/%s%04d-%02d-%02d_%02d:%02d:%02d.%03d-%u.%s",
+			store_path.c_str(), prefix.c_str(),
+			tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+			tm.tm_hour, tm.tm_min, tm.tm_sec,
+			tv_usec / 1000,
+			f_nr, ext.c_str());
+}
 
 target::target(source *const s, const std::string & store_path, const std::string & prefix, const int max_time, const double interval, const std::vector<filter *> *const filters, const char *const exec_start, const char *const exec_cycle, const char *const exec_end) : s(s), store_path(store_path), prefix(prefix), max_time(max_time), interval(interval), filters(filters), exec_start(exec_start), exec_cycle(exec_cycle), exec_end(exec_end)
 {

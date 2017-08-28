@@ -30,6 +30,7 @@ void target_avi::operator()()
 	uint64_t prev_ts = 0;
 	bool is_start = true;
 	std::string name;
+	unsigned f_nr = 0;
 
 	uint8_t *prev_frame = NULL;
 
@@ -62,14 +63,8 @@ void target_avi::operator()()
 		if (!gwavi) {
 			struct timeval tv;
 			gettimeofday(&tv, NULL);
-			struct tm tm;
-			localtime_r(&tv.tv_sec, &tm);
 
-			name = myformat("%s/%s%04d-%02d-%02d_%02d:%02d:%02d.%03d.avi",
-					store_path.c_str(), prefix.c_str(),
-					tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-					tm.tm_hour, tm.tm_min, tm.tm_sec,
-					tv.tv_usec / 1000);
+			name = gen_filename(store_path, prefix, "avi", tv.tv_sec * 1000 * 1000 + tv.tv_usec, f_nr++);
 
 			if (exec_start && is_start) {
 				exec(exec_start, name);

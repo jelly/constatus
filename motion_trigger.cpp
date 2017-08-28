@@ -171,7 +171,7 @@ void motion_trigger::operator()()
 			prerecord.erase(prerecord.begin() + 0);
 		}
 
-		prerecord.push_back({ prev_ts, work, work_len, E_RGB });
+		prerecord.push_back({ prev_ts, w, h, work, work_len, E_RGB });
 
 		prev_frame = work;
 

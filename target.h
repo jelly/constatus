@@ -12,10 +12,13 @@
 typedef struct
 {
 	uint64_t ts;
+	int w, h;
 	uint8_t *data;
 	size_t len;
 	encoding_t e;
 } frame_t;
+
+std::string gen_filename(const std::string & store_path, const std::string & prefix, const std::string & ext, const uint64_t ts, const unsigned f_nr);
 
 class target : public interface
 {
