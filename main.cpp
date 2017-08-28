@@ -16,6 +16,7 @@
 #include "source_http_jpeg.h"
 #include "source_http_mjpeg.h"
 #include "source_rtsp.h"
+#include "source_plugin.h"
 #include "http_server.h"
 #include "motion_trigger.h"
 #include "target.h"
@@ -34,7 +35,7 @@
 #include "v4l2_loopback.h"
 #include "filter_overlay.h"
 #include "picio.h"
-#include "filter_ext.h"
+#include "filter_plugin.h"
 #include "log.h"
 
 const char *json_str(const json_t *const in, const char *const key, const char *const descr)
@@ -125,7 +126,7 @@ std::vector<filter *> *load_filters(const json_t *const in)
 			const char *file = json_str(ae, "file", "filename of filter plugin");
 			const char *par = json_str(ae, "par", "parameter for filter plugin");
 
-			filters -> push_back(new filter_ext(file, par));
+			filters -> push_back(new filter_plugin(file, par));
 		}
 		else if (strcasecmp(s_type, "marker") == 0) {
 			const char *s_position = json_str(ae, "mode", "marker mode, e.g. red, red-invert or invert");
@@ -425,15 +426,21 @@ int main(int argc, char *argv[])
 		s -> start();
 		interfaces.push_back(s);
 	}
+	else if (strcasecmp(s_type, "plugin") == 0) {
+		std::string plugin_bin = json_str(j_source, "source-plugin-file", "filename of video data source plugin");
+		std::string plugin_arg = json_str(j_source, "source-plugin-parameter", "parameter for video data source plugin");
+		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
+		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
+
+		s = new source_plugin(plugin_bin, plugin_arg, resize_w, resize_h, loglevel);
+		s -> start();
+		interfaces.push_back(s);
+	}
 	else {
 		log(LL_FATAL, " no source defined!");
 	}
 
 	//***
-
-	std::vector<pthread_t> ths; // FIXME remove
-
-	pthread_t th;
 
 	// listen adapter, listen port, source, fps, jpeg quality, time limit (in seconds)
 	log(LL_INFO, "Configuring the HTTP listener...");
@@ -451,8 +458,9 @@ int main(int argc, char *argv[])
 
 		std::vector<filter *> *http_filters = load_filters(json_object_get(j_hl, "filters"));
 
-		start_http_server(listen_adapter, listen_port, s, fps, jpeg_quality, time_limit, http_filters, &global_stopflag, resize_w, resize_h, &th, motion_compatible);
-		ths.push_back(th);
+		interface *h = new http_server(listen_adapter, listen_port, s, fps, jpeg_quality, time_limit, http_filters, resize_w, resize_h, motion_compatible);
+		h -> start();
+		interfaces.push_back(h);
 	}
 	else {
 		log(LL_INFO, " no HTTP listener");
@@ -585,11 +593,6 @@ int main(int argc, char *argv[])
 
 	for(interface *t : interfaces)
 		delete t;
-
-	for(pthread_t t : ths) {
-		void *dummy = NULL;
-		pthread_join(t, &dummy);
-	}
 
 	json_decref(cfg);
 
