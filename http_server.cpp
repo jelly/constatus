@@ -583,21 +583,40 @@ void * handle_http_client_thread(void *ct_in)
 	return NULL;
 }
 
-void * http_server_thread(void *p)
+http_server::http_server(const char *const http_adapter, const int http_port, source *const src, const double fps, const int quality, const int time_limit, const std::vector<filter *> *const f, const int resize_w, const int resize_h, const bool motion_compatible) : src(src), fps(fps), quality(quality), time_limit(time_limit), f(f), resize_w(resize_w), resize_h(resize_h), motion_compatible(motion_compatible)
 {
-	http_thread_t *st = (http_thread_t *)p;
+	fd = start_listen(http_adapter, http_port, 5);
+}
 
+http_server::~http_server()
+{
+	free_filters(f);
+
+	delete f;
+}
+
+void http_server::operator()()
+{
 	set_thread_name("http_server");
 
-	struct pollfd fds[] = { { st -> fd, POLLIN, 0 } };
+	struct pollfd fds[] = { { fd, POLLIN, 0 } };
 
 	std::vector<pthread_t> handles;
 
-	for(;!*st -> global_stopflag;) {
-		if (poll(fds, 1, 100) == 0)
+	for(;!local_stop_flag;) {
+		for(size_t i=0; i<handles.size();) {
+			if (pthread_tryjoin_np(handles.at(i), NULL) == 0)
+				handles.erase(handles.begin() + i);
+			else
+				i++;
+		}
+
+		pauseCheck();
+
+		if (poll(fds, 1, 500) == 0)
 			continue;
 
-		int cfd = accept(st -> fd, NULL, 0);
+		int cfd = accept(fd, NULL, 0);
 		if (cfd == -1)
 			continue;
 
@@ -606,15 +625,15 @@ void * http_server_thread(void *p)
 		http_thread_t *ct = new http_thread_t;
 
 		ct -> fd = cfd;
-		ct -> s = st -> s;
-		ct -> fps = st -> fps;
-		ct -> quality = st -> quality;
-		ct -> time_limit = st -> time_limit;
-		ct -> filters = st -> filters;
-		ct -> global_stopflag = st -> global_stopflag;
-		ct -> resize_w = st -> resize_w;
-		ct -> resize_h = st -> resize_h;
-		ct -> motion_compatible = st -> motion_compatible;
+		ct -> s = src;
+		ct -> fps = fps;
+		ct -> quality = quality;
+		ct -> time_limit = time_limit;
+		ct -> filters = f;
+		ct -> global_stopflag = &local_stop_flag;
+		ct -> resize_w = resize_w;
+		ct -> resize_h = resize_h;
+		ct -> motion_compatible = motion_compatible;
 
 		pthread_t th;
 		int rc = -1;
@@ -625,52 +644,10 @@ void * http_server_thread(void *p)
 		}
 
 		handles.push_back(th);
-
-		for(size_t i=0; i<handles.size();) {
-			if (pthread_tryjoin_np(handles.at(i), NULL) == 0)
-				handles.erase(handles.begin() + i);
-			else
-				i++;
-		}
 	}
 
 	for(size_t i=0; i<handles.size(); i++)
 		pthread_join(handles.at(i), NULL);
 
-	free_filters(st -> filters);
-	delete st -> filters;
-
-	delete st;
-
 	log(LL_INFO, "HTTP server thread terminating");
-
-	return NULL;
-}
-
-void start_http_server(const char *const http_adapter, const int http_port, source *const src, const double fps, const int quality, const int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, pthread_t *th, const bool motion_compatible)
-{
-	if (http_port != -1)
-	{
-		int http_sfd = start_listen(http_adapter, http_port, 5);
-
-		http_thread_t *st = new http_thread_t;
-
-		st -> fd = http_sfd;
-		st -> s = src;
-		st -> fps = fps;
-		st -> quality = quality;
-		st -> time_limit = time_limit;
-		st -> filters = filters;
-		st -> global_stopflag = global_stopflag;
-		st -> resize_w = resize_w;
-		st -> resize_h = resize_h;
-		st -> motion_compatible = motion_compatible;
-
-		int rc = -1;
-		if ((rc = pthread_create(th, NULL, http_server_thread, st)) != 0)
-		{
-			errno = rc;
-			error_exit(true, "pthread_create failed (http server main)");
-		}
-	}
 }
