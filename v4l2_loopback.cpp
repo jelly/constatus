@@ -56,6 +56,8 @@ void v4l2_loopback::operator()()
 	bool first = true;
 
 	for(;!local_stop_flag;) {
+		pauseCheck();
+
 		int w = -1, h = -1;
 		uint8_t *work = NULL;
 		size_t work_len = 0;
