@@ -13,6 +13,7 @@ Supports:
    - individual JPEGs
    - HTTP streaming
    - video4linux loopback device
+   - via plugins
 
   motion detection
    - also via plugin so that you can easily use one from e.g. OpenCV
