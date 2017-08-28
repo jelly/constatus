@@ -1,4 +1,5 @@
 // (C) 2017 by folkert van heusden, released under AGPL v3.0
+#include <dlfcn.h>
 #include <stdio.h>
 #include <unistd.h>
 
@@ -13,6 +14,14 @@
 
 source_plugin::source_plugin(const std::string & plugin_filename, const std::string & plugin_arg, const int resize_w, const int resize_h, const int loglevel) : source(resize_w, resize_h, loglevel)
 {
+	void *library = dlopen(plugin_filename.c_str(), RTLD_NOW);
+	if (!library)
+		error_exit(true, "Failed opening motion detection plugin library %s", plugin_filename.c_str());
+
+	init_plugin = (init_plugin_t)find_symbol(library, "init_plugin", "video source plugin", plugin_filename.c_str());
+	get_frame = (get_frame_t)find_symbol(library, "get_frame", "video source plugin", plugin_filename.c_str());
+	uninit_plugin = (uninit_plugin_t)find_symbol(library, "uninit_plugin", "video source plugin", plugin_filename.c_str());
+
 	arg = init_plugin(plugin_arg.c_str());
 }
 
@@ -41,32 +50,10 @@ void source_plugin::operator()()
 			get_frame(arg, &ts, &width, &height, &work);
 			work_len = width * height * 3;
 
-			unsigned char *temp = NULL;
-			int dw = -1, dh = -1;
-			if (first || resize) {
-				if (!read_JPEG_memory(work, work_len, &dw, &dh, &temp)) {
-					log(LL_INFO, "JPEG decode error");
-					continue;
-				}
-
-				if (resize) {
-					width = resize_w;
-					height = resize_h;
-				}
-				else {
-					width = dw;
-					height = dh;
-				}
-
-				first = false;
-			}
-
 			if (resize)
-				set_scaled_frame(temp, dw, dh);
+				set_scaled_frame(work, resize_w, resize_h);
 			else
-				set_frame(E_JPEG, work, work_len);
-
-			free(temp);
+				set_frame(E_RGB, work, work_len);
 
 			free(work);
 		}
