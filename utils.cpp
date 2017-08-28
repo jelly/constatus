@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <assert.h>
 #include <atomic>
+#include <dlfcn.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <netdb.h>
@@ -253,4 +254,14 @@ void mysleep(double slp, std::atomic_bool *const stop_flag, source *const s)
 
 	if (unreg)
 		s -> register_user();
+}
+
+void *find_symbol(void *library, const char *const symbol, const char *const what, const char *const library_name)
+{
+	void *ret = dlsym(library, symbol);
+
+	if (!ret)
+		error_exit(true, "Failed finding %s \"%s\" in %s", what, symbol, library_name);
+
+	return ret;
 }

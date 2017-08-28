@@ -11,6 +11,7 @@
 #include <curl/curl.h>
 
 #include "error.h"
+#include "utils.h"
 #include "source.h"
 #include "source_v4l.h"
 #include "source_http_jpeg.h"
@@ -201,16 +202,6 @@ std::vector<filter *> *load_filters(const json_t *const in)
 	}
 
 	return filters;
-}
-
-void *find_symbol(void *library, const char *const symbol, const char *const what, const char *const library_name)
-{
-	void *ret = dlsym(library, symbol);
-
-	if (!ret)
-		error_exit(true, "Failed finding %s \"%s\" in %s", what, symbol, library_name);
-
-	return ret;
 }
 
 stream_plugin_t * load_stream_plugin(const json_t *const in)
