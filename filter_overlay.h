@@ -12,6 +12,6 @@ public:
 	filter_overlay(const std::string & file, const int x, const int y);
 	~filter_overlay();
 
-	bool uses_in_out() const { return true; }
+	bool uses_in_out() const { return false; }
 	void apply(const uint64_t ts, const int w, const int h, const uint8_t *const prev, uint8_t *const in_out);
 };
