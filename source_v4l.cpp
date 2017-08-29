@@ -336,10 +336,10 @@ void source_v4l::operator()()
 				else
 					set_frame(E_RGB, conv_buffer, vw * vh * 3);
 			}
-
-			if (ioctl(fd, VIDIOC_QBUF, &buf) == -1)
-				error_exit(true, "ioctl(VIDIOC_QBUF) failed");
 		}
+
+		if (ioctl(fd, VIDIOC_QBUF, &buf) == -1)
+			error_exit(true, "ioctl(VIDIOC_QBUF) failed");
 
 		uint64_t end_ts = get_us();
 		int64_t left = interval - (end_ts - start_ts);
