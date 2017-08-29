@@ -22,6 +22,7 @@ typedef struct
 	uint8_t *data;
 	size_t n;
 	size_t req_len;
+	uint64_t interval, next_frame_ts;
 } work_data_t;
 
 static int xfer_callback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow)
@@ -99,8 +100,14 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 			}
 		}
 
-		if (w -> s -> work_required()) {
-			// FIXME fps limiter
+		uint64_t now_ts = get_us();
+		bool do_get = false;
+		if (now_ts >= w -> next_frame_ts || w -> interval == 0) {
+			do_get = true;
+			w -> next_frame_ts += w -> interval;
+		}
+
+		if (w -> s -> work_required() && do_get) {
 			if (w -> s -> need_scale()) {
 				int dw, dh;
 				unsigned char *temp = NULL;
@@ -186,6 +193,8 @@ void source_http_mjpeg::operator()()
 		w -> first = w -> header = true;
 		w -> data = NULL;
 		w -> n = 0;
+		w -> interval = max_fps > 0.0 ? 1.0 / max_fps * 1000.0 * 1000.0 : 0;
+		w -> next_frame_ts = get_us();
 		curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, w);
 
 		curl_easy_setopt(curl_handle, CURLOPT_XFERINFODATA, w);

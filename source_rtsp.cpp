@@ -207,7 +207,7 @@ void source_rtsp::operator()()
 
 				// framerate limiter
 				now_ts = get_us();
-				if (now_ts >= next_frame_ts) {
+				if (now_ts >= next_frame_ts || interval == 0) {
 					do_get = true;
 					next_frame_ts += interval;
 				}
