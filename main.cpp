@@ -314,8 +314,6 @@ int main(int argc, char *argv[])
 	if (!fh)
 		error_exit(true, "Cannot access configuration file '%s'", cfg_file);
 
-	std::atomic_bool global_stopflag(false);
-
 	json_error_t error;
 	json_t *cfg = json_loadf(fh, 0, &error);
 	if (!cfg)
@@ -444,24 +442,31 @@ int main(int argc, char *argv[])
 	//***
 
 	// listen adapter, listen port, source, fps, jpeg quality, time limit (in seconds)
-	log(LL_INFO, "Configuring the HTTP listener...");
-	json_t *j_hl = json_object_get(cfg, "http-listener");
-	if (j_hl) {
-		const char *listen_adapter = json_str(j_hl, "listen-adapter", "network interface to listen on or 0.0.0.0 for all");
-		int listen_port = json_int(j_hl, "listen-port", "port to listen on");
-		printf(" HTTP server listening on %s:%d\n", listen_adapter, listen_port);
-		double fps = json_float(j_hl, "fps", "number of frames per second to record");
-		int jpeg_quality = json_int(j_hl, "quality", "JPEG quality, this influences the size");
-		int time_limit = json_int(j_hl, "time-limit", "how long (in seconds) to stream before the connection is closed");
-		int resize_w = json_int(j_hl, "resize-width", "resize picture width to this (-1 to disable)");
-		int resize_h = json_int(j_hl, "resize-height", "resize picture height to this (-1 to disable)");
-		bool motion_compatible = json_bool(j_hl, "motion-compatible", "only stream MJPEG and do not wait for HTTP request");
+	log(LL_INFO, "Configuring the HTTP listener(s)...");
+	json_t *j_hls = json_object_get(cfg, "http-listener");
+	if (j_hls) {
+		size_t n_hl = json_array_size(j_hls);
+		log(LL_DEBUG, " %zu http listener(s)", n_hl);
 
-		std::vector<filter *> *http_filters = load_filters(json_object_get(j_hl, "filters"));
+		for(size_t i=0; i<n_hl; i++) {
+			json_t *hle = json_array_get(j_hls, i);
 
-		interface *h = new http_server(listen_adapter, listen_port, s, fps, jpeg_quality, time_limit, http_filters, resize_w, resize_h, motion_compatible);
-		h -> start();
-		interfaces.push_back(h);
+			const char *listen_adapter = json_str(hle, "listen-adapter", "network interface to listen on or 0.0.0.0 for all");
+			int listen_port = json_int(hle, "listen-port", "port to listen on");
+			printf(" HTTP server listening on %s:%d\n", listen_adapter, listen_port);
+			double fps = json_float(hle, "fps", "number of frames per second to record");
+			int jpeg_quality = json_int(hle, "quality", "JPEG quality, this influences the size");
+			int time_limit = json_int(hle, "time-limit", "how long (in seconds) to stream before the connection is closed");
+			int resize_w = json_int(hle, "resize-width", "resize picture width to this (-1 to disable)");
+			int resize_h = json_int(hle, "resize-height", "resize picture height to this (-1 to disable)");
+			bool motion_compatible = json_bool(hle, "motion-compatible", "only stream MJPEG and do not wait for HTTP request");
+
+			std::vector<filter *> *http_filters = load_filters(json_object_get(hle, "filters"));
+
+			interface *h = new http_server(listen_adapter, listen_port, s, fps, jpeg_quality, time_limit, http_filters, resize_w, resize_h, motion_compatible);
+			h -> start();
+			interfaces.push_back(h);
+		}
 	}
 	else {
 		log(LL_INFO, " no HTTP listener");
@@ -489,47 +494,54 @@ int main(int argc, char *argv[])
 
 	// source, jpeg quality, noise factor, pixels changed % trigger, record min n frames, ignore n frames after record, path to store mjpeg files in, filename prefix, max file duration, camera-warm-up(ignore first x frames), pre-record-count(how many frames to store of just-before-the-motion-started)
 	//start_motion_trigger_thread(s, 75, 32, 0.6, 15, 5, "./", "motion-", 3600, 10, 15, &filters_before, &filters_after);
-	log(LL_INFO, "Configuring the motion trigger...");
+	log(LL_INFO, "Configuring the motion trigger(s)...");
 	ext_trigger_t *et = NULL;
-	json_t *j_mt = json_object_get(cfg, "motion-trigger");
-	if (j_mt) {
-		int jpeg_quality = json_int(j_mt, "quality", "JPEG quality, this influences the size");
-		int noise_level = json_int(j_mt, "noise-factor", "at what difference levell is the pixel considered to be changed");
-		double pixels_changed_perctange = json_float(j_mt, "pixels-changed-percentage", "what %% of pixels need to be changed before the motion trigger is triggered");
-		int min_duration = json_int(j_mt, "min-duration", "minimum number of frames to record");
-		int mute_duration = json_int(j_mt, "mute-duration", "how long not to record (in frames) after motion has stopped");
-		int warmup_duration = json_int(j_mt, "warmup-duration", "how many frames to ignore so that the camera can warm-up");
-		int pre_motion_record_duration = json_int(j_mt, "pre-motion-record-duration", "how many frames to record that happened before the motion started");
-		double max_fps = json_float(j_mt, "max-fps", "maximum number of frames per second to analyze (or -1 for no limit)");
-		const char *selection_bitmap = json_str(j_mt, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.");
+	json_t *j_mts = json_object_get(cfg, "motion-trigger");
+	if (j_mts) {
+		size_t n_mt = json_array_size(j_mts);
+		log(LL_DEBUG, " %zu motion trigger(s)", n_mt);
 
-		std::vector<filter *> *filters_before = load_filters(json_object_get(j_mt, "filters-before"));
+		for(size_t i=0; i<n_mt; i++) {
+			json_t *mte = json_array_get(j_mts, i);
 
-		std::vector<filter *> *filters_after = load_filters(json_object_get(j_mt, "filters-after")); // freed by target
+			int jpeg_quality = json_int(mte, "quality", "JPEG quality, this influences the size");
+			int noise_level = json_int(mte, "noise-factor", "at what difference levell is the pixel considered to be changed");
+			double pixels_changed_perctange = json_float(mte, "pixels-changed-percentage", "what %% of pixels need to be changed before the motion trigger is triggered");
+			int min_duration = json_int(mte, "min-duration", "minimum number of frames to record");
+			int mute_duration = json_int(mte, "mute-duration", "how long not to record (in frames) after motion has stopped");
+			int warmup_duration = json_int(mte, "warmup-duration", "how many frames to ignore so that the camera can warm-up");
+			int pre_motion_record_duration = json_int(mte, "pre-motion-record-duration", "how many frames to record that happened before the motion started");
+			double max_fps = json_float(mte, "max-fps", "maximum number of frames per second to analyze (or -1 for no limit)");
+			const char *selection_bitmap = json_str(mte, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.");
 
-		double snapshot_interval = 1.0 / max_fps;
+			std::vector<filter *> *filters_before = load_filters(json_object_get(mte, "filters-before"));
 
-		target *t = load_target(j_mt, s, snapshot_interval, filters_after, jpeg_quality);
+			std::vector<filter *> *filters_after = load_filters(json_object_get(mte, "filters-after")); // freed by target
 
-		const char *file = json_str(j_mt, "trigger-plugin-file", "filename of motion detection plugin");
-		if (file[0]) {
-			et = new ext_trigger_t;
-			et -> par = json_str(j_mt, "trigger-plugin-parameter", "parameter for motion detection plugin");
+			double snapshot_interval = 1.0 / max_fps;
 
-			et -> library = dlopen(file, RTLD_NOW);
-			if (!et -> library)
-				error_exit(true, "Failed opening motion detection plugin library %s", file);
+			target *t = load_target(mte, s, snapshot_interval, filters_after, jpeg_quality);
 
-			et -> init_motion_trigger = (init_motion_trigger_t)find_symbol(et -> library, "init_motion_trigger", "motion detection plugin", file);
-			et -> detect_motion = (detect_motion_t)find_symbol(et -> library, "detect_motion", "motion detection plugin", file);
-			et -> uninit_motion_trigger = (uninit_motion_trigger_t)find_symbol(et -> library, "uninit_motion_trigger", "motion detection plugin", file);
+			const char *file = json_str(mte, "trigger-plugin-file", "filename of motion detection plugin");
+			if (file[0]) {
+				et = new ext_trigger_t;
+				et -> par = json_str(mte, "trigger-plugin-parameter", "parameter for motion detection plugin");
+
+				et -> library = dlopen(file, RTLD_NOW);
+				if (!et -> library)
+					error_exit(true, "Failed opening motion detection plugin library %s", file);
+
+				et -> init_motion_trigger = (init_motion_trigger_t)find_symbol(et -> library, "init_motion_trigger", "motion detection plugin", file);
+				et -> detect_motion = (detect_motion_t)find_symbol(et -> library, "detect_motion", "motion detection plugin", file);
+				et -> uninit_motion_trigger = (uninit_motion_trigger_t)find_symbol(et -> library, "uninit_motion_trigger", "motion detection plugin", file);
+			}
+
+			const uint8_t *sb = load_selection_bitmap(selection_bitmap);
+
+			motion_trigger *m = new motion_trigger(s, jpeg_quality, noise_level, pixels_changed_perctange, min_duration, mute_duration, warmup_duration, pre_motion_record_duration, filters_before, t, sb, et, max_fps);
+			m -> start();
+			interfaces.push_back(m);
 		}
-
-		const uint8_t *sb = load_selection_bitmap(selection_bitmap);
-
-		motion_trigger *m = new motion_trigger(s, jpeg_quality, noise_level, pixels_changed_perctange, min_duration, mute_duration, warmup_duration, pre_motion_record_duration, filters_before, t, sb, et, max_fps);
-		m -> start();
-		interfaces.push_back(m);
 	}
 	else {
 		log(LL_INFO, " no motion trigger defined");
@@ -585,12 +597,10 @@ int main(int argc, char *argv[])
 
 	log(LL_INFO, "Terminating");
 
-	global_stopflag = true;
-
-	log(LL_DEBUG, "Waiting for threads to terminate");
-
 	for(interface *t : interfaces)
 		t -> stop();
+
+	log(LL_DEBUG, "Waiting for threads to terminate");
 
 	for(interface *t : interfaces)
 		delete t;
