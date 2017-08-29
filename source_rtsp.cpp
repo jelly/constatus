@@ -71,6 +71,8 @@ void source_rtsp::operator()()
 	av_register_all();
 	avformat_network_init();
 
+	const uint64_t interval = max_fps > 0.0 ? 1.0 / max_fps * 1000.0 * 1000.0 : 0;
+
 	for(;;) {
 		int err = 0, video_stream_index = -1;
 		AVDictionary *opts = NULL;
@@ -84,6 +86,8 @@ void source_rtsp::operator()()
 		int size = 0, size2 = 0;
 		AVFrame *picture = NULL, *picture_rgb = NULL;
 		uint8_t *picture_buffer = NULL, *picture_buffer_2 = NULL;
+		bool do_get = false;
+		uint64_t now_ts = 0, next_frame_ts = 0;
 
 		av_init_packet(&packet);
 
@@ -172,6 +176,8 @@ void source_rtsp::operator()()
 		av_image_fill_arrays(picture -> data, picture -> linesize, picture_buffer, AV_PIX_FMT_YUV420P, codec_ctx->width, codec_ctx->height, 1);
 		av_image_fill_arrays(picture_rgb -> data, picture_rgb -> linesize, picture_buffer_2, AV_PIX_FMT_RGB24, codec_ctx->width, codec_ctx->height, 1);
 
+		next_frame_ts = get_us();
+
 		while(!local_stop_flag && av_read_frame(format_ctx, &packet) >= 0) {
 			if (packet.stream_index == video_stream_index) {    //packet is video
 				if (stream == NULL) {    //create stream in file
@@ -197,8 +203,16 @@ void source_rtsp::operator()()
 					goto fail;
 				}
 
-				// FIXME framerate limiter
-				if (work_required()) {
+				do_get = false;
+
+				// framerate limiter
+				now_ts = get_us();
+				if (now_ts >= next_frame_ts) {
+					do_get = true;
+					next_frame_ts += interval;
+				}
+
+				if (work_required() && do_get) {
 					sws_scale(img_convert_ctx, picture->data, picture->linesize, 0, codec_ctx->height, picture_rgb->data, picture_rgb->linesize);
 
 					for(int y = 0; y < codec_ctx->height; y++) {
