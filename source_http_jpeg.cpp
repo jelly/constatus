@@ -11,7 +11,7 @@
 #include "log.h"
 #include "utils.h"
 
-source_http_jpeg::source_http_jpeg(const std::string & urlIn, const bool ignoreCertIn, const std::string & authIn, const int resize_w, const int resize_h, const int ll) : source(resize_w, resize_h, ll), url(urlIn), auth(authIn), ignore_cert(ignoreCertIn)
+source_http_jpeg::source_http_jpeg(const std::string & urlIn, const bool ignoreCertIn, const std::string & authIn, const double max_fps, const int resize_w, const int resize_h, const int ll) : source(max_fps, resize_w, resize_h, ll), url(urlIn), auth(authIn), ignore_cert(ignoreCertIn)
 {
 }
 
@@ -28,8 +28,12 @@ void source_http_jpeg::operator()()
 
 	bool first = true, resize = resize_h != -1 || resize_w != -1;
 
+	const uint64_t interval = max_fps > 0.0 ? 1.0 / max_fps * 1000.0 * 1000.0 : 0;
+
 	for(;!local_stop_flag;)
 	{
+		time_t start_ts = get_us();
+
 		uint8_t *work = NULL;
 		size_t work_len = 0;
 
@@ -70,6 +74,12 @@ void source_http_jpeg::operator()()
 		}
 
 		free(work);
+
+		uint64_t end_ts = get_us();
+		int64_t left = interval - (end_ts - start_ts);
+
+		if (interval > 0 && left > 0)
+			usleep(left);
 	}
 
 	log(LL_INFO, "source http jpeg thread terminating");

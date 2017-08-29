@@ -380,10 +380,12 @@ int main(int argc, char *argv[])
 		int w = json_int(j_source, "width", "width of picture");
 		int h = json_int(j_source, "height", "height of picture");
 		int jpeg_quality = json_int(j_source, "quality", "JPEG quality, this influences the size");
+
+		double max_fps = json_float(j_source, "max-fps", "limit the number of frames per second acquired to this value or -1 to disabe");
 		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
 		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
 
-		s = new source_v4l(json_str(j_source, "device", "linux v4l2 device"), pref_jpeg, rpi_wa, jpeg_quality, w, h, resize_w, resize_h, loglevel);
+		s = new source_v4l(json_str(j_source, "device", "linux v4l2 device"), pref_jpeg, rpi_wa, jpeg_quality, max_fps, w, h, resize_w, resize_h, loglevel);
 		s -> start();
 		interfaces.push_back(s);
 	}
@@ -391,39 +393,47 @@ int main(int argc, char *argv[])
 		bool ign_cert = json_bool(j_source, "ignore-cert", "ignore SSL errors");
 		const char *auth = json_str(j_source, "http-auth", "HTTP authentication string");
 		const char *url = json_str(j_source, "url", "address of JPEG stream");
+
+		double max_fps = json_float(j_source, "max-fps", "limit the number of frames per second acquired to this value or -1 to disabe");
 		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
 		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
 
-		s = new source_http_jpeg(url, ign_cert, auth, resize_w, resize_h, loglevel);
+		s = new source_http_jpeg(url, ign_cert, auth, max_fps, resize_w, resize_h, loglevel);
 		s -> start();
 		interfaces.push_back(s);
 	}
 	else if (strcasecmp(s_type, "mjpeg") == 0) {
 		const char *url = json_str(j_source, "url", "address of MJPEG stream");
 		bool ign_cert = json_bool(j_source, "ignore-cert", "ignore SSL errors");
+
+		double max_fps = json_float(j_source, "max-fps", "limit the number of frames per second acquired to this value or -1 to disabe");
 		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
 		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
 
-		s = new source_http_mjpeg(url, ign_cert, resize_w, resize_h, loglevel);
+		s = new source_http_mjpeg(url, ign_cert, max_fps, resize_w, resize_h, loglevel);
 		s -> start();
 		interfaces.push_back(s);
 	}
 	else if (strcasecmp(s_type, "rtsp") == 0) {
 		const char *url = json_str(j_source, "url", "address of JPEG stream");
+
+		double max_fps = json_float(j_source, "max-fps", "limit the number of frames per second acquired to this value or -1 to disabe");
 		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
 		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
 
-		s = new source_rtsp(url, resize_w, resize_h, loglevel);
+		s = new source_rtsp(url, max_fps, resize_w, resize_h, loglevel);
 		s -> start();
 		interfaces.push_back(s);
 	}
 	else if (strcasecmp(s_type, "plugin") == 0) {
 		std::string plugin_bin = json_str(j_source, "source-plugin-file", "filename of video data source plugin");
 		std::string plugin_arg = json_str(j_source, "source-plugin-parameter", "parameter for video data source plugin");
+
+		double max_fps = json_float(j_source, "max-fps", "limit the number of frames per second acquired to this value or -1 to disabe");
 		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
 		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
 
-		s = new source_plugin(plugin_bin, plugin_arg, resize_w, resize_h, loglevel);
+		s = new source_plugin(plugin_bin, plugin_arg, max_fps, resize_w, resize_h, loglevel);
 		s -> start();
 		interfaces.push_back(s);
 	}

@@ -169,6 +169,16 @@ double get_ts()
         return double(ts.tv_sec) + double(ts.tv_usec) / 1000000.0;
 }
 
+uint64_t get_us()
+{
+        struct timeval ts;
+
+        if (gettimeofday(&ts, NULL) == -1)
+                error_exit(true, "gettimeofday failed");
+
+        return uint64_t(ts.tv_sec) * 1000 * 1000 + uint64_t(ts.tv_usec);
+}
+
 std::string myformat(const char *const fmt, ...)
 {
 	char *buffer = NULL;

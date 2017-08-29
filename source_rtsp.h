@@ -11,7 +11,7 @@ private:
 	const std::string url;
 
 public:
-	source_rtsp(const std::string & url, const int resize_w, const int resize_h, const int loglevel);
+	source_rtsp(const std::string & url, const double max_fps, const int resize_w, const int resize_h, const int loglevel);
 	~source_rtsp();
 
 	void operator()();

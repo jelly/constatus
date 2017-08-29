@@ -10,6 +10,7 @@ std::string get_endpoint_name(int fd);
 ssize_t READ(int fd, char *whereto, size_t len);
 ssize_t WRITE(int fd, const char *whereto, size_t len);
 double get_ts();
+uint64_t get_us();
 std::string myformat(const char *const fmt, ...);
 unsigned char *memstr(unsigned char *haystack, unsigned int haystack_len, unsigned char *needle, unsigned int needle_len);
 void set_thread_name(const std::string & name);

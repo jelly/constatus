@@ -12,7 +12,7 @@
 #include "log.h"
 #include "utils.h"
 
-source_plugin::source_plugin(const std::string & plugin_filename, const std::string & plugin_arg, const int resize_w, const int resize_h, const int loglevel) : source(resize_w, resize_h, loglevel)
+source_plugin::source_plugin(const std::string & plugin_filename, const std::string & plugin_arg, const double max_fps, const int resize_w, const int resize_h, const int loglevel) : source(max_fps, resize_w, resize_h, loglevel)
 {
 	void *library = dlopen(plugin_filename.c_str(), RTLD_NOW);
 	if (!library)
@@ -38,11 +38,15 @@ void source_plugin::operator()()
 
 	set_thread_name("src_plugins");
 
-	bool first = true, resize = resize_h != -1 || resize_w != -1;
+	bool resize = resize_h != -1 || resize_w != -1;
 	uint64_t ts = 0;
+
+	const uint64_t interval = max_fps > 0.0 ? 1.0 / max_fps * 1000.0 * 1000.0 : 0;
 
 	for(;!local_stop_flag;)
 	{
+		time_t start_ts = get_us();
+
 		if (work_required()) {
 			uint8_t *work = NULL;
 			size_t work_len = 0;
@@ -57,6 +61,12 @@ void source_plugin::operator()()
 
 			free(work);
 		}
+
+		uint64_t end_ts = get_us();
+		int64_t left = interval - (end_ts - start_ts);
+
+		if (interval > 0 && left > 0)
+			usleep(left);
 	}
 
 	log(LL_INFO, "source plugins thread terminating");

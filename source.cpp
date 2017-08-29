@@ -9,7 +9,7 @@
 #include "filter.h"
 #include "filter_add_text.h"
 
-source::source(const int resize_w, const int resize_h, const int loglevel) : resize_w(resize_w), resize_h(resize_h), loglevel(loglevel)
+source::source(const double max_fps, const int resize_w, const int resize_h, const int loglevel) : max_fps(max_fps), resize_w(resize_w), resize_h(resize_h), loglevel(loglevel)
 {
 	width = height = -1;
 	ts = 0;

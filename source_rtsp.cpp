@@ -18,7 +18,7 @@ extern "C" {
 
 static bool v = false;
 
-source_rtsp::source_rtsp(const std::string & urlIn, const int resize_w, const int resize_h, const int loglevel) : source(resize_w, resize_h, loglevel), url(urlIn)
+source_rtsp::source_rtsp(const std::string & urlIn, const double max_fps, const int resize_w, const int resize_h, const int loglevel) : source(max_fps, resize_w, resize_h, loglevel), url(urlIn)
 {
 	v = loglevel >= LL_DEBUG;
 }
@@ -197,6 +197,7 @@ void source_rtsp::operator()()
 					goto fail;
 				}
 
+				// FIXME framerate limiter
 				if (work_required()) {
 					sws_scale(img_convert_ctx, picture->data, picture->linesize, 0, codec_ctx->height, picture_rgb->data, picture_rgb->linesize);
 

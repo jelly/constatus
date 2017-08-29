@@ -157,7 +157,7 @@ bool source_v4l::try_v4l_configuration(int fd, int *width, int *height, unsigned
 	return true;
 }
 
-source_v4l::source_v4l(const std::string & dev, bool prefer_jpeg_in, bool rpi_workaround_in, int jpeg_quality, int w_override, int h_override, const int resize_w, const int resize_h, const int loglevel) : source(resize_w, resize_h, loglevel), prefer_jpeg(prefer_jpeg_in), rpi_workaround(rpi_workaround_in)
+source_v4l::source_v4l(const std::string & dev, const bool prefer_jpeg_in, const bool rpi_workaround_in, const int jpeg_quality, const double max_fps, const int w_override, const int h_override, const int resize_w, const int resize_h, const int loglevel) : source(max_fps, resize_w, resize_h, loglevel), prefer_jpeg(prefer_jpeg_in), rpi_workaround(rpi_workaround_in)
 {
 	fd = open(dev.c_str(), O_RDWR);
 	if (fd == -1)
@@ -297,14 +297,16 @@ void source_v4l::operator()()
 	buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	buf.memory = V4L2_MEMORY_MMAP;
 
+	const uint64_t interval = max_fps > 0.0 ? 1.0 / max_fps * 1000.0 * 1000.0 : 0;
+
 	for(;!local_stop_flag;)
 	{
+		time_t start_ts = get_us();
+
 		if (ioctl(fd, VIDIOC_DQBUF, &buf) == -1) {
 			log(LL_ERR, "VIDIOC_DQBUF failed: %s", strerror(errno));
-			continue;
 		}
-
-		if (work_required()) {
+		else if (work_required()) {
 			if (prefer_jpeg) {
 				int cur_n_bytes = buf.bytesused;
 
@@ -334,10 +336,16 @@ void source_v4l::operator()()
 				else
 					set_frame(E_RGB, conv_buffer, vw * vh * 3);
 			}
+
+			if (ioctl(fd, VIDIOC_QBUF, &buf) == -1)
+				error_exit(true, "ioctl(VIDIOC_QBUF) failed");
 		}
 
-		if (ioctl(fd, VIDIOC_QBUF, &buf) == -1)
-			error_exit(true, "ioctl(VIDIOC_QBUF) failed");
+		uint64_t end_ts = get_us();
+		int64_t left = interval - (end_ts - start_ts);
+
+		if (interval > 0 && left > 0)
+			usleep(left);
 	}
 
 	free(conv_buffer);
