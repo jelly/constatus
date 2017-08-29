@@ -35,13 +35,13 @@ private:
 	int quality;
 	int camera_warm_up, pre_record_count;
 	const std::vector<filter *> *const filters;
-	double fps;
+	double max_fps;
 	const uint8_t *pixel_select_bitmap;
 	ext_trigger_t *const et;
 	target *t;
 
 public:
-	motion_trigger(source *const s, const int quality, const int noise_level, const double percentage_pixels_changed, const int keep_recording_n_frames, const int ignore_n_frames_after_recording, const int camera_warm_up, const int pre_record_count, const std::vector<filter *> *const before, const double fps, target *const t, const uint8_t *pixel_select_bitmap, ext_trigger_t *const et);
+	motion_trigger(source *const s, const int quality, const int noise_level, const double percentage_pixels_changed, const int keep_recording_n_frames, const int ignore_n_frames_after_recording, const int camera_warm_up, const int pre_record_count, const std::vector<filter *> *const before, target *const t, const uint8_t *pixel_select_bitmap, ext_trigger_t *const et, const double max_fps);
 	virtual ~motion_trigger();
 
 	void operator()();

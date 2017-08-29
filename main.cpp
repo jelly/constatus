@@ -500,14 +500,14 @@ int main(int argc, char *argv[])
 		int mute_duration = json_int(j_mt, "mute-duration", "how long not to record (in frames) after motion has stopped");
 		int warmup_duration = json_int(j_mt, "warmup-duration", "how many frames to ignore so that the camera can warm-up");
 		int pre_motion_record_duration = json_int(j_mt, "pre-motion-record-duration", "how many frames to record that happened before the motion started");
-		double fps = json_float(j_mt, "fps", "number of frames per second to analyze");
+		double max_fps = json_float(j_mt, "max-fps", "maximum number of frames per second to analyze (or -1 for no limit)");
 		const char *selection_bitmap = json_str(j_mt, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.");
 
 		std::vector<filter *> *filters_before = load_filters(json_object_get(j_mt, "filters-before"));
 
 		std::vector<filter *> *filters_after = load_filters(json_object_get(j_mt, "filters-after")); // freed by target
 
-		double snapshot_interval = 1.0 / fps;
+		double snapshot_interval = 1.0 / max_fps;
 
 		target *t = load_target(j_mt, s, snapshot_interval, filters_after, jpeg_quality);
 
@@ -527,7 +527,7 @@ int main(int argc, char *argv[])
 
 		const uint8_t *sb = load_selection_bitmap(selection_bitmap);
 
-		motion_trigger *m = new motion_trigger(s, jpeg_quality, noise_level, pixels_changed_perctange, min_duration, mute_duration, warmup_duration, pre_motion_record_duration, filters_before, fps, t, sb, et);
+		motion_trigger *m = new motion_trigger(s, jpeg_quality, noise_level, pixels_changed_perctange, min_duration, mute_duration, warmup_duration, pre_motion_record_duration, filters_before, t, sb, et, max_fps);
 		m -> start();
 		interfaces.push_back(m);
 	}
