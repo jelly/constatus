@@ -42,6 +42,7 @@ motion_trigger::~motion_trigger()
 	free((void *)pixel_select_bitmap);
 
 	free_filters(filters);
+	delete filters;
 }
 
 void motion_trigger::operator()()
