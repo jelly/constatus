@@ -14,7 +14,7 @@
 
 source_plugin::source_plugin(const std::string & id, const std::string & plugin_filename, const std::string & plugin_arg, const double max_fps, const int resize_w, const int resize_h, const int loglevel) : source(id, max_fps, resize_w, resize_h, loglevel)
 {
-	void *library = dlopen(plugin_filename.c_str(), RTLD_NOW);
+	library = dlopen(plugin_filename.c_str(), RTLD_NOW);
 	if (!library)
 		error_exit(true, "Failed opening motion detection plugin library %s", plugin_filename.c_str());
 
@@ -32,6 +32,8 @@ source_plugin::~source_plugin()
 	stop();
 
 	uninit_plugin(arg);
+
+	dlclose(library);
 }
 
 void source_plugin::operator()()

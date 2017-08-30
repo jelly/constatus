@@ -15,7 +15,7 @@ private:
 	init_plugin_t init_plugin;
 	get_frame_t get_frame;
 	uninit_plugin_t uninit_plugin;
-	void *arg;
+	void *arg, *library;
 
 public:
 	source_plugin(const std::string & id, const std::string & plugin_filename, const std::string & plugin_arg, const double max_fps, const int resize_w, const int resize_h, const int loglevel);

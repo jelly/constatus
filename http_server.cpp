@@ -93,6 +93,7 @@ void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, in
                 else if (WRITE(cfd, term, strlen(term)) <= 0)
 		{
 			log(LL_DEBUG, "short write on terminating cr/lf");
+			free(work);
                         break;
 		}
 
