@@ -14,6 +14,7 @@
 #include <string>
 #include <string.h>
 #include <unistd.h>
+#include <vector>
 #include <arpa/inet.h>
 #include <curl/curl.h>
 #include <netinet/in.h>
@@ -288,6 +289,36 @@ char * un_url_escape(const char *const in)
 
 	curl_free(temp);
 	curl_easy_cleanup(ch);
+
+	return out;
+}
+
+std::vector<std::string> * split(std::string in, std::string splitter)
+{
+	std::vector<std::string> *out = new std::vector<std::string>;
+	size_t splitter_size = splitter.size();
+
+	for(;;)
+	{
+		size_t pos = in.find(splitter);
+		if (pos == std::string::npos)
+			break;
+
+		std::string before = in.substr(0, pos);
+		out -> push_back(before);
+
+		size_t bytes_left = in.size() - (pos + splitter_size);
+		if (bytes_left == 0)
+		{
+			out -> push_back("");
+			return out;
+		}
+
+		in = in.substr(pos + splitter_size);
+	}
+
+	if (in.size() > 0)
+		out -> push_back(in);
 
 	return out;
 }

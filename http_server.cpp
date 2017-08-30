@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <jansson.h>
 #include <netdb.h>
 #include <poll.h>
 #include <pthread.h>
@@ -493,23 +494,35 @@ std::string describe_interface(const interface *const i)
 	return out;
 }
 
+interface *find_by_id(configuration_t *const cfg, const std::string & id)
+{
+	interface *ret = NULL;
+
+	for(interface *i : cfg -> interfaces) {
+		std::string id_int = myformat("%p", i);
+
+		if (id == id_int) {
+			ret = i;
+			break;
+		}
+	}
+
+	return ret;
+}
+
 bool pause(configuration_t *const cfg, const std::string & which, const bool p)
 {
 	bool rc = false;
 
 	cfg -> lock.lock();
 
-	for(interface *i : cfg -> interfaces) {
-		std::string id_int = myformat("%p", i);
-
-		if (which == id_int) {
-			if (p)
-				rc = i -> pause();
-			else {
-				i -> unpause();
-				rc = true;
-			}
-			break;
+	interface *i = find_by_id(cfg, which);
+	if (i != NULL) {
+		if (p)
+			rc = i -> pause();
+		else {
+			i -> unpause();
+			rc = true;
 		}
 	}
 
@@ -524,22 +537,137 @@ bool start_stop(configuration_t *const cfg, const std::string & which, const boo
 
 	cfg -> lock.lock();
 
-	for(interface *i : cfg -> interfaces) {
-		std::string id_int = myformat("%p", i);
+	interface *i = find_by_id(cfg, which);
 
-		if (which == id_int) {
-			if (strt)
-				i -> start();
-			else
-				i -> stop(); // FIXME time-out?
-			rc = true;
-			break;
-		}
+	if (i != NULL) {
+		if (strt)
+			i -> start();
+		else
+			i -> stop(); // FIXME time-out?
+		rc = true;
 	}
 
 	cfg -> lock.unlock();
 
 	return rc;
+}
+
+std::string run_rest(configuration_t *const cfg, const std::string & path, const std::string & pars)
+{
+	int code = 200;
+	std::vector<std::string> *parts = split(path, "/");
+
+	json_t *json = json_object();
+
+	bool cmd = parts -> at(0) == "cmd";
+
+	cfg -> lock.lock();
+	interface *i = (parts -> size() >= 1 && !cmd) ? find_by_id(cfg, parts -> at(0)) : NULL;
+
+	if (parts -> size() < 2) {
+		code = 500;
+		json_object_set(json, "msg", json_string("ID/cmd missing"));
+		json_object_set(json, "result", json_false());
+	}
+	else if (cmd && parts -> at(1) == "list") {
+		json_object_set(json, "msg", json_string("OK"));
+		json_object_set(json, "result", json_true());
+
+		json_t *out_arr = json_array();
+		json_object_set(json, "data", out_arr);
+
+		for(interface *cur : cfg -> interfaces) {
+			json_t *record = json_object();
+
+			json_object_set(record, "id", json_string(myformat("%p", cur).c_str()));
+			json_object_set(record, "id-str", json_string(cur -> get_id().c_str()));
+			json_object_set(record, "id-descr", json_string(cur -> get_description().c_str()));
+
+			switch(cur -> get_class_type()) {
+				case CT_HTTPSERVER:
+					json_object_set(record, "type", json_string("http-server"));
+					break;
+				case CT_MOTIONTRIGGER:
+					json_object_set(record, "type", json_string("motion-trigger"));
+					break;
+				case CT_TARGET:
+					json_object_set(record, "type", json_string("stream-writer"));
+					break;
+				case CT_SOURCE:
+					json_object_set(record, "type", json_string("source"));
+					break;
+				case CT_LOOPBACK:
+					json_object_set(record, "type", json_string("video4linux-loopback"));
+					break;
+				default:
+					json_object_set(record, "type", json_string("INTERNAL ERROR"));
+					break;
+			}
+
+			json_object_set(record, "running", json_string(cur -> is_paused() ? "false" : "true"));
+
+			json_object_set(record, "enabled", json_string(cur -> is_running() ? "true" : "false"));
+
+			json_array_append_new(out_arr, record);
+		}
+	}
+	// commands that require an ID
+	else if (i == NULL) {
+		code = 404;
+		json_object_set(json, "msg", json_string("ID not found"));
+		json_object_set(json, "result", json_false());
+	}
+	else if (parts -> at(1) == "pause") {
+		if (i -> pause()) {
+			json_object_set(json, "msg", json_string("OK"));
+			json_object_set(json, "result", json_true());
+		}
+		else {
+			json_object_set(json, "msg", json_string("failed"));
+			json_object_set(json, "result", json_false());
+		}
+	}
+	else if (parts -> at(1) == "unpause") {
+		i -> unpause();
+		json_object_set(json, "msg", json_string("OK"));
+		json_object_set(json, "result", json_true());
+	}
+	else if (parts -> at(1) == "stop") {
+		if (start_stop(cfg, pars, false)) {
+			json_object_set(json, "msg", json_string("OK"));
+			json_object_set(json, "result", json_true());
+		}
+		else {
+			json_object_set(json, "msg", json_string("failed"));
+			json_object_set(json, "result", json_false());
+		}
+	}
+	else if (parts -> at(1) == "start") {
+		if (start_stop(cfg, pars, true)) {
+			json_object_set(json, "msg", json_string("OK"));
+			json_object_set(json, "result", json_true());
+		}
+		else {
+			json_object_set(json, "msg", json_string("failed"));
+			json_object_set(json, "result", json_false());
+		}
+	}
+	else {
+		code = 404;
+	}
+
+	cfg -> lock.unlock();
+
+	delete parts;
+
+	char *js = json_dumps(json, JSON_COMPACT | JSON_SORT_KEYS);
+printf("%s\n", js);
+	std::string reply = myformat("HTTP/1.0 %d\r\nServer: " NAME " " VERSION "\r\n\r\n%s", code, js);
+	free(js);
+
+	json_decref(json);
+
+	return reply;
 }
 
 void handle_http_client(int cfd, source *s, double fps, int quality, int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const bool motion_compatible, configuration_t *const cfg)
@@ -670,7 +798,6 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 			"<li><a href=\"/stream.mpng\">MPNG stream</a>"
 			"<li><a href=\"/image.jpg\">Snapshot in JPG format</a>"
 			"<li><a href=\"/image.png\">Snapshot in PNG format</a>"
-			"<li><a href=\"/cfg.rest\">REST interface</a>"
 			"</ul>"
 			;
 
@@ -699,6 +826,12 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 
 		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
 			log(LL_DEBUG, "short write on response header");
+	}
+	else if (strncmp(path, "/rest/", 6) == 0) {
+		std::string reply = run_rest(cfg, &path[6], pars ? pars : "");
+
+		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
+			log(LL_DEBUG, "short write on response");
 	}
 	else {
 		log(LL_INFO, "Path %s not found", path);
