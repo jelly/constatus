@@ -308,7 +308,7 @@ void source_v4l::operator()()
 		if (ioctl(fd, VIDIOC_DQBUF, &buf) == -1) {
 			log(LL_ERR, "VIDIOC_DQBUF failed: %s", strerror(errno));
 		}
-		else if (work_required()) {
+		else if (work_required() && !is_paused()) {
 			if (prefer_jpeg) {
 				int cur_n_bytes = buf.bytesused;
 

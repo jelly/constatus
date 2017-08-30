@@ -49,7 +49,7 @@ void source_plugin::operator()()
 	{
 		time_t start_ts = get_us();
 
-		if (work_required()) {
+		if (work_required() && !is_paused()) {
 			uint8_t *work = NULL;
 			size_t work_len = 0;
 

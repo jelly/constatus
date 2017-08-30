@@ -45,7 +45,7 @@ void source_http_jpeg::operator()()
 			continue;
 		}
 
-		if (work_required()) {
+		if (work_required() && !is_paused()) {
 			unsigned char *temp = NULL;
 			int dw = -1, dh = -1;
 			if (first || resize) {
