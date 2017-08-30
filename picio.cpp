@@ -32,7 +32,7 @@ extern "C" {
 
 static void writepng_error_handler(png_structp png, png_const_charp msg)
 {
-	error_exit("writepng libpng error: %s", msg);
+	error_exit(false, "writepng libpng error: %s", msg);
 }
 
 // rgbA (!)

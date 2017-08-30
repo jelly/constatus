@@ -107,6 +107,7 @@ void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, in
 			if (WRITE(cfd, img_h, len) <= 0)
 			{
 				log(LL_DEBUG, "short write on boundary header");
+				free(work);
 				break;
 			}
 
@@ -514,8 +515,6 @@ bool pause(configuration_t *const cfg, const std::string & which, const bool p)
 {
 	bool rc = false;
 
-	cfg -> lock.lock();
-
 	interface *i = find_by_id(cfg, which);
 	if (i != NULL) {
 		if (p)
@@ -526,16 +525,12 @@ bool pause(configuration_t *const cfg, const std::string & which, const bool p)
 		}
 	}
 
-	cfg -> lock.unlock();
-
 	return rc;
 }
 
 bool start_stop(configuration_t *const cfg, const std::string & which, const bool strt)
 {
 	bool rc = false;
-
-	cfg -> lock.lock();
 
 	interface *i = find_by_id(cfg, which);
 
@@ -546,8 +541,6 @@ bool start_stop(configuration_t *const cfg, const std::string & which, const boo
 			i -> stop(); // FIXME time-out?
 		rc = true;
 	}
-
-	cfg -> lock.unlock();
 
 	return rc;
 }
@@ -660,8 +653,7 @@ std::string run_rest(configuration_t *const cfg, const std::string & path, const
 
 	delete parts;
 
-	char *js = json_dumps(json, JSON_COMPACT | JSON_SORT_KEYS);
-printf("%s\n", js);
+	char *js = json_dumps(json, JSON_COMPACT);
 	std::string reply = myformat("HTTP/1.0 %d\r\nServer: " NAME " " VERSION "\r\n\r\n%s", code, js);
 	free(js);
 
@@ -812,8 +804,10 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 	else if (strcmp(path, "/pause") == 0 || strcmp(path, "/unpause") == 0) {
 		std::string reply = "HTTP/1.0 200\r\n\r\nfailed";
 
-		if (pause(cfg, pars, strcmp(path, "/pause") == 0))
+		cfg -> lock.lock();
+		if (pause(cfg, pars ? pars : "", strcmp(path, "/pause") == 0))
 			reply = "HTTP/1.0 200\r\n\r\nsucceeded";
+		cfg -> lock.unlock();
 
 		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
 			log(LL_DEBUG, "short write on response header");
@@ -821,8 +815,10 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 	else if (strcmp(path, "/start") == 0 || strcmp(path, "/stop") == 0) {
 		std::string reply = "HTTP/1.0 200\r\n\r\nfailed";
 
-		if (start_stop(cfg, pars, strcmp(path, "/start") == 0))
+		cfg -> lock.lock();
+		if (start_stop(cfg, pars ? pars : "", strcmp(path, "/start") == 0))
 			reply = "HTTP/1.0 200\r\n\r\nsucceeded";
+		cfg -> lock.unlock();
 
 		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
 			log(LL_DEBUG, "short write on response header");
@@ -841,6 +837,7 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 	}
 
 	free(path);
+	free(pars);
 
 	close(cfd);
 }
