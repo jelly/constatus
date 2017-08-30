@@ -54,12 +54,14 @@ Take a look at the examples: constatus-jpeg.conf constatus-mjpeg.conf constatus-
 
 Each configuration has 1 source. So if you want to monitor multiple cameras, then you need to start multiple instances of constatus. The idea is that if anything crashes, you won't loose all cameras.
 
-A configuration can have 1 motion-trigger and 0 or more stream-to-file backends.
+A configuration can have 1 or more motion-triggers (e.g. to have seperate output streams for different parts of the input) and 0 or more stream-to-file backends.
 
 Most outputs (http, files, etc) and the motion-trigger can have 0 or more filters. Filters are executed in the order in which they are found on the configuration-file. You can also have multiple instances of the same filter for an output/motion-trigger.
 Note that for source there are two lists of filters: before and after. The one in "before" are invoked before the motion-detection algorithm is invoked, the "after" is invoked when streaming to images to disk. Note that the ones in "before" should not e.g. add markers and such because that may influence the motion detection algorithm.
 
 As said, constatus can have multiple streamers, filters, etc.; the only drawback is that it uses more cpu. Having available multiple cpus/cores/threads is an advantag for constatus.
+
+Each item has an id. You can leave it empty if you like. It is used in the configuration web-interface as a hint to which item you're working on.
 
 
 (C) 2017 by Folkert van Heusden, released under AGPL v3.0

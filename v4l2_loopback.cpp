@@ -21,10 +21,11 @@
 #include "log.h"
 #include "v4l2_loopback.h"
 
-v4l2_loopback::v4l2_loopback(source *const s, const double fps, const std::string & dev, const std::vector<filter *> *const filters) : s(s), fps(fps), dev(dev), filters(filters)
+v4l2_loopback::v4l2_loopback(const std::string & id, source *const s, const double fps, const std::string & dev, const std::vector<filter *> *const filters) : interface(id), s(s), fps(fps), dev(dev), filters(filters)
 {
 	th = NULL;
 	local_stop_flag = false;
+	ct = CT_LOOPBACK;
 }
 
 v4l2_loopback::~v4l2_loopback()
@@ -95,4 +96,6 @@ void v4l2_loopback::operator()()
 	free(prev_frame);
 
 	s -> unregister_user();
+
+	close(v4l2sink);
 }

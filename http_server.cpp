@@ -40,6 +40,7 @@ typedef struct {
 	std::atomic_bool *global_stopflag;
 	int resize_w, resize_h;
 	bool motion_compatible;
+	configuration_t *cfg;
 } http_thread_t;
 
 void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h)
@@ -111,6 +112,7 @@ void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, in
 			if (WRITE(cfd, reinterpret_cast<char *>(work), work_len) <= 0)
 			{
 				log(LL_DEBUG, "short write on img data");
+				free(work);
 				break;
 			}
 
@@ -223,9 +225,6 @@ void send_mpng_stream(int cfd, source *s, double fps, bool get, const int time_l
 			log(LL_ERR, "did not get a frame");
 			continue;
 		}
-
-		if (work_len == 0)
-			continue;
 
 		apply_filters(filters, prev_frame, work, prev, w, h);
 
@@ -443,7 +442,107 @@ void send_jpg_frame(int cfd, source *s, bool get, int quality, const std::vector
 	free(work);
 }
 
-void handle_http_client(int cfd, source *s, double fps, int quality, int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const bool motion_compatible)
+std::string describe_interface(const interface *const i)
+{
+	std::string id_int = myformat("%p", i);
+	std::string id_ext = i -> get_id();
+
+	std::string type = "!!!";
+	switch(i -> get_class_type()) {
+		case CT_HTTPSERVER:
+			type = "HTTP server";
+			break;
+		case CT_MOTIONTRIGGER:
+			type = "motion trigger";
+			break;
+		case CT_TARGET:
+			type = "stream writer";
+			break;
+		case CT_SOURCE:
+			type = "source";
+			break;
+		case CT_LOOPBACK:
+			type = "video4linux loopback";
+			break;
+		case CT_NONE:
+			type = "???";
+			break;
+	}
+
+	if (id_ext.empty())
+		id_ext = type;
+
+	std::string out = std::string("<h2>") + id_ext + "</h2><p>description: " + i -> get_description() + "<br>type: " + type + "</p><ul>";
+
+	if (i -> is_paused()) {
+		out += myformat("<li><a href=\"unpause?%s\">unpause</a>", id_int.c_str());
+	}
+	else {
+		out += myformat("<li><a href=\"pause?%s\">pause</a>", id_int.c_str());
+	}
+
+	if (i -> is_running()) {
+		out += myformat("<li><a href=\"stop?%s\">stop</a>", id_int.c_str());
+	}
+	else {
+		out += myformat("<li><a href=\"start?%s\">start</a>", id_int.c_str());
+	}
+
+	out += "</ul>";
+
+	return out;
+}
+
+bool pause(configuration_t *const cfg, const std::string & which, const bool p)
+{
+	bool rc = false;
+
+	cfg -> lock.lock();
+
+	for(interface *i : cfg -> interfaces) {
+		std::string id_int = myformat("%p", i);
+
+		if (which == id_int) {
+			if (p)
+				rc = i -> pause();
+			else {
+				i -> unpause();
+				rc = true;
+			}
+			break;
+		}
+	}
+
+	cfg -> lock.unlock();
+
+	return rc;
+}
+
+bool start_stop(configuration_t *const cfg, const std::string & which, const bool strt)
+{
+	bool rc = false;
+
+	cfg -> lock.lock();
+
+	for(interface *i : cfg -> interfaces) {
+		std::string id_int = myformat("%p", i);
+
+		if (which == id_int) {
+			if (strt)
+				i -> start();
+			else
+				i -> stop(); // FIXME time-out?
+			rc = true;
+			break;
+		}
+	}
+
+	cfg -> lock.unlock();
+
+	return rc;
+}
+
+void handle_http_client(int cfd, source *s, double fps, int quality, int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const bool motion_compatible, configuration_t *const cfg)
 {
 	sigset_t all_sigs;
 	sigfillset(&all_sigs);
@@ -506,6 +605,8 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 		return;
 	}
 
+	char *pars = NULL;
+
 	if (!motion_compatible) {
 		char *dummy = strchr(path, '\r');
 		if (!dummy)
@@ -518,6 +619,13 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 			*dummy = 0x00;
 
 		log(LL_DEBUG, "URL: %s", path);
+
+		char *q = strchr(path, '?');
+		if (q) {
+			*q = 0x00;
+
+			pars = un_url_escape(q + 1);
+		}
 	}
 
 	if (strcmp(path, "/stream.mjpeg") == 0 || motion_compatible)
@@ -544,10 +652,10 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 		if (WRITE(cfd, reply, sizeof(reply)) <= 0)
 			log(LL_DEBUG, "short write on response header");
 	}
-	else
+	else if (strcmp(path, "/index.html") == 0 || strcmp(path, "/") == 0)
 	{
-		const char reply[] =
-			"HTTP/1.0 404 url not found\r\n"
+		std::string reply =
+			"HTTP/1.0 200 assuming index.html\r\n"
 			"cache-control: no-cache\r\n"
 			"pragma: no-cache\r\n"
 			"server: " NAME " " VERSION "\r\n"
@@ -555,9 +663,47 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 			"content-type: text/html\r\n"
 			"connection: close\r\n"
 			"\r\n"
-			"URL not found. Use either \"<A HREF=\"stream.mjpeg\">stream.mjpeg</A>\" or \"<A HREF=\"stream.html\">stream.html</A>\".\r\n";
+			"<h1>" NAME " " VERSION "</h1>"
+			"<ul>"
+			"<li><a href=\"/stream.mjpeg\">MJPEG stream</a>"
+			"<li><a href=\"/stream.html\">Same MJPEG stream but in a HTML wrapper</a>"
+			"<li><a href=\"/stream.mpng\">MPNG stream</a>"
+			"<li><a href=\"/image.jpg\">Snapshot in JPG format</a>"
+			"<li><a href=\"/image.png\">Snapshot in PNG format</a>"
+			"<li><a href=\"/cfg.rest\">REST interface</a>"
+			"</ul>"
+			;
 
-		if (WRITE(cfd, reply, sizeof(reply)) <= 0)
+		cfg -> lock.lock();
+		for(interface *i : cfg -> interfaces)
+			reply += describe_interface(i);
+		cfg -> lock.unlock();
+
+		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
+			log(LL_DEBUG, "short write on response header");
+	}
+	else if (strcmp(path, "/pause") == 0 || strcmp(path, "/unpause") == 0) {
+		std::string reply = "HTTP/1.0 200\r\n\r\nfailed";
+
+		if (pause(cfg, pars, strcmp(path, "/pause") == 0))
+			reply = "HTTP/1.0 200\r\n\r\nsucceeded";
+
+		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
+			log(LL_DEBUG, "short write on response header");
+	}
+	else if (strcmp(path, "/start") == 0 || strcmp(path, "/stop") == 0) {
+		std::string reply = "HTTP/1.0 200\r\n\r\nfailed";
+
+		if (start_stop(cfg, pars, strcmp(path, "/start") == 0))
+			reply = "HTTP/1.0 200\r\n\r\nsucceeded";
+
+		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
+			log(LL_DEBUG, "short write on response header");
+	}
+	else {
+		log(LL_INFO, "Path %s not found", path);
+
+		if (WRITE(cfd, "HTTP/1.0 404\r\n\r\nwhat?", 4) <= 0)
 			log(LL_DEBUG, "short write on response header");
 	}
 
@@ -574,7 +720,7 @@ void * handle_http_client_thread(void *ct_in)
 
 	ct -> s -> register_user();
 
-	handle_http_client(ct -> fd, ct -> s, ct -> fps, ct -> quality, ct -> time_limit, ct -> filters, ct -> global_stopflag, ct -> resize_w, ct -> resize_h, ct -> motion_compatible);
+	handle_http_client(ct -> fd, ct -> s, ct -> fps, ct -> quality, ct -> time_limit, ct -> filters, ct -> global_stopflag, ct -> resize_w, ct -> resize_h, ct -> motion_compatible, ct -> cfg);
 
 	ct -> s -> unregister_user();
 
@@ -583,13 +729,18 @@ void * handle_http_client_thread(void *ct_in)
 	return NULL;
 }
 
-http_server::http_server(const char *const http_adapter, const int http_port, source *const src, const double fps, const int quality, const int time_limit, const std::vector<filter *> *const f, const int resize_w, const int resize_h, const bool motion_compatible) : src(src), fps(fps), quality(quality), time_limit(time_limit), f(f), resize_w(resize_w), resize_h(resize_h), motion_compatible(motion_compatible)
+http_server::http_server(configuration_t *const cfg, const std::string & id, const char *const http_adapter, const int http_port, source *const src, const double fps, const int quality, const int time_limit, const std::vector<filter *> *const f, const int resize_w, const int resize_h, const bool motion_compatible, const bool allow_admin) : cfg(cfg), interface(id), src(src), fps(fps), quality(quality), time_limit(time_limit), f(f), resize_w(resize_w), resize_h(resize_h), motion_compatible(motion_compatible), allow_admin(allow_admin)
 {
 	fd = start_listen(http_adapter, http_port, 5);
+	ct = CT_HTTPSERVER;
+
+	d = myformat("[%s]:%d", http_adapter, http_port);
 }
 
 http_server::~http_server()
 {
+	close(fd);
+
 	free_filters(f);
 
 	delete f;
@@ -634,6 +785,7 @@ void http_server::operator()()
 		ct -> resize_w = resize_w;
 		ct -> resize_h = resize_h;
 		ct -> motion_compatible = motion_compatible;
+		ct -> cfg = cfg;
 
 		pthread_t th;
 		int rc = -1;

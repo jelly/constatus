@@ -20,13 +20,14 @@
 #include "log.h"
 #include "motion_trigger.h"
 
-motion_trigger::motion_trigger(source *const s, const int quality, const int noise_level, const double percentage_pixels_changed, const int keep_recording_n_frames, const int ignore_n_frames_after_recording, const int camera_warm_up, const int pre_record_count, const std::vector<filter *> *const filters, target *const t, const uint8_t *pixel_select_bitmap, ext_trigger_t *const et, const double max_fps) : s(s), quality(quality), noise_level(noise_level), percentage_pixels_changed(percentage_pixels_changed), keep_recording_n_frames(keep_recording_n_frames), ignore_n_frames_after_recording(ignore_n_frames_after_recording), camera_warm_up(camera_warm_up), pre_record_count(pre_record_count), filters(filters), t(t), pixel_select_bitmap(pixel_select_bitmap), et(et), max_fps(max_fps)
+motion_trigger::motion_trigger(const std::string & id, source *const s, const int quality, const int noise_level, const double percentage_pixels_changed, const int keep_recording_n_frames, const int ignore_n_frames_after_recording, const int camera_warm_up, const int pre_record_count, const std::vector<filter *> *const filters, target *const t, const uint8_t *pixel_select_bitmap, ext_trigger_t *const et, const double max_fps) : interface(id), s(s), quality(quality), noise_level(noise_level), percentage_pixels_changed(percentage_pixels_changed), keep_recording_n_frames(keep_recording_n_frames), ignore_n_frames_after_recording(ignore_n_frames_after_recording), camera_warm_up(camera_warm_up), pre_record_count(pre_record_count), filters(filters), t(t), pixel_select_bitmap(pixel_select_bitmap), et(et), max_fps(max_fps)
 {
 	if (et)
 		et -> arg = et -> init_motion_trigger(et -> par);
 
 	local_stop_flag = false;
 	th = NULL;
+	ct = CT_MOTIONTRIGGER;
 }
 
 motion_trigger::~motion_trigger()

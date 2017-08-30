@@ -12,7 +12,7 @@
 #include "log.h"
 #include "utils.h"
 
-source_plugin::source_plugin(const std::string & plugin_filename, const std::string & plugin_arg, const double max_fps, const int resize_w, const int resize_h, const int loglevel) : source(max_fps, resize_w, resize_h, loglevel)
+source_plugin::source_plugin(const std::string & id, const std::string & plugin_filename, const std::string & plugin_arg, const double max_fps, const int resize_w, const int resize_h, const int loglevel) : source(id, max_fps, resize_w, resize_h, loglevel)
 {
 	void *library = dlopen(plugin_filename.c_str(), RTLD_NOW);
 	if (!library)
@@ -23,6 +23,8 @@ source_plugin::source_plugin(const std::string & plugin_filename, const std::str
 	uninit_plugin = (uninit_plugin_t)find_symbol(library, "uninit_plugin", "video source plugin", plugin_filename.c_str());
 
 	arg = init_plugin(plugin_arg.c_str());
+
+	d = plugin_filename + " / " + plugin_arg;
 }
 
 source_plugin::~source_plugin()

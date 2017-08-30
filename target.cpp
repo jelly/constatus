@@ -20,11 +20,13 @@ std::string gen_filename(const std::string & store_path, const std::string & pre
 			f_nr, ext.c_str());
 }
 
-target::target(source *const s, const std::string & store_path, const std::string & prefix, const int max_time, const double interval, const std::vector<filter *> *const filters, const char *const exec_start, const char *const exec_cycle, const char *const exec_end) : s(s), store_path(store_path), prefix(prefix), max_time(max_time), interval(interval), filters(filters), exec_start(exec_start), exec_cycle(exec_cycle), exec_end(exec_end)
+target::target(const std::string & id, source *const s, const std::string & store_path, const std::string & prefix, const int max_time, const double interval, const std::vector<filter *> *const filters, const char *const exec_start, const char *const exec_cycle, const char *const exec_end) : interface(id), s(s), store_path(store_path), prefix(prefix), max_time(max_time), interval(interval), filters(filters), exec_start(exec_start), exec_cycle(exec_cycle), exec_end(exec_end)
 {
 	th = NULL;
 	local_stop_flag = false;
 	pre_record = NULL;
+	ct = CT_TARGET;
+	d = store_path + " / " + prefix;
 }
 
 target::~target()

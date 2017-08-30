@@ -9,7 +9,7 @@
 #include "filter.h"
 #include "filter_add_text.h"
 
-source::source(const double max_fps, const int resize_w, const int resize_h, const int loglevel) : max_fps(max_fps), resize_w(resize_w), resize_h(resize_h), loglevel(loglevel)
+source::source(const std::string & id, const double max_fps, const int resize_w, const int resize_h, const int loglevel) : interface(id), max_fps(max_fps), resize_w(resize_w), resize_h(resize_h), loglevel(loglevel)
 {
 	width = height = -1;
 	ts = 0;
@@ -28,6 +28,7 @@ source::source(const double max_fps, const int resize_w, const int resize_h, con
 	pthread_mutex_init(&lock, &ma);
 
 	user_count = 0;
+	ct = CT_SOURCE;
 }
 
 source::~source()
@@ -101,6 +102,9 @@ bool source::get_frame(const encoding_t pe, const int jpeg_quality, uint64_t *ts
 	struct timespec tc = { tv.tv_sec + 5, 0 }; // FIXME hardcoded timeout
 
 	bool err = false;
+
+	*frame = NULL;
+	*frame_len = 0;
 
 	pthread_mutex_lock(&lock);
 

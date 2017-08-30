@@ -18,9 +18,10 @@ extern "C" {
 
 static bool v = false;
 
-source_rtsp::source_rtsp(const std::string & urlIn, const double max_fps, const int resize_w, const int resize_h, const int loglevel) : source(max_fps, resize_w, resize_h, loglevel), url(urlIn)
+source_rtsp::source_rtsp(const std::string & id, const std::string & url, const double max_fps, const int resize_w, const int resize_h, const int loglevel) : source(id, max_fps, resize_w, resize_h, loglevel), url(url)
 {
 	v = loglevel >= LL_DEBUG;
+	d = url;
 }
 
 source_rtsp::~source_rtsp()
@@ -212,7 +213,7 @@ void source_rtsp::operator()()
 					next_frame_ts += interval;
 				}
 
-				if (work_required() && do_get) {
+				if (work_required() && do_get && !paused) {
 					sws_scale(img_convert_ctx, picture->data, picture->linesize, 0, codec_ctx->height, picture_rgb->data, picture_rgb->linesize);
 
 					for(int y = 0; y < codec_ctx->height; y++) {

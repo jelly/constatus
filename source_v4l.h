@@ -23,7 +23,7 @@ protected:
 	virtual bool try_v4l_configuration(int fd, int *width, int *height, unsigned int *format);
 
 public:
-	source_v4l(const std::string & dev, const bool prefer_jpeg, const bool rpi_workaround, const int jpeg_quality, const double max_fps, const int w_override, const int h_override, const int resize_w, const int resize_h, const int loglevel);
+	source_v4l(const std::string & id, const std::string & dev, const bool prefer_jpeg, const bool rpi_workaround, const int jpeg_quality, const double max_fps, const int w_override, const int h_override, const int resize_w, const int resize_h, const int loglevel);
 	virtual ~source_v4l();
 
 	virtual void operator()();

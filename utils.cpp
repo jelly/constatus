@@ -15,6 +15,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <curl/curl.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <sys/ioctl.h>
@@ -274,4 +275,19 @@ void *find_symbol(void *library, const char *const symbol, const char *const wha
 		error_exit(true, "Failed finding %s \"%s\" in %s", what, symbol, library_name);
 
 	return ret;
+}
+
+char * un_url_escape(const char *const in)
+{
+	CURL *ch = curl_easy_init();
+	if (!ch)
+		error_exit(false, "Failed to initialize CURL session");
+
+	char *temp = curl_easy_unescape(ch, in, 0, NULL);
+	char *out = strdup(temp);
+
+	curl_free(temp);
+	curl_easy_cleanup(ch);
+
+	return out;
 }

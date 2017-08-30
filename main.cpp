@@ -38,6 +38,7 @@
 #include "picio.h"
 #include "filter_plugin.h"
 #include "log.h"
+#include "cfg.h"
 
 const char *json_str(const json_t *const in, const char *const key, const char *const descr)
 {
@@ -45,6 +46,16 @@ const char *json_str(const json_t *const in, const char *const key, const char *
 
 	if (!j_value)
 		error_exit(false, "\"%s\" missing (%s)", key, descr);
+
+	return json_string_value(j_value);
+}
+
+const char *json_str_optional(const json_t *const in, const char *const key)
+{
+	json_t *j_value = json_object_get(in, key);
+
+	if (!j_value)
+		return "";
 
 	return json_string_value(j_value);
 }
@@ -231,6 +242,7 @@ target * load_target(const json_t *const j_in, source *const s, const double sna
 {
 	target *t = NULL;
 
+	std::string id = json_str_optional(j_in, "id");
 	const char *path = json_str(j_in, "path", "directory to write to");
 	const char *prefix = json_str(j_in, "prefix", "string to begin filename with");
 	const char *exec_start = json_str(j_in, "exec-start", "script to start when recording starts");
@@ -240,13 +252,13 @@ target * load_target(const json_t *const j_in, source *const s, const double sna
 	const char *format = json_str(j_in, "format", "AVI, JPEG or PLUGIN");
 
 	if (strcasecmp(format, "AVI") == 0)
-		t = new target_avi(s, path, prefix, quality, restart_interval, snapshot_interval, filters, exec_start, exec_cycle, exec_end);
+		t = new target_avi(id, s, path, prefix, quality, restart_interval, snapshot_interval, filters, exec_start, exec_cycle, exec_end);
 	else if (strcasecmp(format, "JPEG") == 0)
-		t = new target_jpeg(s, path, prefix, quality, restart_interval, snapshot_interval, filters, exec_start, exec_cycle, exec_end);
+		t = new target_jpeg(id, s, path, prefix, quality, restart_interval, snapshot_interval, filters, exec_start, exec_cycle, exec_end);
 	else if (strcasecmp(format, "PLUGIN") == 0) {
 		stream_plugin_t *sp = load_stream_plugin(j_in);
 
-		t = new target_plugin(s, path, prefix, quality, restart_interval, snapshot_interval, filters, exec_start, exec_cycle, exec_end, sp);
+		t = new target_plugin(id, s, path, prefix, quality, restart_interval, snapshot_interval, filters, exec_start, exec_cycle, exec_end, sp);
 	}
 	else {
 		error_exit(false, "Format %s is unknown (stream to disk backends)", format);
@@ -315,15 +327,15 @@ int main(int argc, char *argv[])
 		error_exit(true, "Cannot access configuration file '%s'", cfg_file);
 
 	json_error_t error;
-	json_t *cfg = json_loadf(fh, 0, &error);
-	if (!cfg)
+	json_t *json_cfg = json_loadf(fh, 0, &error);
+	if (!json_cfg)
 		error_exit(false, "At column %d in line %d the following JSON problem was found in the configuration file: %s (%s", error.column, error.line, error.text, error.source);
 
 	fclose(fh);
 
 	//***
 
-	json_t *j_gen = json_object_get(cfg, "general");
+	json_t *j_gen = json_object_get(json_cfg, "general");
 	const char *logfile = json_str(j_gen, "logfile", "file where to store logging");
 
 	int loglevel = 255;
@@ -365,85 +377,70 @@ int main(int argc, char *argv[])
 	//
 	//source_http_mjpeg *s = new source_http_mjpeg("10.42.42.104", 80, "/mjpg/video.mjpg");
 
-	std::vector<interface *> interfaces;
+	configuration_t cfg;
+	cfg.lock.lock();
 
-	json_t *j_source = json_object_get(cfg, "source");
+	json_t *j_source = json_object_get(json_cfg, "source");
 
 	source *s = NULL;
-	log(LL_INFO, "Configuring the video-source...");
-	const char *s_type = json_str(j_source, "type", "source-type");
-	if (strcasecmp(s_type, "v4l") == 0) {
-		bool pref_jpeg = json_bool(j_source, "prefer-jpeg", "if the camera is capable of JPEG, should that be used");
-		bool rpi_wa = json_bool(j_source, "rpi-workaround", "the raspberry pi camera has a bug, this enables a workaround");
-		int w = json_int(j_source, "width", "width of picture");
-		int h = json_int(j_source, "height", "height of picture");
-		int jpeg_quality = json_int(j_source, "quality", "JPEG quality, this influences the size");
 
+	{
+		log(LL_INFO, "Configuring the video-source...");
+		const char *s_type = json_str(j_source, "type", "source-type");
+
+		std::string id = json_str_optional(j_source, "id");
 		double max_fps = json_float(j_source, "max-fps", "limit the number of frames per second acquired to this value or -1 to disabe");
 		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
 		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
 
-		s = new source_v4l(json_str(j_source, "device", "linux v4l2 device"), pref_jpeg, rpi_wa, jpeg_quality, max_fps, w, h, resize_w, resize_h, loglevel);
-		s -> start();
-		interfaces.push_back(s);
-	}
-	else if (strcasecmp(s_type, "jpeg") == 0) {
-		bool ign_cert = json_bool(j_source, "ignore-cert", "ignore SSL errors");
-		const char *auth = json_str(j_source, "http-auth", "HTTP authentication string");
-		const char *url = json_str(j_source, "url", "address of JPEG stream");
+		if (strcasecmp(s_type, "v4l") == 0) {
+			bool pref_jpeg = json_bool(j_source, "prefer-jpeg", "if the camera is capable of JPEG, should that be used");
+			bool rpi_wa = json_bool(j_source, "rpi-workaround", "the raspberry pi camera has a bug, this enables a workaround");
+			int w = json_int(j_source, "width", "width of picture");
+			int h = json_int(j_source, "height", "height of picture");
+			int jpeg_quality = json_int(j_source, "quality", "JPEG quality, this influences the size");
 
-		double max_fps = json_float(j_source, "max-fps", "limit the number of frames per second acquired to this value or -1 to disabe");
-		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
-		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
+			s = new source_v4l(id, json_str(j_source, "device", "linux v4l2 device"), pref_jpeg, rpi_wa, jpeg_quality, max_fps, w, h, resize_w, resize_h, loglevel);
+		}
+		else if (strcasecmp(s_type, "jpeg") == 0) {
+			bool ign_cert = json_bool(j_source, "ignore-cert", "ignore SSL errors");
+			const char *auth = json_str(j_source, "http-auth", "HTTP authentication string");
+			const char *url = json_str(j_source, "url", "address of JPEG stream");
 
-		s = new source_http_jpeg(url, ign_cert, auth, max_fps, resize_w, resize_h, loglevel);
-		s -> start();
-		interfaces.push_back(s);
-	}
-	else if (strcasecmp(s_type, "mjpeg") == 0) {
-		const char *url = json_str(j_source, "url", "address of MJPEG stream");
-		bool ign_cert = json_bool(j_source, "ignore-cert", "ignore SSL errors");
+			s = new source_http_jpeg(id, url, ign_cert, auth, max_fps, resize_w, resize_h, loglevel);
+		}
+		else if (strcasecmp(s_type, "mjpeg") == 0) {
+			const char *url = json_str(j_source, "url", "address of MJPEG stream");
+			bool ign_cert = json_bool(j_source, "ignore-cert", "ignore SSL errors");
 
-		double max_fps = json_float(j_source, "max-fps", "limit the number of frames per second acquired to this value or -1 to disabe");
-		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
-		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
+			s = new source_http_mjpeg(id, url, ign_cert, max_fps, resize_w, resize_h, loglevel);
+		}
+		else if (strcasecmp(s_type, "rtsp") == 0) {
+			const char *url = json_str(j_source, "url", "address of JPEG stream");
 
-		s = new source_http_mjpeg(url, ign_cert, max_fps, resize_w, resize_h, loglevel);
-		s -> start();
-		interfaces.push_back(s);
-	}
-	else if (strcasecmp(s_type, "rtsp") == 0) {
-		const char *url = json_str(j_source, "url", "address of JPEG stream");
+			s = new source_rtsp(id, url, max_fps, resize_w, resize_h, loglevel);
+		}
+		else if (strcasecmp(s_type, "plugin") == 0) {
+			std::string plugin_bin = json_str(j_source, "source-plugin-file", "filename of video data source plugin");
+			std::string plugin_arg = json_str(j_source, "source-plugin-parameter", "parameter for video data source plugin");
 
-		double max_fps = json_float(j_source, "max-fps", "limit the number of frames per second acquired to this value or -1 to disabe");
-		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
-		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
+			s = new source_plugin(id, plugin_bin, plugin_arg, max_fps, resize_w, resize_h, loglevel);
+		}
+		else {
+			log(LL_FATAL, " no source defined!");
+		}
 
-		s = new source_rtsp(url, max_fps, resize_w, resize_h, loglevel);
-		s -> start();
-		interfaces.push_back(s);
-	}
-	else if (strcasecmp(s_type, "plugin") == 0) {
-		std::string plugin_bin = json_str(j_source, "source-plugin-file", "filename of video data source plugin");
-		std::string plugin_arg = json_str(j_source, "source-plugin-parameter", "parameter for video data source plugin");
-
-		double max_fps = json_float(j_source, "max-fps", "limit the number of frames per second acquired to this value or -1 to disabe");
-		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
-		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
-
-		s = new source_plugin(plugin_bin, plugin_arg, max_fps, resize_w, resize_h, loglevel);
-		s -> start();
-		interfaces.push_back(s);
-	}
-	else {
-		log(LL_FATAL, " no source defined!");
+		if (s) {
+			cfg.interfaces.push_back(s);
+			s -> start();
+		}
 	}
 
 	//***
 
 	// listen adapter, listen port, source, fps, jpeg quality, time limit (in seconds)
 	log(LL_INFO, "Configuring the HTTP listener(s)...");
-	json_t *j_hls = json_object_get(cfg, "http-listener");
+	json_t *j_hls = json_object_get(json_cfg, "http-listener");
 	if (j_hls) {
 		size_t n_hl = json_array_size(j_hls);
 		log(LL_DEBUG, " %zu http listener(s)", n_hl);
@@ -451,6 +448,7 @@ int main(int argc, char *argv[])
 		for(size_t i=0; i<n_hl; i++) {
 			json_t *hle = json_array_get(j_hls, i);
 
+			std::string id = json_str_optional(hle, "id");
 			const char *listen_adapter = json_str(hle, "listen-adapter", "network interface to listen on or 0.0.0.0 for all");
 			int listen_port = json_int(hle, "listen-port", "port to listen on");
 			printf(" HTTP server listening on %s:%d\n", listen_adapter, listen_port);
@@ -460,12 +458,13 @@ int main(int argc, char *argv[])
 			int resize_w = json_int(hle, "resize-width", "resize picture width to this (-1 to disable)");
 			int resize_h = json_int(hle, "resize-height", "resize picture height to this (-1 to disable)");
 			bool motion_compatible = json_bool(hle, "motion-compatible", "only stream MJPEG and do not wait for HTTP request");
+			bool allow_admin = json_bool(hle, "allow-admin", "when enabled, you can partially configure services");
 
 			std::vector<filter *> *http_filters = load_filters(json_object_get(hle, "filters"));
 
-			interface *h = new http_server(listen_adapter, listen_port, s, fps, jpeg_quality, time_limit, http_filters, resize_w, resize_h, motion_compatible);
+			interface *h = new http_server(&cfg, id, listen_adapter, listen_port, s, fps, jpeg_quality, time_limit, http_filters, resize_w, resize_h, motion_compatible, allow_admin);
 			h -> start();
-			interfaces.push_back(h);
+			cfg.interfaces.push_back(h);
 		}
 	}
 	else {
@@ -475,16 +474,17 @@ int main(int argc, char *argv[])
 	//***
 
 	log(LL_INFO, "Configuring the video-loopback...");
-	json_t *j_vl = json_object_get(cfg, "video-loopback");
+	json_t *j_vl = json_object_get(json_cfg, "video-loopback");
 	if (j_vl) {
+		std::string id = json_str_optional(j_vl, "id");
 		const char *dev = json_str(j_vl, "device", "Linux v4l2 device to connect to");
 		double fps = json_float(j_vl, "fps", "nubmer of frames per second");
 
 		std::vector<filter *> *loopback_filters = load_filters(json_object_get(j_vl, "filters"));
 
-		interface *f = new v4l2_loopback(s, fps, dev, loopback_filters);
+		interface *f = new v4l2_loopback(id, s, fps, dev, loopback_filters);
 		f -> start();
-		interfaces.push_back(f);
+		cfg.interfaces.push_back(f);
 	}
 	else {
 		log(LL_INFO, " no video loopback");
@@ -496,7 +496,7 @@ int main(int argc, char *argv[])
 	//start_motion_trigger_thread(s, 75, 32, 0.6, 15, 5, "./", "motion-", 3600, 10, 15, &filters_before, &filters_after);
 	log(LL_INFO, "Configuring the motion trigger(s)...");
 	ext_trigger_t *et = NULL;
-	json_t *j_mts = json_object_get(cfg, "motion-trigger");
+	json_t *j_mts = json_object_get(json_cfg, "motion-trigger");
 	if (j_mts) {
 		size_t n_mt = json_array_size(j_mts);
 		log(LL_DEBUG, " %zu motion trigger(s)", n_mt);
@@ -504,6 +504,7 @@ int main(int argc, char *argv[])
 		for(size_t i=0; i<n_mt; i++) {
 			json_t *mte = json_array_get(j_mts, i);
 
+			std::string id = json_str_optional(j_vl, "id");
 			int jpeg_quality = json_int(mte, "quality", "JPEG quality, this influences the size");
 			int noise_level = json_int(mte, "noise-factor", "at what difference levell is the pixel considered to be changed");
 			double pixels_changed_perctange = json_float(mte, "pixels-changed-percentage", "what %% of pixels need to be changed before the motion trigger is triggered");
@@ -526,7 +527,6 @@ int main(int argc, char *argv[])
 			if (file[0]) {
 				et = new ext_trigger_t;
 				et -> par = json_str(mte, "trigger-plugin-parameter", "parameter for motion detection plugin");
-
 				et -> library = dlopen(file, RTLD_NOW);
 				if (!et -> library)
 					error_exit(true, "Failed opening motion detection plugin library %s", file);
@@ -538,9 +538,9 @@ int main(int argc, char *argv[])
 
 			const uint8_t *sb = load_selection_bitmap(selection_bitmap);
 
-			motion_trigger *m = new motion_trigger(s, jpeg_quality, noise_level, pixels_changed_perctange, min_duration, mute_duration, warmup_duration, pre_motion_record_duration, filters_before, t, sb, et, max_fps);
+			interface *m = new motion_trigger(id, s, jpeg_quality, noise_level, pixels_changed_perctange, min_duration, mute_duration, warmup_duration, pre_motion_record_duration, filters_before, t, sb, et, max_fps);
 			m -> start();
-			interfaces.push_back(m);
+			cfg.interfaces.push_back(m);
 		}
 	}
 	else {
@@ -558,7 +558,7 @@ int main(int argc, char *argv[])
 	// source, path, filename prefix, jpeg quality, max duration per file, time lapse interval/fps
 	//start_store_thread(s, "./", "tl-", 100, 86400, 60, NULL, &filters_after);
 	log(LL_INFO, "Configuring the stream-to-disk backend(s)...");
-	json_t *j_std = json_object_get(cfg, "stream-to-disk");
+	json_t *j_std = json_object_get(json_cfg, "stream-to-disk");
 	if (j_std) {
 		size_t n_std = json_array_size(j_std);
 		log(LL_DEBUG, " %zu disk streams", n_std);
@@ -573,7 +573,7 @@ int main(int argc, char *argv[])
 
 			interface *t = load_target(ae, s, snapshot_interval, store_filters, jpeg_quality);
 			t -> start();
-			interfaces.push_back(t);
+			cfg.interfaces.push_back(t);
 		}
 	}
 	else {
@@ -591,21 +591,25 @@ int main(int argc, char *argv[])
 			sleep(86400);
 	}
 
+	cfg.lock.unlock();
+
 	log(LL_INFO, "System started");
 
 	getchar();
 
 	log(LL_INFO, "Terminating");
 
-	for(interface *t : interfaces)
+	cfg.lock.lock();
+
+	for(interface *t : cfg.interfaces)
 		t -> stop();
 
 	log(LL_DEBUG, "Waiting for threads to terminate");
 
-	for(interface *t : interfaces)
+	for(interface *t : cfg.interfaces)
 		delete t;
 
-	json_decref(cfg);
+	json_decref(json_cfg);
 
 	if (et) {
 		dlclose(et -> library);
