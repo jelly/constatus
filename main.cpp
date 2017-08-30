@@ -430,10 +430,8 @@ int main(int argc, char *argv[])
 			log(LL_FATAL, " no source defined!");
 		}
 
-		if (s) {
-			cfg.interfaces.push_back(s);
+		if (s)
 			s -> start();
-		}
 	}
 
 	//***
@@ -590,6 +588,9 @@ int main(int argc, char *argv[])
 		for(;;)
 			sleep(86400);
 	}
+
+	if (s)
+		cfg.interfaces.push_back(s);
 
 	cfg.lock.unlock();
 
