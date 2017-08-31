@@ -73,9 +73,6 @@ void target_jpeg::operator()()
 			continue;
 		}
 
-		struct timeval tv;
-		gettimeofday(&tv, NULL);
-
 		name = gen_filename(store_path, prefix, "jpg", get_us(), f_nr++);
 
 		if (exec_start && is_start) {

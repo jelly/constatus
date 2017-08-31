@@ -578,6 +578,8 @@ bool take_a_picture(source *const s, const std::string & snapshot_dir, const int
 
 	fclose(fh);
 
+	free(work);
+
 	return rc;
 }
 
@@ -706,9 +708,7 @@ std::string run_rest(configuration_t *const cfg, const std::string & path, const
 			json_object_set(json, "msg", json_string("OK"));
 			json_object_set(json, "result", json_true());
 
-			cfg -> lock.lock();
 			cfg -> interfaces.push_back(i);
-			cfg -> lock.unlock();
 		}
 		else {
 			json_object_set(json, "msg", json_string("failed"));
@@ -815,7 +815,10 @@ void send_file(const int cfd, const std::string & path, const char *const name)
 		if (rc <= 0)
 			break;
 
-		WRITE(cfd, buffer, rc);
+		if (WRITE(cfd, buffer, rc) <= 0) {
+			log(LL_INFO, "Short write");
+			break;
+		}
 	}
 
 	fclose(fh);
