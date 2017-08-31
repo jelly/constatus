@@ -16,7 +16,7 @@ std::string gen_filename(const std::string & store_path, const std::string & pre
 			store_path.c_str(), prefix.c_str(),
 			tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
 			tm.tm_hour, tm.tm_min, tm.tm_sec,
-			tv_usec / 1000,
+			unsigned(tv_usec / 1000),
 			f_nr, ext.c_str());
 }
 
