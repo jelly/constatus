@@ -1,6 +1,7 @@
 // (C) 2017 by folkert van heusden, released under AGPL v3.0
 #include <dlfcn.h>
 #include <jansson.h>
+#include <set>
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
@@ -335,7 +336,8 @@ int main(int argc, char *argv[])
 
 	//***
 
-	json_t *j_gen = json_object_get(json_cfg, "general");
+	const char *const general_name = "general";
+	json_t *j_gen = json_object_get(json_cfg, general_name);
 	const char *logfile = json_str(j_gen, "logfile", "file where to store logging");
 
 	int loglevel = 255;
@@ -380,7 +382,8 @@ int main(int argc, char *argv[])
 	configuration_t cfg;
 	cfg.lock.lock();
 
-	json_t *j_source = json_object_get(json_cfg, "source");
+	const char *const source_name = "source";
+	json_t *j_source = json_object_get(json_cfg, source_name);
 
 	source *s = NULL;
 
@@ -438,7 +441,8 @@ int main(int argc, char *argv[])
 
 	// listen adapter, listen port, source, fps, jpeg quality, time limit (in seconds)
 	log(LL_INFO, "Configuring the HTTP server(s)...");
-	json_t *j_hls = json_object_get(json_cfg, "http-server");
+	const char *const http_server_name = "http-server";
+	json_t *j_hls = json_object_get(json_cfg, http_server_name);
 	if (j_hls) {
 		size_t n_hl = json_array_size(j_hls);
 		log(LL_DEBUG, " %zu http server(s)", n_hl);
@@ -476,7 +480,8 @@ int main(int argc, char *argv[])
 	//***
 
 	log(LL_INFO, "Configuring the video-loopback...");
-	json_t *j_vl = json_object_get(json_cfg, "video-loopback");
+	const char *const video_loopback_name = "video-loopback";
+	json_t *j_vl = json_object_get(json_cfg, video_loopback_name);
 	if (j_vl) {
 		std::string id = json_str_optional(j_vl, "id");
 		const char *dev = json_str(j_vl, "device", "Linux v4l2 device to connect to");
@@ -498,7 +503,8 @@ int main(int argc, char *argv[])
 	//start_motion_trigger_thread(s, 75, 32, 0.6, 15, 5, "./", "motion-", 3600, 10, 15, &filters_before, &filters_after);
 	log(LL_INFO, "Configuring the motion trigger(s)...");
 	ext_trigger_t *et = NULL;
-	json_t *j_mts = json_object_get(json_cfg, "motion-trigger");
+	const char *const motion_trigger_name = "motion-trigger";
+	json_t *j_mts = json_object_get(json_cfg, motion_trigger_name);
 	if (j_mts) {
 		size_t n_mt = json_array_size(j_mts);
 		log(LL_DEBUG, " %zu motion trigger(s)", n_mt);
@@ -563,7 +569,8 @@ int main(int argc, char *argv[])
 	// source, path, filename prefix, jpeg quality, max duration per file, time lapse interval/fps
 	//start_store_thread(s, "./", "tl-", 100, 86400, 60, NULL, &filters_after);
 	log(LL_INFO, "Configuring the stream-to-disk backend(s)...");
-	json_t *j_std = json_object_get(json_cfg, "stream-to-disk");
+	const char *const stream_to_disk_name = "stream-to-disk";
+	json_t *j_std = json_object_get(json_cfg, stream_to_disk_name);
 	if (j_std) {
 		size_t n_std = json_array_size(j_std);
 		log(LL_DEBUG, " %zu disk streams", n_std);
@@ -590,6 +597,21 @@ int main(int argc, char *argv[])
 
 	if (!s)
 		error_exit(false, "No video-source selected");
+
+	std::set<std::string> valid_keys;
+	valid_keys.insert(general_name);
+	valid_keys.insert(source_name);
+	valid_keys.insert(http_server_name);
+	valid_keys.insert(video_loopback_name);
+	valid_keys.insert(motion_trigger_name);
+	valid_keys.insert(stream_to_disk_name);
+
+	const char *key = NULL;
+	json_t *value = NULL;
+	json_object_foreach(json_cfg, key, value) {
+		if (valid_keys.find(key) == valid_keys.end())
+			error_exit(false, "Entry \"%s\" in %s is not understood", key, cfg_file);
+	}
 
 	if (do_fork) {
 		if (daemon(0, 0) == -1)
