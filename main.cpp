@@ -443,6 +443,9 @@ int main(int argc, char *argv[])
 		size_t n_hl = json_array_size(j_hls);
 		log(LL_DEBUG, " %zu http server(s)", n_hl);
 
+		if (n_hl == 0)
+			log(LL_WARNING, " 0 servers, is that correct?");
+
 		for(size_t i=0; i<n_hl; i++) {
 			json_t *hle = json_array_get(j_hls, i);
 
@@ -499,6 +502,9 @@ int main(int argc, char *argv[])
 	if (j_mts) {
 		size_t n_mt = json_array_size(j_mts);
 		log(LL_DEBUG, " %zu motion trigger(s)", n_mt);
+
+		if (n_mt == 0)
+			log(LL_WARNING, " 0 triggers, is that correct?");
 
 		for(size_t i=0; i<n_mt; i++) {
 			json_t *mte = json_array_get(j_mts, i);
@@ -561,6 +567,9 @@ int main(int argc, char *argv[])
 	if (j_std) {
 		size_t n_std = json_array_size(j_std);
 		log(LL_DEBUG, " %zu disk streams", n_std);
+
+		if (n_std == 0)
+			log(LL_WARNING, " 0 streams, is that correct?");
 
 		for(size_t i=0; i<n_std; i++) {
 			json_t *ae = json_array_get(j_std, i);
