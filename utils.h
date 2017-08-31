@@ -20,3 +20,4 @@ void mysleep(double slp, std::atomic_bool *const stop_flag, source *const s);
 void *find_symbol(void *library, const char *const symbol, const char *const what, const char *const library_name);
 char * un_url_escape(const char *const in);
 std::vector<std::string> * split(std::string in, std::string splitter);
+std::vector<std::string> * load_filelist(const std::string & dir, const std::string & prefix);

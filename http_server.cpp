@@ -30,6 +30,8 @@
 #include "source.h"
 #include "utils.h"
 #include "log.h"
+#include "target.h"
+#include "target_avi.h"
 
 typedef struct {
 	int fd;
@@ -40,8 +42,9 @@ typedef struct {
 	const std::vector<filter *> *filters;
 	std::atomic_bool *global_stopflag;
 	int resize_w, resize_h;
-	bool motion_compatible;
+	bool motion_compatible, allow_admin;
 	configuration_t *cfg;
+	std::string snapshot_dir;
 } http_thread_t;
 
 void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h)
@@ -490,6 +493,7 @@ std::string describe_interface(const interface *const i)
 	else {
 		out += myformat("<li><a href=\"start?%s\">start</a>", id_int.c_str());
 	}
+	out += myformat("<li><a href=\"restart?%s\">restart</a>", id_int.c_str());
 
 	out += "</ul>";
 
@@ -546,7 +550,68 @@ bool start_stop(configuration_t *const cfg, const std::string & which, const boo
 	return rc;
 }
 
-std::string run_rest(configuration_t *const cfg, const std::string & path, const std::string & pars)
+bool take_a_picture(source *const s, const std::string & snapshot_dir, const int quality)
+{
+	uint64_t prev_ts = 0;
+	int w = -1, h = -1;
+	uint8_t *work = NULL;
+	size_t work_len = 0;
+	s -> get_frame(E_JPEG, quality, &prev_ts, &w, &h, &work, &work_len);
+
+	if (work == NULL || work_len == 0) {
+		log(LL_DEBUG, "did not get a frame");
+		return false;
+	}
+
+	std::string name = gen_filename(snapshot_dir, "snapshot-", "jpg", get_us(), 0);
+
+	log(LL_INFO, "Snapshot will be written to %s", name.c_str());
+
+	FILE *fh = fopen(name.c_str(), "w");
+	if (!fh) {
+		log(LL_ERR, "open_memstream() failed");
+		free(work);
+		return false;
+	}
+
+	bool rc = fwrite(work, 1, work_len, fh) == work_len;
+
+	fclose(fh);
+
+	return rc;
+}
+
+interface * start_a_video(source *const s, const std::string & snapshot_dir, const int quality)
+{
+	const std::string id = "snapshot started by HTTP server";
+
+	std::vector<filter *> *const filters = new std::vector<filter *>();
+
+	interface *i = new target_avi(id, s, snapshot_dir, "snapshot-", quality, -1, -1, filters, "", "", "");
+	i -> start();
+
+	return i;
+}
+
+bool validate_file(const std::string & snapshot_dir, const std::string & filename)
+{
+	bool rc = false;
+
+	std::vector<std::string> *files = load_filelist(snapshot_dir, "");
+
+	for(std::string cur : *files) {
+		if (cur == filename) {
+			rc = true;
+			break;
+		}
+	}
+
+	delete files;
+
+	return rc;
+}
+
+std::string run_rest(configuration_t *const cfg, const std::string & path, const std::string & pars, const int quality, const std::string & snapshot_dir, source *const s)
 {
 	int code = 200;
 	std::vector<std::string> *parts = split(path, "/");
@@ -605,6 +670,52 @@ std::string run_rest(configuration_t *const cfg, const std::string & path, const
 			json_array_append_new(out_arr, record);
 		}
 	}
+	else if (cmd && parts -> at(1) == "list-files") {
+		json_object_set(json, "msg", json_string("OK"));
+		json_object_set(json, "result", json_true());
+
+		json_t *out_arr = json_array();
+		json_object_set(json, "data", out_arr);
+
+		std::vector<std::string> *files = load_filelist(snapshot_dir, "");
+
+		for(std::string file : *files) {
+			json_t *record = json_object();
+
+			json_object_set(record, "file", json_string(file.c_str()));
+
+			json_array_append_new(out_arr, record);
+		}
+
+		delete files;
+	}
+	else if (cmd && parts -> at(1) == "take-a-snapshot") {
+		if (take_a_picture(s, snapshot_dir, quality)) {
+			json_object_set(json, "msg", json_string("OK"));
+			json_object_set(json, "result", json_true());
+		}
+		else {
+			json_object_set(json, "msg", json_string("failed"));
+			json_object_set(json, "result", json_false());
+		}
+	}
+	else if (cmd && parts -> at(1) == "start-a-recording") {
+		interface *i = start_a_video(s, snapshot_dir, quality);
+
+		if (i) {
+			json_object_set(json, "msg", json_string("OK"));
+			json_object_set(json, "result", json_true());
+
+			cfg -> lock.lock();
+			cfg -> interfaces.push_back(i);
+			cfg -> lock.unlock();
+		}
+		else {
+			json_object_set(json, "msg", json_string("failed"));
+			json_object_set(json, "result", json_false());
+		}
+
+	}
 	// commands that require an ID
 	else if (i == NULL) {
 		code = 404;
@@ -655,7 +766,7 @@ std::string run_rest(configuration_t *const cfg, const std::string & path, const
 	delete parts;
 
 	char *js = json_dumps(json, JSON_COMPACT);
-	std::string reply = myformat("HTTP/1.0 %d\r\nServer: " NAME " " VERSION "\r\n\r\n%s", code, js);
+	std::string reply = myformat("HTTP/1.0 %d\r\nServer: " NAME " " VERSION "\r\nContent-Type: application/json\r\n\r\n%s", code, js);
 	free(js);
 
 	json_decref(json);
@@ -663,13 +774,58 @@ std::string run_rest(configuration_t *const cfg, const std::string & path, const
 	return reply;
 }
 
-void handle_http_client(int cfd, source *s, double fps, int quality, int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const bool motion_compatible, configuration_t *const cfg)
+void send_file(const int cfd, const std::string & path, const char *const name)
+{
+	std::string complete_path = path + "/" + name;
+
+	std::string type = "text/html";
+
+	if (complete_path.size() >= 3) {
+		std::string ext = complete_path.substr(complete_path.size() -3);
+
+		if (ext == "avi")
+			type = "video/x-msvideo";
+		else if (ext == "png")
+			type = "image/png";
+		else if (ext == "jpg")
+			type = "image/jpeg";
+	}
+
+	log(LL_WARNING, "Sending file %s of type %s", complete_path.c_str(), type.c_str());
+
+	FILE *fh = fopen(complete_path.c_str(), "r");
+	if (!fh) {
+		log(LL_WARNING, "Cannot access %s: %s", complete_path.c_str(), strerror(errno));
+
+		std::string headers = "HTTP/1.0 404 na\r\nServer: " NAME " " VERSION "\r\n\r\n";
+
+		WRITE(cfd, headers.c_str(), headers.size());
+
+		return;
+	}
+
+	std::string headers = "HTTP/1.0 200 OK\r\nServer: " NAME " " VERSION "\r\nContent-Type: " + type + "\r\n\r\n";
+	WRITE(cfd, headers.c_str(), headers.size());
+
+	// FIXME
+	while(!feof(fh)) {
+		char buffer[4096];
+
+		int rc = fread(buffer, 1, sizeof(buffer), fh);
+		if (rc <= 0)
+			break;
+
+		WRITE(cfd, buffer, rc);
+	}
+
+	fclose(fh);
+}
+
+void handle_http_client(int cfd, source *s, double fps, int quality, int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const bool motion_compatible, configuration_t *const cfg, const std::string & snapshot_dir, const bool allow_admin)
 {
 	sigset_t all_sigs;
 	sigfillset(&all_sigs);
 	pthread_sigmask(SIG_BLOCK, &all_sigs, NULL);
-
-	log(LL_INFO, "connected with: %s", get_endpoint_name(cfd).c_str());
 
 	char request_headers[65536] = { 0 };
 	int h_n = 0;
@@ -789,18 +945,30 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 			"<li><a href=\"/stream.mjpeg\">MJPEG stream</a>"
 			"<li><a href=\"/stream.html\">Same MJPEG stream but in a HTML wrapper</a>"
 			"<li><a href=\"/stream.mpng\">MPNG stream</a>"
-			"<li><a href=\"/image.jpg\">Snapshot in JPG format</a>"
-			"<li><a href=\"/image.png\">Snapshot in PNG format</a>"
-			"</ul>"
+			"<li><a href=\"/image.jpg\">Show snapshot in JPG format</a>"
+			"<li><a href=\"/image.png\">Show snapshot in PNG format</a>";
+
+			if (allow_admin) {
+				reply += "<li><a href=\"/snapshot-img/\">Take a snapshot and store it on disk</a>"
+					"<li><a href=\"/snapshot-video/\">Start a video recording</a>"
+					"<li><a href=\"/view-snapshots/\">View snapshots</a>";
+			}
+
+			reply += "</ul>"
 			;
 
-		cfg -> lock.lock();
-		for(interface *i : cfg -> interfaces)
-			reply += describe_interface(i);
-		cfg -> lock.unlock();
+		if (allow_admin) {
+			cfg -> lock.lock();
+			for(interface *i : cfg -> interfaces)
+				reply += describe_interface(i);
+			cfg -> lock.unlock();
+		}
 
 		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
 			log(LL_DEBUG, "short write on response header");
+	}
+	else if (!allow_admin) {
+		goto do404;
 	}
 	else if (strcmp(path, "/pause") == 0 || strcmp(path, "/unpause") == 0) {
 		std::string reply = "HTTP/1.0 200\r\n\r\nfailed";
@@ -824,13 +992,89 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
 			log(LL_DEBUG, "short write on response header");
 	}
+	else if (strcmp(path, "/restart") == 0) {
+		std::string reply = "HTTP/1.0 200\r\n\r\nfailed";
+
+		cfg -> lock.lock();
+		if (start_stop(cfg, pars ? pars : "", false)) {
+			if (start_stop(cfg, pars ? pars : "", true))
+				reply = "HTTP/1.0 200\r\n\r\nsucceeded";
+		}
+		cfg -> lock.unlock();
+
+		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
+			log(LL_DEBUG, "short write on response header");
+	}
+	else if (strcmp(path, "/snapshot-img/") == 0) {
+		std::string reply = "HTTP/1.0 200\r\n\r\nfailed";
+
+		if (take_a_picture(s, snapshot_dir, quality))
+			reply = "HTTP/1.0 200\r\n\r\nsucceeded";
+
+		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
+			log(LL_DEBUG, "short write on response header");
+	}
+	else if (strcmp(path, "/snapshot-video/") == 0) {
+		interface *i = start_a_video(s, snapshot_dir, quality);
+
+		std::string reply = "HTTP/1.0 200\r\n\r\nfailed";
+		if (i) {
+			reply = "HTTP/1.0 200\r\n\r\nsucceeded";
+
+			cfg -> lock.lock();
+			cfg -> interfaces.push_back(i);
+			cfg -> lock.unlock();
+		}
+
+		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
+			log(LL_DEBUG, "short write on response header");
+	}
+	else if (strncmp(path, "/send-file", 10) == 0) {
+		char *file = un_url_escape(pars ? pars : "FAIL");
+
+		if (pars && validate_file(snapshot_dir, file)) {
+			send_file(cfd, snapshot_dir, file);
+		}
+		else {
+			log(LL_WARNING, "%s is not a valid file", file);
+
+			std::string reply = "HTTP/1.0 404\r\n\r\nfailed";
+
+			if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
+				log(LL_DEBUG, "short write on response header");
+		}
+
+		free(file);
+	}
+	else if (strcmp(path, "/view-snapshots/") == 0) {
+		std::string reply = "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n<ul>";
+
+		std::vector<std::string> *files = load_filelist(snapshot_dir, "");
+
+		for(std::string file : *files)
+			reply += std::string("<li><a href=\"/send-file?") + file + "\">" + file + "</a>";
+
+		delete files;
+
+		reply += "</ul>";
+
+		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
+			log(LL_DEBUG, "short write on response header");
+	}
+	else if (strncmp(path, "/favicon.ico", 6) == 0) {
+		std::string reply = "HTTP/1.0 200 OK\r\n\r\n";
+		// FIXME
+		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
+			log(LL_DEBUG, "short write on response header");
+	}
 	else if (strncmp(path, "/rest/", 6) == 0) {
-		std::string reply = run_rest(cfg, &path[6], pars ? pars : "");
+		std::string reply = run_rest(cfg, &path[6], pars ? pars : "", quality, snapshot_dir, s);
 
 		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
 			log(LL_DEBUG, "short write on response");
 	}
 	else {
+	do404:
 		log(LL_INFO, "Path %s not found", path);
 
 		if (WRITE(cfd, "HTTP/1.0 404\r\n\r\nwhat?", 4) <= 0)
@@ -851,7 +1095,7 @@ void * handle_http_client_thread(void *ct_in)
 
 	ct -> s -> register_user();
 
-	handle_http_client(ct -> fd, ct -> s, ct -> fps, ct -> quality, ct -> time_limit, ct -> filters, ct -> global_stopflag, ct -> resize_w, ct -> resize_h, ct -> motion_compatible, ct -> cfg);
+	handle_http_client(ct -> fd, ct -> s, ct -> fps, ct -> quality, ct -> time_limit, ct -> filters, ct -> global_stopflag, ct -> resize_w, ct -> resize_h, ct -> motion_compatible, ct -> cfg, ct -> snapshot_dir, ct -> allow_admin);
 
 	ct -> s -> unregister_user();
 
@@ -860,7 +1104,7 @@ void * handle_http_client_thread(void *ct_in)
 	return NULL;
 }
 
-http_server::http_server(configuration_t *const cfg, const std::string & id, const char *const http_adapter, const int http_port, source *const src, const double fps, const int quality, const int time_limit, const std::vector<filter *> *const f, const int resize_w, const int resize_h, const bool motion_compatible, const bool allow_admin) : cfg(cfg), interface(id), src(src), fps(fps), quality(quality), time_limit(time_limit), f(f), resize_w(resize_w), resize_h(resize_h), motion_compatible(motion_compatible), allow_admin(allow_admin)
+http_server::http_server(configuration_t *const cfg, const std::string & id, const char *const http_adapter, const int http_port, source *const src, const double fps, const int quality, const int time_limit, const std::vector<filter *> *const f, const int resize_w, const int resize_h, const bool motion_compatible, const bool allow_admin, const std::string & snapshot_dir) : cfg(cfg), interface(id), src(src), fps(fps), quality(quality), time_limit(time_limit), f(f), resize_w(resize_w), resize_h(resize_h), motion_compatible(motion_compatible), allow_admin(allow_admin), snapshot_dir(snapshot_dir)
 {
 	fd = start_listen(http_adapter, http_port, 5);
 	ct = CT_HTTPSERVER;
@@ -917,6 +1161,8 @@ void http_server::operator()()
 		ct -> resize_h = resize_h;
 		ct -> motion_compatible = motion_compatible;
 		ct -> cfg = cfg;
+		ct -> snapshot_dir = snapshot_dir;
+		ct -> allow_admin = allow_admin;
 
 		pthread_t th;
 		int rc = -1;

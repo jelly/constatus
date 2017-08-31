@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <assert.h>
 #include <atomic>
+#include <dirent.h>
 #include <dlfcn.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -27,6 +28,7 @@
 #include <sys/types.h>
 
 #include "error.h"
+#include "log.h"
 #include "source.h"
 
 void set_no_delay(int fd)
@@ -319,6 +321,38 @@ std::vector<std::string> * split(std::string in, std::string splitter)
 
 	if (in.size() > 0)
 		out -> push_back(in);
+
+	return out;
+}
+
+std::vector<std::string> * load_filelist(const std::string & dir, const std::string & prefix)
+{
+	std::vector<std::string> *out = new std::vector<std::string>;
+
+	DIR *d = opendir(dir.c_str());
+	if (!d)
+		return out;
+
+	for(;;) {
+		struct dirent *de = readdir(d);
+		if (!de)
+			break;
+
+		struct stat st;
+		if (fstatat(dirfd(d), de -> d_name, &st, AT_SYMLINK_NOFOLLOW) == -1) {
+			log(LL_WARNING, "fstatat failed for %s: %s", de -> d_name, strerror(errno));
+			continue;
+		}
+
+		if (!S_ISREG(st.st_mode))
+			continue;
+
+		if (strncmp(de -> d_name, prefix.c_str(), prefix.size()) == 0)
+			out -> push_back(de -> d_name);
+	}
+
+
+	closedir(d);
 
 	return out;
 }

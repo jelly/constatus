@@ -437,11 +437,11 @@ int main(int argc, char *argv[])
 	//***
 
 	// listen adapter, listen port, source, fps, jpeg quality, time limit (in seconds)
-	log(LL_INFO, "Configuring the HTTP listener(s)...");
-	json_t *j_hls = json_object_get(json_cfg, "http-listener");
+	log(LL_INFO, "Configuring the HTTP server(s)...");
+	json_t *j_hls = json_object_get(json_cfg, "http-server");
 	if (j_hls) {
 		size_t n_hl = json_array_size(j_hls);
-		log(LL_DEBUG, " %zu http listener(s)", n_hl);
+		log(LL_DEBUG, " %zu http server(s)", n_hl);
 
 		for(size_t i=0; i<n_hl; i++) {
 			json_t *hle = json_array_get(j_hls, i);
@@ -456,17 +456,18 @@ int main(int argc, char *argv[])
 			int resize_w = json_int(hle, "resize-width", "resize picture width to this (-1 to disable)");
 			int resize_h = json_int(hle, "resize-height", "resize picture height to this (-1 to disable)");
 			bool motion_compatible = json_bool(hle, "motion-compatible", "only stream MJPEG and do not wait for HTTP request");
-			bool allow_admin = json_bool(hle, "allow-admin", "when enabled, you can partially configure services");
+			bool allow_admin = json_bool(hle, "allow-admin", "when enabled, you can partially configure services and retrieve snapshots");
+			std::string snapshot_dir = json_str(hle, "snapshot-dir", "where to store snapshots (triggered by HTTP server). see \"allow-admin\".");
 
 			std::vector<filter *> *http_filters = load_filters(json_object_get(hle, "filters"));
 
-			interface *h = new http_server(&cfg, id, listen_adapter, listen_port, s, fps, jpeg_quality, time_limit, http_filters, resize_w, resize_h, motion_compatible, allow_admin);
+			interface *h = new http_server(&cfg, id, listen_adapter, listen_port, s, fps, jpeg_quality, time_limit, http_filters, resize_w, resize_h, motion_compatible, allow_admin, snapshot_dir);
 			h -> start();
 			cfg.interfaces.push_back(h);
 		}
 	}
 	else {
-		log(LL_INFO, " no HTTP listener");
+		log(LL_INFO, " no HTTP server");
 	}
 
 	//***

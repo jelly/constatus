@@ -1,4 +1,5 @@
 // (C) 2017 by folkert van heusden, released under AGPL v3.0
+#include <atomic>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string>
@@ -13,9 +14,20 @@ typedef struct
 {
 	uint8_t *p;
 	size_t len;
+	std::atomic_bool *const stop_flag;
 } curl_data_t;
 
-size_t curl_write_data(void *ptr, size_t size, size_t nmemb, void *ctx)
+static int xfer_callback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow)
+{
+	curl_data_t *w = (curl_data_t *)clientp;
+
+	if (w -> stop_flag && *w -> stop_flag)
+		return 1;
+
+	return 0;
+}
+
+static size_t curl_write_data(void *ptr, size_t size, size_t nmemb, void *ctx)
 {
 	curl_data_t *pctx = (curl_data_t *)ctx;
 
@@ -29,11 +41,14 @@ size_t curl_write_data(void *ptr, size_t size, size_t nmemb, void *ctx)
 	memcpy(&pctx -> p[pctx -> len], ptr, n);
 	pctx -> len += n;
 
+	// time-out?
+	if (pctx -> stop_flag && *pctx -> stop_flag)
+		return 0;
 
 	return n;
 }
 
-bool http_get(const std::string & url, const bool ignore_cert, const char *const auth, const bool verbose, uint8_t **const out, size_t *const out_n)
+bool http_get(const std::string & url, const bool ignore_cert, const char *const auth, const bool verbose, uint8_t **const out, size_t *const out_n, std::atomic_bool *const stop_flag)
 {
 	CURL *ch = curl_easy_init();
 	if (!ch)
@@ -46,7 +61,7 @@ bool http_get(const std::string & url, const bool ignore_cert, const char *const
 	curl_easy_setopt(ch, CURLOPT_DEBUGFUNCTION, curl_log);
 
 	long timeout = 15;
-	curl_data_t data = { NULL, 0 };
+	curl_data_t data = { NULL, 0, stop_flag };
 
 	std::string useragent = NAME " " VERSION;
 
@@ -84,6 +99,15 @@ bool http_get(const std::string & url, const bool ignore_cert, const char *const
 
 	if (curl_easy_setopt(ch, CURLOPT_VERBOSE, verbose))
 		error_exit(false, "curl_easy_setopt(CURLOPT_VERBOSE) failed: %s", error);
+
+	if (curl_easy_setopt(ch, CURLOPT_XFERINFODATA, &data))
+		error_exit(false, "curl_easy_setopt(CURLOPT_XFERINFODATA) failed: %s", error);
+
+	if (curl_easy_setopt(ch, CURLOPT_XFERINFOFUNCTION, xfer_callback))
+		error_exit(false, "curl_easy_setopt(CURLOPT_XFERINFOFUNCTION) failed: %s", error);
+
+	if (curl_easy_setopt(ch, CURLOPT_NOPROGRESS, 0L))
+		error_exit(false, "curl_easy_setopt(CURLOPT_NOPROGRESS) failed: %s", error);
 
 	bool ok = true;
 	if (curl_easy_perform(ch)) {

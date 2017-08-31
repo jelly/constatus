@@ -38,7 +38,7 @@ void source_http_jpeg::operator()()
 		uint8_t *work = NULL;
 		size_t work_len = 0;
 
-		if (!http_get(url, ignore_cert, auth.empty() ? NULL : auth.c_str(), loglevel == LL_DEBUG_VERBOSE, &work, &work_len))
+		if (!http_get(url, ignore_cert, auth.empty() ? NULL : auth.c_str(), loglevel == LL_DEBUG_VERBOSE, &work, &work_len, &local_stop_flag))
 		{
 			log(LL_INFO, "did not get a frame");
 			usleep(101000);
