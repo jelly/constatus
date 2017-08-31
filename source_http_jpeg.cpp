@@ -30,6 +30,7 @@ void source_http_jpeg::operator()()
 	bool first = true, resize = resize_h != -1 || resize_w != -1;
 
 	const uint64_t interval = max_fps > 0.0 ? 1.0 / max_fps * 1000.0 * 1000.0 : 0;
+	long int backoff = 101000;
 
 	for(;!local_stop_flag;)
 	{
@@ -41,9 +42,12 @@ void source_http_jpeg::operator()()
 		if (!http_get(url, ignore_cert, auth.empty() ? NULL : auth.c_str(), loglevel == LL_DEBUG_VERBOSE, &work, &work_len, &local_stop_flag))
 		{
 			log(LL_INFO, "did not get a frame");
-			usleep(101000);
+			usleep(backoff);
+			backoff += 51000;
 			continue;
 		}
+
+		backoff = 101000;
 
 		if (work_required() && !is_paused()) {
 			unsigned char *temp = NULL;
