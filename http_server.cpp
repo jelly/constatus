@@ -799,13 +799,13 @@ void send_file(const int cfd, const std::string & path, const char *const name)
 
 		std::string headers = "HTTP/1.0 404 na\r\nServer: " NAME " " VERSION "\r\n\r\n";
 
-		WRITE(cfd, headers.c_str(), headers.size());
+		(void)WRITE(cfd, headers.c_str(), headers.size());
 
 		return;
 	}
 
 	std::string headers = "HTTP/1.0 200 OK\r\nServer: " NAME " " VERSION "\r\nContent-Type: " + type + "\r\n\r\n";
-	WRITE(cfd, headers.c_str(), headers.size());
+	(void)WRITE(cfd, headers.c_str(), headers.size());
 
 	// FIXME
 	while(!feof(fh)) {
