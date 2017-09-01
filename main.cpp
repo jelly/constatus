@@ -125,11 +125,19 @@ bool find_interval_or_fps(const json_t *const in, double *const interval, const 
 
 	if (j_interval) {
 		*interval = json_real_value(j_interval);
-		*fps = 1.0 / *interval;
+
+		if (*interval <= 0)
+			*fps = -1.0;
+		else
+			*fps = 1.0 / *interval;
 	}
 	else {
 		*fps = json_real_value(j_fps);
-		*interval = 1.0 / *fps;
+
+		if (*fps <= 0)
+			*interval = -1.0;
+		else
+			*interval = 1.0 / *fps;
 	}
 
 	return true;
