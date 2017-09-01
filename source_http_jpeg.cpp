@@ -43,7 +43,9 @@ void source_http_jpeg::operator()()
 		{
 			log(LL_INFO, "did not get a frame");
 			usleep(backoff);
-			backoff += 51000;
+
+			if (backoff <= 2000000)
+				backoff += 51000;
 			continue;
 		}
 

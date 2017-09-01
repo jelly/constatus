@@ -115,6 +115,26 @@ uint8_t *load_selection_bitmap(const char *const selection_bitmap)
 	return sb;
 }
 
+bool find_interval_or_fps(const json_t *const in, double *const interval, const std::string & fps_name, double *const fps)
+{
+	json_t *j_interval = json_object_get(in, "interval");
+	json_t *j_fps = json_object_get(in, fps_name.c_str());
+
+	if (!j_interval && !j_fps)
+		return false;
+
+	if (j_interval) {
+		*interval = json_real_value(j_interval);
+		*fps = 1.0 / *interval;
+	}
+	else {
+		*fps = json_real_value(j_fps);
+		*interval = 1.0 / *fps;
+	}
+
+	return true;
+}
+
 std::vector<filter *> *load_filters(const json_t *const in)
 {
 	std::vector<filter *> *const filters = new std::vector<filter *>();
@@ -239,7 +259,7 @@ stream_plugin_t * load_stream_plugin(const json_t *const in)
 	return sp;
 }
 
-target * load_target(const json_t *const j_in, source *const s, const double snapshot_interval, std::vector<filter *> *const filters, const int quality)
+target * load_target(const json_t *const j_in, source *const s)
 {
 	target *t = NULL;
 
@@ -251,15 +271,22 @@ target * load_target(const json_t *const j_in, source *const s, const double sna
 	const char *exec_end = json_str(j_in, "exec-end", "script to start when the recording stops");
 	int restart_interval = json_int(j_in, "restart-interval", "after how many seconds should the stream-file be restarted");
 	const char *format = json_str(j_in, "format", "AVI, JPEG or PLUGIN");
+	int jpeg_quality = json_int(j_in, "quality", "JPEG quality, this influences the size");
+
+	double fps = 0, interval = 0;
+	if (!find_interval_or_fps(j_in, &interval, "fps", &fps))
+		error_exit(false, "Interval/fps for writing frames to disk not set for target (%s)", id.c_str());
+
+	std::vector<filter *> *filters = load_filters(json_object_get(j_in, "filters"));
 
 	if (strcasecmp(format, "AVI") == 0)
-		t = new target_avi(id, s, path, prefix, quality, restart_interval, snapshot_interval, filters, exec_start, exec_cycle, exec_end);
+		t = new target_avi(id, s, path, prefix, jpeg_quality, restart_interval, interval, filters, exec_start, exec_cycle, exec_end);
 	else if (strcasecmp(format, "JPEG") == 0)
-		t = new target_jpeg(id, s, path, prefix, quality, restart_interval, snapshot_interval, filters, exec_start, exec_cycle, exec_end);
+		t = new target_jpeg(id, s, path, prefix, jpeg_quality, restart_interval, interval, filters, exec_start, exec_cycle, exec_end);
 	else if (strcasecmp(format, "PLUGIN") == 0) {
 		stream_plugin_t *sp = load_stream_plugin(j_in);
 
-		t = new target_plugin(id, s, path, prefix, quality, restart_interval, snapshot_interval, filters, exec_start, exec_cycle, exec_end, sp);
+		t = new target_plugin(id, s, path, prefix, jpeg_quality, restart_interval, interval, filters, exec_start, exec_cycle, exec_end, sp);
 	}
 	else {
 		error_exit(false, "Format %s is unknown (stream to disk backends)", format);
@@ -457,7 +484,6 @@ int main(int argc, char *argv[])
 			const char *listen_adapter = json_str(hle, "listen-adapter", "network interface to listen on or 0.0.0.0 for all");
 			int listen_port = json_int(hle, "listen-port", "port to listen on");
 			printf(" HTTP server listening on %s:%d\n", listen_adapter, listen_port);
-			double fps = json_float(hle, "fps", "number of frames per second to record");
 			int jpeg_quality = json_int(hle, "quality", "JPEG quality, this influences the size");
 			int time_limit = json_int(hle, "time-limit", "how long (in seconds) to stream before the connection is closed");
 			int resize_w = json_int(hle, "resize-width", "resize picture width to this (-1 to disable)");
@@ -467,6 +493,10 @@ int main(int argc, char *argv[])
 			std::string snapshot_dir = json_str(hle, "snapshot-dir", "where to store snapshots (triggered by HTTP server). see \"allow-admin\".");
 
 			std::vector<filter *> *http_filters = load_filters(json_object_get(hle, "filters"));
+
+			double fps = 0, interval = 0;
+			if (!find_interval_or_fps(hle, &interval, "fps", &fps))
+				error_exit(false, "Interval/fps for retrieving frames from source not defined (%s)", id.c_str());
 
 			interface *h = new http_server(&cfg, id, listen_adapter, listen_port, s, fps, jpeg_quality, time_limit, http_filters, resize_w, resize_h, motion_compatible, allow_admin, snapshot_dir);
 			h -> start();
@@ -485,7 +515,10 @@ int main(int argc, char *argv[])
 	if (j_vl) {
 		std::string id = json_str_optional(j_vl, "id");
 		const char *dev = json_str(j_vl, "device", "Linux v4l2 device to connect to");
-		double fps = json_float(j_vl, "fps", "nubmer of frames per second");
+
+		double fps = 0, interval = 0;
+		if (!find_interval_or_fps(j_vl, &interval, "fps", &fps))
+			error_exit(false, "Interval/fps for retrieving frames from source not defined (%s)", id.c_str());
 
 		std::vector<filter *> *loopback_filters = load_filters(json_object_get(j_vl, "filters"));
 
@@ -516,7 +549,6 @@ int main(int argc, char *argv[])
 			json_t *mte = json_array_get(j_mts, i);
 
 			std::string id = json_str_optional(j_vl, "id");
-			int jpeg_quality = json_int(mte, "quality", "JPEG quality, this influences the size");
 			int noise_level = json_int(mte, "noise-factor", "at what difference levell is the pixel considered to be changed");
 			double pixels_changed_perctange = json_float(mte, "pixels-changed-percentage", "what %% of pixels need to be changed before the motion trigger is triggered");
 			int min_duration = json_int(mte, "min-duration", "minimum number of frames to record");
@@ -526,13 +558,23 @@ int main(int argc, char *argv[])
 			double max_fps = json_float(mte, "max-fps", "maximum number of frames per second to analyze (or -1 for no limit)");
 			const char *selection_bitmap = json_str(mte, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.");
 
-			std::vector<filter *> *filters_before = load_filters(json_object_get(mte, "filters-before"));
+			std::vector<filter *> *filters_detection = load_filters(json_object_get(mte, "filters-detection"));
 
-			std::vector<filter *> *filters_after = load_filters(json_object_get(mte, "filters-after")); // freed by target
+/////////////
+			json_t *j_targets = json_object_get(mte, "targets");
+			size_t n_targets = json_array_size(j_targets);
+			log(LL_DEBUG, " %zu motion target(s)", n_targets);
 
-			double snapshot_interval = 1.0 / max_fps;
+			if (n_targets == 0)
+				log(LL_WARNING, " 0 motion stream-targets, is that correct?");
 
-			target *t = load_target(mte, s, snapshot_interval, filters_after, jpeg_quality);
+			std::vector<target *> *motion_targets = new std::vector<target *>();
+			for(size_t i=0; i<n_targets; i++) {
+				json_t *j_target = json_array_get(j_targets, i);
+
+				motion_targets -> push_back(load_target(j_target, s));
+			}
+//////////
 
 			const char *file = json_str(mte, "trigger-plugin-file", "filename of motion detection plugin");
 			if (file[0]) {
@@ -549,7 +591,7 @@ int main(int argc, char *argv[])
 
 			const uint8_t *sb = load_selection_bitmap(selection_bitmap);
 
-			interface *m = new motion_trigger(id, s, jpeg_quality, noise_level, pixels_changed_perctange, min_duration, mute_duration, warmup_duration, pre_motion_record_duration, filters_before, t, sb, et, max_fps);
+			interface *m = new motion_trigger(id, s, noise_level, pixels_changed_perctange, min_duration, mute_duration, warmup_duration, pre_motion_record_duration, filters_detection, motion_targets, sb, et, max_fps);
 			m -> start();
 			cfg.interfaces.push_back(m);
 		}
@@ -581,12 +623,7 @@ int main(int argc, char *argv[])
 		for(size_t i=0; i<n_std; i++) {
 			json_t *ae = json_array_get(j_std, i);
 
-			int jpeg_quality = json_int(ae, "quality", "JPEG quality, this influences the size");
-			double snapshot_interval = json_float(ae, "snapshot-interval", "store a snapshot every x seconds");
-
-			std::vector<filter *> *store_filters = load_filters(json_object_get(ae, "filters"));
-
-			interface *t = load_target(ae, s, snapshot_interval, store_filters, jpeg_quality);
+			interface *t = load_target(ae, s);
 			t -> start();
 			cfg.interfaces.push_back(t);
 		}

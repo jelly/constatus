@@ -20,7 +20,7 @@
 #include "log.h"
 #include "motion_trigger.h"
 
-motion_trigger::motion_trigger(const std::string & id, source *const s, const int quality, const int noise_level, const double percentage_pixels_changed, const int keep_recording_n_frames, const int ignore_n_frames_after_recording, const int camera_warm_up, const int pre_record_count, const std::vector<filter *> *const filters, target *const t, const uint8_t *pixel_select_bitmap, ext_trigger_t *const et, const double max_fps) : interface(id), s(s), quality(quality), noise_level(noise_level), percentage_pixels_changed(percentage_pixels_changed), keep_recording_n_frames(keep_recording_n_frames), ignore_n_frames_after_recording(ignore_n_frames_after_recording), camera_warm_up(camera_warm_up), pre_record_count(pre_record_count), filters(filters), t(t), pixel_select_bitmap(pixel_select_bitmap), et(et), max_fps(max_fps)
+motion_trigger::motion_trigger(const std::string & id, source *const s, const int noise_level, const double percentage_pixels_changed, const int keep_recording_n_frames, const int ignore_n_frames_after_recording, const int camera_warm_up, const int pre_record_count, const std::vector<filter *> *const filters, std::vector<target *> *const targets, const uint8_t *pixel_select_bitmap, ext_trigger_t *const et, const double max_fps) : interface(id), s(s), noise_level(noise_level), percentage_pixels_changed(percentage_pixels_changed), keep_recording_n_frames(keep_recording_n_frames), ignore_n_frames_after_recording(ignore_n_frames_after_recording), camera_warm_up(camera_warm_up), pre_record_count(pre_record_count), filters(filters), targets(targets), pixel_select_bitmap(pixel_select_bitmap), et(et), max_fps(max_fps)
 {
 	if (et)
 		et -> arg = et -> init_motion_trigger(et -> par);
@@ -37,7 +37,9 @@ motion_trigger::~motion_trigger()
 	if (et)
 		et -> uninit_motion_trigger(et -> arg);
 
-	delete t;
+	for(target *t : *targets)
+		delete t;
+	delete targets;
 
 	free((void *)pixel_select_bitmap);
 
@@ -69,7 +71,7 @@ void motion_trigger::operator()()
 		uint8_t *frame = NULL;
 		size_t frame_len = 0;
 		// FIXME E_NONE ofzo of kijken wat de preferred is
-		s -> get_frame(E_RGB, quality, &prev_ts, &w, &h, &frame, &frame_len);
+		s -> get_frame(E_RGB, -1, &prev_ts, &w, &h, &frame, &frame_len);
 		free(frame);
 	}
 
@@ -80,7 +82,7 @@ void motion_trigger::operator()()
 
 		uint8_t *work = NULL;
 		size_t work_len = 0;
-		if (!s -> get_frame(E_RGB, quality, &prev_ts, &w, &h, &work, &work_len))
+		if (!s -> get_frame(E_RGB, -1, &prev_ts, &w, &h, &work, &work_len))
 			continue;
 		if (work == NULL || work_len == 0)
 			continue;
@@ -147,7 +149,9 @@ void motion_trigger::operator()()
 					std::vector<frame_t> *pr = new std::vector<frame_t>(prerecord);
 					prerecord.clear();
 
-					t -> start(pr);
+					for(size_t i=0; i<targets -> size(); i++)
+						targets -> at(i) -> start(i == 0 ? pr : NULL); // FIXME for all targets
+
 					motion = true;
 				}
 
@@ -160,7 +164,8 @@ void motion_trigger::operator()()
 				if (stopping > keep_recording_n_frames) {
 					log(LL_INFO, " stopping");
 
-					t -> stop();
+					for(target *t : *targets)
+						t -> stop();
 
 					motion = false;
 					mute = ignore_n_frames_after_recording;
