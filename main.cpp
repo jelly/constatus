@@ -314,6 +314,7 @@ int main(int argc, char *argv[])
 {
 	const char *cfg_file = "constatus.conf";
 	bool do_fork = false, verbose = false;
+	int ll = LL_INFO;
 
 	int c = -1;
 	while((c = getopt(argc, argv, "c:fhvV")) != -1) {
@@ -331,7 +332,8 @@ int main(int argc, char *argv[])
 				return 0;
 
 			case 'v':
-				verbose = true;
+				verbose++;
+				ll++;
 				break;
 
 			case 'V':
@@ -367,10 +369,10 @@ int main(int argc, char *argv[])
 	json_t *j_gen = json_object_get(json_cfg, general_name);
 	const char *logfile = json_str(j_gen, "logfile", "file where to store logging");
 
-	int loglevel = 255;
+	int loglevel = -1;
 
 	if (verbose) {
-		loglevel = LL_DEBUG_VERBOSE;
+		loglevel = ll;
 		setlogfile(logfile[0] ? logfile : NULL, loglevel);
 	}
 	else {
