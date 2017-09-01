@@ -152,6 +152,9 @@ void motion_trigger::operator()()
 					for(size_t i=0; i<targets -> size(); i++)
 						targets -> at(i) -> start(i == 0 ? pr : NULL); // FIXME for all targets
 
+					if (targets -> empty())
+						delete pr;
+
 					motion = true;
 				}
 

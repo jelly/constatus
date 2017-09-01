@@ -340,7 +340,7 @@ int main(int argc, char *argv[])
 				return 0;
 
 			case 'v':
-				verbose++;
+				verbose = true;
 				ll++;
 				break;
 
