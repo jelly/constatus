@@ -953,8 +953,11 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 
 			if (allow_admin) {
 				reply += "<li><a href=\"/snapshot-img/\">Take a snapshot and store it on disk</a>"
-					"<li><a href=\"/snapshot-video/\">Start a video recording</a>"
-					"<li><a href=\"/view-snapshots/\">View snapshots</a>";
+					"<li><a href=\"/snapshot-video/\">Start a video recording</a>";
+			}
+
+			if (archive_acces) {
+				reply += "<li><a href=\"/view-snapshots/\">View recordings</a>";
 			}
 
 			reply += "</ul>"
