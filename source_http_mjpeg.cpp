@@ -210,6 +210,8 @@ void source_http_mjpeg::operator()()
 		delete w;
 
 		curl_easy_cleanup(curl_handle);
+
+		usleep(101000);
 	}
 
 	log(LL_INFO, "source http mjpeg thread terminating");
