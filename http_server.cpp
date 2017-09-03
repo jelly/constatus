@@ -599,10 +599,10 @@ bool validate_file(const std::string & snapshot_dir, const std::string & filenam
 {
 	bool rc = false;
 
-	std::vector<std::string> *files = load_filelist(snapshot_dir, "");
+	auto *files = load_filelist(snapshot_dir, "");
 
-	for(std::string cur : *files) {
-		if (cur == filename) {
+	for(auto cur : *files) {
+		if (cur.first == filename) {
 			rc = true;
 			break;
 		}
@@ -679,12 +679,13 @@ std::string run_rest(configuration_t *const cfg, const std::string & path, const
 		json_t *out_arr = json_array();
 		json_object_set(json, "data", out_arr);
 
-		std::vector<std::string> *files = load_filelist(snapshot_dir, "");
+		auto *files = load_filelist(snapshot_dir, "");
 
-		for(std::string file : *files) {
+		for(auto file : *files) {
 			json_t *record = json_object();
 
-			json_object_set(record, "file", json_string(file.c_str()));
+			json_object_set(record, "file", json_string(file.first.c_str()));
+			json_object_set(record, "mtime", json_integer(file.second));
 
 			json_array_append_new(out_arr, record);
 		}
@@ -991,16 +992,16 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 		free(file);
 	}
 	else if (strcmp(path, "/view-snapshots/") == 0 && (archive_acces || allow_admin)) {
-		std::string reply = "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n<ul>";
+		std::string reply = "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n<table border=1>";
 
-		std::vector<std::string> *files = load_filelist(snapshot_dir, "");
+		auto *files = load_filelist(snapshot_dir, "");
 
-		for(std::string file : *files)
-			reply += std::string("<li><a href=\"/send-file?") + file + "\">" + file + "</a>";
+		for(auto file : *files)
+			reply += std::string("<tr><td><a href=\"/send-file?") + file.first + "\">" + file.first + "</a></td><td>" + myctime(file.second) + "</td>";
 
 		delete files;
 
-		reply += "</ul>";
+		reply += "</table>";
 
 		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
 			log(LL_DEBUG, "short write on response header");

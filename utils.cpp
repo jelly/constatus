@@ -325,9 +325,9 @@ std::vector<std::string> * split(std::string in, std::string splitter)
 	return out;
 }
 
-std::vector<std::string> * load_filelist(const std::string & dir, const std::string & prefix)
+std::vector<std::pair<std::string, time_t> > * load_filelist(const std::string & dir, const std::string & prefix)
 {
-	std::vector<std::string> *out = new std::vector<std::string>;
+	auto *out = new std::vector<std::pair<std::string, time_t> >;
 
 	DIR *d = opendir(dir.c_str());
 	if (!d)
@@ -348,11 +348,22 @@ std::vector<std::string> * load_filelist(const std::string & dir, const std::str
 			continue;
 
 		if (strncmp(de -> d_name, prefix.c_str(), prefix.size()) == 0)
-			out -> push_back(de -> d_name);
+			out -> push_back(std::pair<std::string, time_t>(de -> d_name, st.st_mtim.tv_sec));
 	}
 
 
 	closedir(d);
 
 	return out;
+}
+
+std::string myctime(const time_t t)
+{
+	struct tm ptm;
+	localtime_r(&t, &ptm);
+
+	char buffer[4096];
+	strftime(buffer, sizeof buffer, "%c", &ptm);
+
+	return buffer;
 }
