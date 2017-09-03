@@ -805,7 +805,8 @@ void send_file(const int cfd, const std::string & path, const char *const name)
 		return;
 	}
 
-	std::string headers = "HTTP/1.0 200 OK\r\nServer: " NAME " " VERSION "\r\nContent-Type: " + type + "\r\n\r\n";
+	std::string name_header = myformat("Content-Disposition: attachment; filename=\"%s\"\r\n", name);
+	std::string headers = "HTTP/1.0 200 OK\r\nServer: " NAME " " VERSION "\r\n" + name_header + "Content-Type: " + type + "\r\n\r\n";
 	(void)WRITE(cfd, headers.c_str(), headers.size());
 
 	// FIXME
