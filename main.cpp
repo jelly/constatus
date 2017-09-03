@@ -126,13 +126,19 @@ bool find_interval_or_fps(const json_t *const in, double *const interval, const 
 	if (j_interval) {
 		*interval = json_real_value(j_interval);
 
-		if (*interval <= 0)
+		if (*interval == 0)
+			return false;
+
+		if (*interval < 0)
 			*fps = -1.0;
 		else
 			*fps = 1.0 / *interval;
 	}
 	else {
 		*fps = json_real_value(j_fps);
+
+		if (*fps == 0)
+			return false;
 
 		if (*fps <= 0)
 			*interval = -1.0;
@@ -283,7 +289,7 @@ target * load_target(const json_t *const j_in, source *const s)
 
 	double fps = 0, interval = 0;
 	if (!find_interval_or_fps(j_in, &interval, "fps", &fps))
-		error_exit(false, "Interval/fps for writing frames to disk not set for target (%s)", id.c_str());
+		error_exit(false, "Interval/fps for writing frames to disk not set or invalid (e.g. 0) for target (%s)", id.c_str());
 
 	std::vector<filter *> *filters = load_filters(json_object_get(j_in, "filters"));
 
@@ -430,6 +436,9 @@ int main(int argc, char *argv[])
 
 		std::string id = json_str_optional(j_source, "id");
 		double max_fps = json_float(j_source, "max-fps", "limit the number of frames per second acquired to this value or -1 to disabe");
+		if (max_fps == 0)
+			error_exit(false, "Video-source: max-fps must be either > 0. Use -1 for no limit.");
+
 		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
 		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
 
@@ -506,7 +515,7 @@ int main(int argc, char *argv[])
 
 			double fps = 0, interval = 0;
 			if (!find_interval_or_fps(hle, &interval, "fps", &fps))
-				error_exit(false, "Interval/fps for retrieving frames from source not defined (%s)", id.c_str());
+				error_exit(false, "Interval/fps for showing frames not set or invalid (e.g. 0) for target (%s)", id.c_str());
 
 			interface *h = new http_server(&cfg, id, listen_adapter, listen_port, s, fps, jpeg_quality, time_limit, http_filters, resize_w, resize_h, motion_compatible, allow_admin, snapshot_dir);
 			h -> start();
@@ -528,7 +537,7 @@ int main(int argc, char *argv[])
 
 		double fps = 0, interval = 0;
 		if (!find_interval_or_fps(j_vl, &interval, "fps", &fps))
-			error_exit(false, "Interval/fps for retrieving frames from source not defined (%s)", id.c_str());
+			error_exit(false, "Interval/fps for sending frames to loopback not set or invalid (e.g. 0) for target (%s)", id.c_str());
 
 		std::vector<filter *> *loopback_filters = load_filters(json_object_get(j_vl, "filters"));
 
@@ -566,6 +575,9 @@ int main(int argc, char *argv[])
 			int warmup_duration = json_int(mte, "warmup-duration", "how many frames to ignore so that the camera can warm-up");
 			int pre_motion_record_duration = json_int(mte, "pre-motion-record-duration", "how many frames to record that happened before the motion started");
 			double max_fps = json_float(mte, "max-fps", "maximum number of frames per second to analyze (or -1 for no limit)");
+			if (max_fps <= 0)
+				error_exit(false, "Motion triggers: max-fps must be either > 0. Use -1 for no limit.");
+
 			const char *selection_bitmap = json_str(mte, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.");
 
 			std::vector<filter *> *filters_detection = load_filters(json_object_get(mte, "filters-detection"));
