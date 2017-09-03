@@ -42,7 +42,7 @@ typedef struct {
 	const std::vector<filter *> *filters;
 	std::atomic_bool *global_stopflag;
 	int resize_w, resize_h;
-	bool motion_compatible, allow_admin;
+	bool motion_compatible, allow_admin, archive_acces;
 	configuration_t *cfg;
 	std::string snapshot_dir;
 } http_thread_t;
@@ -824,7 +824,7 @@ void send_file(const int cfd, const std::string & path, const char *const name)
 	fclose(fh);
 }
 
-void handle_http_client(int cfd, source *s, double fps, int quality, int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const bool motion_compatible, configuration_t *const cfg, const std::string & snapshot_dir, const bool allow_admin)
+void handle_http_client(int cfd, source *s, double fps, int quality, int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const bool motion_compatible, configuration_t *const cfg, const std::string & snapshot_dir, const bool allow_admin, const bool archive_acces)
 {
 	sigset_t all_sigs;
 	sigfillset(&all_sigs);
@@ -970,6 +970,38 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
 			log(LL_DEBUG, "short write on response header");
 	}
+	else if (strncmp(path, "/send-file", 10) == 0 && (archive_acces || allow_admin)) {
+		char *file = un_url_escape(pars ? pars : "FAIL");
+
+		if (pars && validate_file(snapshot_dir, file)) {
+			send_file(cfd, snapshot_dir, file);
+		}
+		else {
+			log(LL_WARNING, "%s is not a valid file", file);
+
+			std::string reply = "HTTP/1.0 404\r\n\r\nfailed";
+
+			if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
+				log(LL_DEBUG, "short write on response header");
+		}
+
+		free(file);
+	}
+	else if (strcmp(path, "/view-snapshots/") == 0 && (archive_acces || allow_admin)) {
+		std::string reply = "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n<ul>";
+
+		std::vector<std::string> *files = load_filelist(snapshot_dir, "");
+
+		for(std::string file : *files)
+			reply += std::string("<li><a href=\"/send-file?") + file + "\">" + file + "</a>";
+
+		delete files;
+
+		reply += "</ul>";
+
+		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
+			log(LL_DEBUG, "short write on response header");
+	}
 	else if (!allow_admin) {
 		goto do404;
 	}
@@ -1032,38 +1064,6 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
 			log(LL_DEBUG, "short write on response header");
 	}
-	else if (strncmp(path, "/send-file", 10) == 0) {
-		char *file = un_url_escape(pars ? pars : "FAIL");
-
-		if (pars && validate_file(snapshot_dir, file)) {
-			send_file(cfd, snapshot_dir, file);
-		}
-		else {
-			log(LL_WARNING, "%s is not a valid file", file);
-
-			std::string reply = "HTTP/1.0 404\r\n\r\nfailed";
-
-			if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
-				log(LL_DEBUG, "short write on response header");
-		}
-
-		free(file);
-	}
-	else if (strcmp(path, "/view-snapshots/") == 0) {
-		std::string reply = "HTTP/1.0 200 OK\r\nContent-Type: text/html\r\n\r\n<ul>";
-
-		std::vector<std::string> *files = load_filelist(snapshot_dir, "");
-
-		for(std::string file : *files)
-			reply += std::string("<li><a href=\"/send-file?") + file + "\">" + file + "</a>";
-
-		delete files;
-
-		reply += "</ul>";
-
-		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
-			log(LL_DEBUG, "short write on response header");
-	}
 	else if (strncmp(path, "/favicon.ico", 6) == 0) {
 		std::string reply = "HTTP/1.0 200 OK\r\n\r\n";
 		// FIXME
@@ -1098,7 +1098,7 @@ void * handle_http_client_thread(void *ct_in)
 
 	ct -> s -> register_user();
 
-	handle_http_client(ct -> fd, ct -> s, ct -> fps, ct -> quality, ct -> time_limit, ct -> filters, ct -> global_stopflag, ct -> resize_w, ct -> resize_h, ct -> motion_compatible, ct -> cfg, ct -> snapshot_dir, ct -> allow_admin);
+	handle_http_client(ct -> fd, ct -> s, ct -> fps, ct -> quality, ct -> time_limit, ct -> filters, ct -> global_stopflag, ct -> resize_w, ct -> resize_h, ct -> motion_compatible, ct -> cfg, ct -> snapshot_dir, ct -> allow_admin, ct -> archive_acces);
 
 	ct -> s -> unregister_user();
 
@@ -1107,7 +1107,7 @@ void * handle_http_client_thread(void *ct_in)
 	return NULL;
 }
 
-http_server::http_server(configuration_t *const cfg, const std::string & id, const char *const http_adapter, const int http_port, source *const src, const double fps, const int quality, const int time_limit, const std::vector<filter *> *const f, const int resize_w, const int resize_h, const bool motion_compatible, const bool allow_admin, const std::string & snapshot_dir) : cfg(cfg), interface(id), src(src), fps(fps), quality(quality), time_limit(time_limit), f(f), resize_w(resize_w), resize_h(resize_h), motion_compatible(motion_compatible), allow_admin(allow_admin), snapshot_dir(snapshot_dir)
+http_server::http_server(configuration_t *const cfg, const std::string & id, const char *const http_adapter, const int http_port, source *const src, const double fps, const int quality, const int time_limit, const std::vector<filter *> *const f, const int resize_w, const int resize_h, const bool motion_compatible, const bool allow_admin, const bool archive_acces, const std::string & snapshot_dir) : cfg(cfg), interface(id), src(src), fps(fps), quality(quality), time_limit(time_limit), f(f), resize_w(resize_w), resize_h(resize_h), motion_compatible(motion_compatible), allow_admin(allow_admin), archive_acces(archive_acces), snapshot_dir(snapshot_dir)
 {
 	fd = start_listen(http_adapter, http_port, 5);
 	ct = CT_HTTPSERVER;
@@ -1166,6 +1166,7 @@ void http_server::operator()()
 		ct -> cfg = cfg;
 		ct -> snapshot_dir = snapshot_dir;
 		ct -> allow_admin = allow_admin;
+		ct -> archive_acces = archive_acces;
 
 		pthread_t th;
 		int rc = -1;

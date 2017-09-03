@@ -508,7 +508,8 @@ int main(int argc, char *argv[])
 			int resize_w = json_int(hle, "resize-width", "resize picture width to this (-1 to disable)");
 			int resize_h = json_int(hle, "resize-height", "resize picture height to this (-1 to disable)");
 			bool motion_compatible = json_bool(hle, "motion-compatible", "only stream MJPEG and do not wait for HTTP request");
-			bool allow_admin = json_bool(hle, "allow-admin", "when enabled, you can partially configure services and retrieve snapshots");
+			bool allow_admin = json_bool(hle, "allow-admin", "when enabled, you can partially configure services");
+			bool archive_access = json_bool(hle, "archive-access", "when enabled, you can retrieve recorded video/images");
 			std::string snapshot_dir = json_str(hle, "snapshot-dir", "where to store snapshots (triggered by HTTP server). see \"allow-admin\".");
 
 			std::vector<filter *> *http_filters = load_filters(json_object_get(hle, "filters"));
@@ -517,7 +518,7 @@ int main(int argc, char *argv[])
 			if (!find_interval_or_fps(hle, &interval, "fps", &fps))
 				error_exit(false, "Interval/fps for showing frames not set or invalid (e.g. 0) for target (%s)", id.c_str());
 
-			interface *h = new http_server(&cfg, id, listen_adapter, listen_port, s, fps, jpeg_quality, time_limit, http_filters, resize_w, resize_h, motion_compatible, allow_admin, snapshot_dir);
+			interface *h = new http_server(&cfg, id, listen_adapter, listen_port, s, fps, jpeg_quality, time_limit, http_filters, resize_w, resize_h, motion_compatible, allow_admin, archive_access, snapshot_dir);
 			h -> start();
 			cfg.interfaces.push_back(h);
 		}
