@@ -351,8 +351,9 @@ std::vector<std::pair<std::string, time_t> > * load_filelist(const std::string &
 			out -> push_back(std::pair<std::string, time_t>(de -> d_name, st.st_mtim.tv_sec));
 	}
 
-
 	closedir(d);
+
+	std::sort(out -> begin(), out -> end(), [](const std::pair<std::string, time_t> &left, const std::pair<std::string, time_t> &right) { if (left.second == right.second) { return left.first < right.first; } return left.second < right.second; });
 
 	return out;
 }
