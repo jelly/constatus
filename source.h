@@ -8,6 +8,7 @@
 #include <thread>
 
 #include "interface.h"
+#include "resize.h"
 
 typedef enum { E_RGB, E_JPEG } encoding_t;
 
@@ -16,6 +17,7 @@ class source : public interface
 protected:
 	int width, height;
 	const double max_fps;
+	resize *const r;
 	const int resize_w, resize_h, loglevel;
 
 	pthread_mutex_t lock;
@@ -27,7 +29,7 @@ protected:
 	std::atomic_int user_count;
 
 public:
-	source(const std::string & id, const double max_fps, const int resize_w, const int resize_h, const int loglevel);
+	source(const std::string & id, const double max_fps, resize *const r, const int resize_w, const int resize_h, const int loglevel);
 	virtual ~source();
 
 	bool get_frame(const encoding_t pe, const int jpeg_quality, uint64_t *ts, int *width, int *height, uint8_t **frame, size_t *frame_len);

@@ -11,7 +11,7 @@
 #include "log.h"
 #include "utils.h"
 
-source_http_jpeg::source_http_jpeg(const std::string & id, const std::string & urlIn, const bool ignoreCertIn, const std::string & authIn, const double max_fps, const int resize_w, const int resize_h, const int ll) : source(id, max_fps, resize_w, resize_h, ll), url(urlIn), auth(authIn), ignore_cert(ignoreCertIn)
+source_http_jpeg::source_http_jpeg(const std::string & id, const std::string & urlIn, const bool ignoreCertIn, const std::string & authIn, const double max_fps, resize *const r, const int resize_w, const int resize_h, const int ll) : source(id, max_fps, r, resize_w, resize_h, ll), url(urlIn), auth(authIn), ignore_cert(ignoreCertIn)
 {
 	d = url;
 }

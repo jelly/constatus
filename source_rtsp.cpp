@@ -18,7 +18,7 @@ extern "C" {
 
 static bool v = false;
 
-source_rtsp::source_rtsp(const std::string & id, const std::string & url, const double max_fps, const int resize_w, const int resize_h, const int loglevel) : source(id, max_fps, resize_w, resize_h, loglevel), url(url)
+source_rtsp::source_rtsp(const std::string & id, const std::string & url, const double max_fps, resize *const r, const int resize_w, const int resize_h, const int loglevel) : source(id, max_fps, r, resize_w, resize_h, loglevel), url(url)
 {
 	v = loglevel >= LL_DEBUG;
 	d = url;

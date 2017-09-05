@@ -40,6 +40,7 @@
 #include "filter_plugin.h"
 #include "log.h"
 #include "cfg.h"
+#include "resize_cairo.h"
 
 const char *json_str(const json_t *const in, const char *const key, const char *const descr)
 {
@@ -273,6 +274,11 @@ stream_plugin_t * load_stream_plugin(const json_t *const in)
 	return sp;
 }
 
+void interval_fps_error(const char *const name, const char *what, const char *id)
+{
+	error_exit(false, "Interval/%s %s not set or invalid (e.g. 0) for target (%s). Make sure that you use a float-value for the fps/interval, e.g. 13.0 instead of 13", name, what, id);
+}
+
 target * load_target(const json_t *const j_in, source *const s)
 {
 	target *t = NULL;
@@ -289,7 +295,7 @@ target * load_target(const json_t *const j_in, source *const s)
 
 	double fps = 0, interval = 0;
 	if (!find_interval_or_fps(j_in, &interval, "fps", &fps))
-		error_exit(false, "Interval/fps for writing frames to disk not set or invalid (e.g. 0) for target (%s)", id.c_str());
+		interval_fps_error("fps", "for writing frames to disk", id.c_str());
 
 	std::vector<filter *> *filters = load_filters(json_object_get(j_in, "filters"));
 
@@ -409,18 +415,23 @@ int main(int argc, char *argv[])
 		setlogfile(logfile[0] ? logfile : NULL, loglevel);
 	}
 
+	std::string resize_type = json_str(j_gen, "resize-type", "can be regular or cairo. selects what method will be used for resizing the video stream (if requested).");
+
+	resize *r = NULL;
+	if (resize_type == "cairo") {
+		r = new resize_cairo();
+	}
+	else if (resize_type == "regular") {
+		r = new resize();
+	}
+	else {
+		error_exit(false, "Scaler/resizer of type \"%s\" is not known", resize_type.c_str());
+	}
+
+
 	log(LL_INFO, " *** " NAME " v" VERSION " starting ***");
 
 	//***
-
-	//int w = 352, h = 288; // or -1, -1 for auto detect
-	// video device, prefer jpeg, rpi workaround, jpeg quality, width, height
-	//source_v4l *s = new source_v4l("/dev/video0", false, false, 75, w, h);
-	//
-	// a source that retrieves jpegs from a certain url, mainly used by old ip cameras
-	//source_http_jpeg *s = new source_http_jpeg("http://192.168.64.139/image.jpg", true, "");
-	//
-	//source_http_mjpeg *s = new source_http_mjpeg("10.42.42.104", 80, "/mjpg/video.mjpg");
 
 	configuration_t cfg;
 	cfg.lock.lock();
@@ -437,7 +448,7 @@ int main(int argc, char *argv[])
 		std::string id = json_str_optional(j_source, "id");
 		double max_fps = json_float(j_source, "max-fps", "limit the number of frames per second acquired to this value or -1 to disabe");
 		if (max_fps == 0)
-			error_exit(false, "Video-source: max-fps must be either > 0. Use -1 for no limit.");
+			error_exit(false, "Video-source: max-fps must be either > 0 or -1. Use -1 for no FPS limit.");
 
 		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
 		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
@@ -449,31 +460,31 @@ int main(int argc, char *argv[])
 			int h = json_int(j_source, "height", "height of picture");
 			int jpeg_quality = json_int(j_source, "quality", "JPEG quality, this influences the size");
 
-			s = new source_v4l(id, json_str(j_source, "device", "linux v4l2 device"), pref_jpeg, rpi_wa, jpeg_quality, max_fps, w, h, resize_w, resize_h, loglevel);
+			s = new source_v4l(id, json_str(j_source, "device", "linux v4l2 device"), pref_jpeg, rpi_wa, jpeg_quality, max_fps, w, h, r, resize_w, resize_h, loglevel);
 		}
 		else if (strcasecmp(s_type, "jpeg") == 0) {
 			bool ign_cert = json_bool(j_source, "ignore-cert", "ignore SSL errors");
 			const char *auth = json_str(j_source, "http-auth", "HTTP authentication string");
 			const char *url = json_str(j_source, "url", "address of JPEG stream");
 
-			s = new source_http_jpeg(id, url, ign_cert, auth, max_fps, resize_w, resize_h, loglevel);
+			s = new source_http_jpeg(id, url, ign_cert, auth, max_fps, r, resize_w, resize_h, loglevel);
 		}
 		else if (strcasecmp(s_type, "mjpeg") == 0) {
 			const char *url = json_str(j_source, "url", "address of MJPEG stream");
 			bool ign_cert = json_bool(j_source, "ignore-cert", "ignore SSL errors");
 
-			s = new source_http_mjpeg(id, url, ign_cert, max_fps, resize_w, resize_h, loglevel);
+			s = new source_http_mjpeg(id, url, ign_cert, max_fps, r, resize_w, resize_h, loglevel);
 		}
 		else if (strcasecmp(s_type, "rtsp") == 0) {
 			const char *url = json_str(j_source, "url", "address of JPEG stream");
 
-			s = new source_rtsp(id, url, max_fps, resize_w, resize_h, loglevel);
+			s = new source_rtsp(id, url, max_fps, r, resize_w, resize_h, loglevel);
 		}
 		else if (strcasecmp(s_type, "plugin") == 0) {
 			std::string plugin_bin = json_str(j_source, "source-plugin-file", "filename of video data source plugin");
 			std::string plugin_arg = json_str(j_source, "source-plugin-parameter", "parameter for video data source plugin");
 
-			s = new source_plugin(id, plugin_bin, plugin_arg, max_fps, resize_w, resize_h, loglevel);
+			s = new source_plugin(id, plugin_bin, plugin_arg, max_fps, r, resize_w, resize_h, loglevel);
 		}
 		else {
 			log(LL_FATAL, " no source defined!");
@@ -516,9 +527,9 @@ int main(int argc, char *argv[])
 
 			double fps = 0, interval = 0;
 			if (!find_interval_or_fps(hle, &interval, "fps", &fps))
-				error_exit(false, "Interval/fps for showing frames not set or invalid (e.g. 0) for target (%s)", id.c_str());
+				interval_fps_error("fps", "for showing video frames", id.c_str());
 
-			interface *h = new http_server(&cfg, id, listen_adapter, listen_port, s, fps, jpeg_quality, time_limit, http_filters, resize_w, resize_h, motion_compatible, allow_admin, archive_access, snapshot_dir);
+			interface *h = new http_server(&cfg, id, listen_adapter, listen_port, s, fps, jpeg_quality, time_limit, http_filters, r, resize_w, resize_h, motion_compatible, allow_admin, archive_access, snapshot_dir);
 			h -> start();
 			cfg.interfaces.push_back(h);
 		}
@@ -538,7 +549,7 @@ int main(int argc, char *argv[])
 
 		double fps = 0, interval = 0;
 		if (!find_interval_or_fps(j_vl, &interval, "fps", &fps))
-			error_exit(false, "Interval/fps for sending frames to loopback not set or invalid (e.g. 0) for target (%s)", id.c_str());
+			interval_fps_error("fps", "for sending frames to loopback", id.c_str());
 
 		std::vector<filter *> *loopback_filters = load_filters(json_object_get(j_vl, "filters"));
 
@@ -576,8 +587,8 @@ int main(int argc, char *argv[])
 			int warmup_duration = json_int(mte, "warmup-duration", "how many frames to ignore so that the camera can warm-up");
 			int pre_motion_record_duration = json_int(mte, "pre-motion-record-duration", "how many frames to record that happened before the motion started");
 			double max_fps = json_float(mte, "max-fps", "maximum number of frames per second to analyze (or -1 for no limit)");
-			if (max_fps <= 0)
-				error_exit(false, "Motion triggers: max-fps must be either > 0. Use -1 for no limit.");
+			if (max_fps == 0)
+				error_exit(false, "Motion triggers: max-fps must be either > 0 or -1. Use -1 for no FPS limit.");
 
 			const char *selection_bitmap = json_str(mte, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.");
 

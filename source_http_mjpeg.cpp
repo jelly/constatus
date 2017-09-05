@@ -143,7 +143,7 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 }
 
 
-source_http_mjpeg::source_http_mjpeg(const std::string & id, const std::string & urlIn, const bool ic, const double max_fps, const int resize_w, const int resize_h, const int loglevel) : source(id, max_fps, resize_w, resize_h, loglevel), url(urlIn), ignore_cert(ic)
+source_http_mjpeg::source_http_mjpeg(const std::string & id, const std::string & urlIn, const bool ic, const double max_fps, resize *const r, const int resize_w, const int resize_h, const int loglevel) : source(id, max_fps, r, resize_w, resize_h, loglevel), url(urlIn), ignore_cert(ic)
 {
 	d = url;
 }

@@ -41,13 +41,14 @@ typedef struct {
 	int time_limit;
 	const std::vector<filter *> *filters;
 	std::atomic_bool *global_stopflag;
+	resize *r;
 	int resize_w, resize_h;
 	bool motion_compatible, allow_admin, archive_acces;
 	configuration_t *cfg;
 	std::string snapshot_dir;
 } http_thread_t;
 
-void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h)
+void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, resize *const r, const int resize_w, const int resize_h)
 {
         const char reply_headers[] =
                 "HTTP/1.0 200 OK\r\n"
@@ -139,7 +140,7 @@ void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, in
 				int target_h = resize_h != -1 ? resize_h : h;
 
 				uint8_t *temp = NULL;
-				scale(work, w, h, &temp, target_w, target_h);
+				r -> do_resize(w, h, work, target_w, target_h, &temp);
 
 				write_JPEG_file(fh, target_w, target_h, quality, temp);
 				free(temp);
@@ -186,7 +187,7 @@ void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, in
 	free(prev_frame);
 }
 
-void send_mpng_stream(int cfd, source *s, double fps, bool get, const int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h)
+void send_mpng_stream(int cfd, source *s, double fps, bool get, const int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, resize *const r, const int resize_w, const int resize_h)
 {
         const char reply_headers[] =
                 "HTTP/1.0 200 ok\r\n"
@@ -245,7 +246,7 @@ void send_mpng_stream(int cfd, source *s, double fps, bool get, const int time_l
 			int target_h = resize_h != -1 ? resize_h : h;
 
 			uint8_t *temp = NULL;
-			scale(work, w, h, &temp, target_w, target_h);
+			r -> do_resize(w, h, work, target_w, target_h, &temp);
 
 			write_PNG_file(fh, target_w, target_h, temp);
 
@@ -303,7 +304,7 @@ void send_mpng_stream(int cfd, source *s, double fps, bool get, const int time_l
 	free(prev_frame);
 }
 
-void send_png_frame(int cfd, source *s, bool get, const std::vector<filter *> *const filters, const int resize_w, const int resize_h)
+void send_png_frame(int cfd, source *s, bool get, const std::vector<filter *> *const filters, resize *const r, const int resize_w, const int resize_h)
 {
         const char reply_headers[] =
                 "HTTP/1.0 200 ok\r\n"
@@ -353,7 +354,7 @@ void send_png_frame(int cfd, source *s, bool get, const std::vector<filter *> *c
 		int target_h = resize_h != -1 ? resize_h : h;
 
 		uint8_t *temp = NULL;
-		scale(work, w, h, &temp, target_w, target_h);
+		r -> do_resize(w, h, work, target_w, target_h, &temp);
 
 		write_PNG_file(fh, target_w, target_h, temp);
 
@@ -373,7 +374,7 @@ void send_png_frame(int cfd, source *s, bool get, const std::vector<filter *> *c
 	free(data_out);
 }
 
-void send_jpg_frame(int cfd, source *s, bool get, int quality, const std::vector<filter *> *const filters, const int resize_w, const int resize_h)
+void send_jpg_frame(int cfd, source *s, bool get, int quality, const std::vector<filter *> *const filters, resize *const r, const int resize_w, const int resize_h)
 {
         const char reply_headers[] =
                 "HTTP/1.0 200 ok\r\n"
@@ -428,7 +429,7 @@ void send_jpg_frame(int cfd, source *s, bool get, int quality, const std::vector
 			int target_h = resize_h != -1 ? resize_h : h;
 
 			uint8_t *temp = NULL;
-			scale(work, w, h, &temp, target_w, target_h);
+			r -> do_resize(w, h, work, target_w, target_h, &temp);
 
 			write_JPEG_file(fh, target_w, target_h, quality, temp);
 			free(temp);
@@ -826,7 +827,7 @@ void send_file(const int cfd, const std::string & path, const char *const name)
 	fclose(fh);
 }
 
-void handle_http_client(int cfd, source *s, double fps, int quality, int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, const int resize_w, const int resize_h, const bool motion_compatible, configuration_t *const cfg, const std::string & snapshot_dir, const bool allow_admin, const bool archive_acces)
+void handle_http_client(int cfd, source *s, double fps, int quality, int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, resize *const r, const int resize_w, const int resize_h, const bool motion_compatible, configuration_t *const cfg, const std::string & snapshot_dir, const bool allow_admin, const bool archive_acces)
 {
 	sigset_t all_sigs;
 	sigfillset(&all_sigs);
@@ -911,13 +912,13 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 	}
 
 	if (strcmp(path, "/stream.mjpeg") == 0 || motion_compatible)
-		send_mjpeg_stream(cfd, s, fps, quality, get, time_limit, filters, global_stopflag, resize_w, resize_h);
+		send_mjpeg_stream(cfd, s, fps, quality, get, time_limit, filters, global_stopflag, r, resize_w, resize_h);
 	else if (strcmp(path, "/stream.mpng") == 0)
-		send_mpng_stream(cfd, s, fps, get, time_limit, filters, global_stopflag, resize_w, resize_h);
+		send_mpng_stream(cfd, s, fps, get, time_limit, filters, global_stopflag, r, resize_w, resize_h);
 	else if (strcmp(path, "/image.png") == 0)
-		send_png_frame(cfd, s, get, filters, resize_w, resize_h);
+		send_png_frame(cfd, s, get, filters, r, resize_w, resize_h);
 	else if (strcmp(path, "/image.jpg") == 0)
-		send_jpg_frame(cfd, s, get, quality, filters, resize_w, resize_h);
+		send_jpg_frame(cfd, s, get, quality, filters, r, resize_w, resize_h);
 	else if (strcmp(path, "/stream.html") == 0)
 	{
 		const char reply[] =
@@ -1103,7 +1104,7 @@ void * handle_http_client_thread(void *ct_in)
 
 	ct -> s -> register_user();
 
-	handle_http_client(ct -> fd, ct -> s, ct -> fps, ct -> quality, ct -> time_limit, ct -> filters, ct -> global_stopflag, ct -> resize_w, ct -> resize_h, ct -> motion_compatible, ct -> cfg, ct -> snapshot_dir, ct -> allow_admin, ct -> archive_acces);
+	handle_http_client(ct -> fd, ct -> s, ct -> fps, ct -> quality, ct -> time_limit, ct -> filters, ct -> global_stopflag, ct -> r, ct -> resize_w, ct -> resize_h, ct -> motion_compatible, ct -> cfg, ct -> snapshot_dir, ct -> allow_admin, ct -> archive_acces);
 
 	ct -> s -> unregister_user();
 
@@ -1112,7 +1113,7 @@ void * handle_http_client_thread(void *ct_in)
 	return NULL;
 }
 
-http_server::http_server(configuration_t *const cfg, const std::string & id, const char *const http_adapter, const int http_port, source *const src, const double fps, const int quality, const int time_limit, const std::vector<filter *> *const f, const int resize_w, const int resize_h, const bool motion_compatible, const bool allow_admin, const bool archive_acces, const std::string & snapshot_dir) : cfg(cfg), interface(id), src(src), fps(fps), quality(quality), time_limit(time_limit), f(f), resize_w(resize_w), resize_h(resize_h), motion_compatible(motion_compatible), allow_admin(allow_admin), archive_acces(archive_acces), snapshot_dir(snapshot_dir)
+http_server::http_server(configuration_t *const cfg, const std::string & id, const char *const http_adapter, const int http_port, source *const src, const double fps, const int quality, const int time_limit, const std::vector<filter *> *const f, resize *const r, const int resize_w, const int resize_h, const bool motion_compatible, const bool allow_admin, const bool archive_acces, const std::string & snapshot_dir) : cfg(cfg), interface(id), src(src), fps(fps), quality(quality), time_limit(time_limit), f(f), r(r), resize_w(resize_w), resize_h(resize_h), motion_compatible(motion_compatible), allow_admin(allow_admin), archive_acces(archive_acces), snapshot_dir(snapshot_dir)
 {
 	fd = start_listen(http_adapter, http_port, 5);
 	ct = CT_HTTPSERVER;
@@ -1165,6 +1166,7 @@ void http_server::operator()()
 		ct -> time_limit = time_limit;
 		ct -> filters = f;
 		ct -> global_stopflag = &local_stop_flag;
+		ct -> r = r;
 		ct -> resize_w = resize_w;
 		ct -> resize_h = resize_h;
 		ct -> motion_compatible = motion_compatible;

@@ -9,7 +9,7 @@
 #include "filter.h"
 #include "filter_add_text.h"
 
-source::source(const std::string & id, const double max_fps, const int resize_w, const int resize_h, const int loglevel) : interface(id), max_fps(max_fps), resize_w(resize_w), resize_h(resize_h), loglevel(loglevel)
+source::source(const std::string & id, const double max_fps, resize *const r, const int resize_w, const int resize_h, const int loglevel) : interface(id), max_fps(max_fps), r(r), resize_w(resize_w), resize_h(resize_h), loglevel(loglevel)
 {
 	width = height = -1;
 	ts = 0;
@@ -186,7 +186,7 @@ void source::set_scaled_frame(const uint8_t *const in, const int sourcew, const 
 
 	//printf("%dx%d => %dx%d\n", sourcew, sourceh, target_w, target_h);
 	uint8_t *out = NULL;
-	scale(in, sourcew, sourceh, &out, target_w, target_h);
+	r -> do_resize(sourcew, sourceh, in, target_w, target_h, &out);
 
 	set_frame(E_RGB, out, target_w * target_h * 3);
 
