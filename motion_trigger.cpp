@@ -176,12 +176,17 @@ void motion_trigger::operator()()
 			}
 		}
 
-		if (prerecord.size() >= pre_record_count) {
-			free(prerecord.at(0).data);
-			prerecord.erase(prerecord.begin() + 0);
-		}
+		if (pre_record_count > 0) {
+			if (prerecord.size() >= pre_record_count) {
+				free(prerecord.at(0).data);
+				prerecord.erase(prerecord.begin() + 0);
+			}
 
-		prerecord.push_back({ prev_ts, w, h, work, work_len, E_RGB });
+			prerecord.push_back({ prev_ts, w, h, work, work_len, E_RGB });
+		}
+		else {
+			free(prev_frame);
+		}
 
 		prev_frame = work;
 
@@ -193,6 +198,9 @@ void motion_trigger::operator()()
 		free(prerecord.at(0).data);
 		prerecord.erase(prerecord.begin() + 0);
 	}
+
+	if (pre_record_count <= 0)
+		free(prev_frame);
 
 	s -> unregister_user();
 }
