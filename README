@@ -7,6 +7,7 @@ Supports:
    - MJPEG cameras
    - RTSP cameras
    - JPEG cameras
+   - plugin interface
 
   output:
    - AVI file(s)
@@ -16,6 +17,8 @@ Supports:
    - via plugins
 
   motion detection
+   - configurable detector
+   - masks
    - also via plugin so that you can easily use one from e.g. OpenCV
 
   filters:
@@ -27,6 +30,7 @@ Supports:
    - mirror vertical and/or horizontal
    - neighbour average noise filter
    - picture overlay (with alpha blending)
+   - scaling (resizing)
    - filters plugins (.so-files that can be linked at runtime)
 
 
