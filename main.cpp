@@ -291,7 +291,7 @@ target * load_target(const json_t *const j_in, source *const s)
 	const char *exec_cycle = json_str(j_in, "exec-cycle", "script to start when the record file is restarted");
 	const char *exec_end = json_str(j_in, "exec-end", "script to start when the recording stops");
 	int restart_interval = json_int(j_in, "restart-interval", "after how many seconds should the stream-file be restarted");
-	const char *format = json_str(j_in, "format", "AVI, FFMPEG (h264), JPEG or PLUGIN");
+	const char *format = json_str(j_in, "format", "AVI, MP4 (H.264), JPEG or PLUGIN");
 	int jpeg_quality = json_int(j_in, "quality", "JPEG quality, this influences the size");
 
 	double fps = 0, interval = 0;
@@ -302,10 +302,10 @@ target * load_target(const json_t *const j_in, source *const s)
 
 	if (strcasecmp(format, "AVI") == 0)
 		t = new target_avi(id, s, path, prefix, jpeg_quality, restart_interval, interval, filters, exec_start, exec_cycle, exec_end);
-	else if (strcasecmp(format, "FFMPEG") == 0)
-		t = new target_ffmpeg(id, s, path, prefix, restart_interval, interval, filters, exec_start, exec_cycle, exec_end);
 	else if (strcasecmp(format, "JPEG") == 0)
 		t = new target_jpeg(id, s, path, prefix, jpeg_quality, restart_interval, interval, filters, exec_start, exec_cycle, exec_end);
+	else if (strcasecmp(format, "MP4") == 0)
+		t = new target_ffmpeg(id, s, path, prefix, restart_interval, interval, filters, exec_start, exec_cycle, exec_end);
 	else if (strcasecmp(format, "PLUGIN") == 0) {
 		stream_plugin_t *sp = load_stream_plugin(j_in);
 
