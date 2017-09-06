@@ -1,6 +1,7 @@
 #! /usr/bin/python
 
 import json
+import sys
 
 def load_file(f, d):
 	includes = []
@@ -188,4 +189,4 @@ def process(f, cfg):
 		process(i, cfg)
 
 cfg = dict()
-process('/home/folkert/Downloads/motion-4.0/motion-dist.conf.in', cfg)
+process(sys.argv[1], cfg)
