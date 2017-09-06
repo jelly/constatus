@@ -715,6 +715,8 @@ int main(int argc, char *argv[])
 
 	json_decref(json_cfg);
 
+	delete r;
+
 	if (et) {
 		dlclose(et -> library);
 		delete et;
