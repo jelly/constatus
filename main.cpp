@@ -304,8 +304,11 @@ target * load_target(const json_t *const j_in, source *const s)
 		t = new target_avi(id, s, path, prefix, jpeg_quality, restart_interval, interval, filters, exec_start, exec_cycle, exec_end);
 	else if (strcasecmp(format, "JPEG") == 0)
 		t = new target_jpeg(id, s, path, prefix, jpeg_quality, restart_interval, interval, filters, exec_start, exec_cycle, exec_end);
-	else if (strcasecmp(format, "MP4") == 0)
-		t = new target_ffmpeg(id, s, path, prefix, restart_interval, interval, filters, exec_start, exec_cycle, exec_end);
+	else if (strcasecmp(format, "MP4") == 0) {
+		int bitrate = json_int(j_in, "bitrate", "How many bits per second to emit. For 352x288 200000 is a sane value. This value affects the quality.");
+
+		t = new target_ffmpeg(id, s, path, prefix, restart_interval, interval, bitrate, filters, exec_start, exec_cycle, exec_end);
+	}
 	else if (strcasecmp(format, "PLUGIN") == 0) {
 		stream_plugin_t *sp = load_stream_plugin(j_in);
 
