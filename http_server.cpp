@@ -781,16 +781,20 @@ void send_file(const int cfd, const std::string & path, const char *const name)
 	std::string complete_path = path + "/" + name;
 
 	std::string type = "text/html";
-
+	bool dl = false;
 	if (complete_path.size() >= 3) {
 		std::string ext = complete_path.substr(complete_path.size() -3);
 
 		if (ext == "avi")
 			type = "video/x-msvideo";
+		else if (ext == "mp4")
+			type = "video/mp4";
 		else if (ext == "png")
 			type = "image/png";
 		else if (ext == "jpg")
 			type = "image/jpeg";
+
+		dl = ext == "avi";
 	}
 
 	log(LL_WARNING, "Sending file %s of type %s", complete_path.c_str(), type.c_str());
@@ -806,7 +810,7 @@ void send_file(const int cfd, const std::string & path, const char *const name)
 		return;
 	}
 
-	std::string name_header = myformat("Content-Disposition: attachment; filename=\"%s\"\r\n", name);
+	std::string name_header = dl ? myformat("Content-Disposition: attachment; filename=\"%s\"\r\n", name) : "";
 	std::string headers = "HTTP/1.0 200 OK\r\nServer: " NAME " " VERSION "\r\n" + name_header + "Content-Type: " + type + "\r\n\r\n";
 	(void)WRITE(cfd, headers.c_str(), headers.size());
 
