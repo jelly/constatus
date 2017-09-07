@@ -197,6 +197,8 @@ static bool add_stream(OutputStream *ost, AVFormatContext *oc, AVCodec **codec, 
 	/* Some formats want stream headers to be separate. */
 	if (oc->oformat->flags & AVFMT_GLOBALHEADER)
 		c->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+
+	return true;
 }
 
 /**************************************************************/
@@ -455,9 +457,11 @@ static bool open_video(AVFormatContext *oc, AVCodec *codec, OutputStream *ost, A
 		log(LL_ERR, "Could not copy the stream parameters\n");
 		return false;
 	}
+
+	return true;
 }
 
-static AVFrame *get_video_frame(OutputStream *ost, source *const s, uint64_t *const prev_ts, const std::vector<filter *> *const filters, uint8_t **prev_frame)
+static AVFrame *get_video_frame(OutputStream *ost, source *const s, uint64_t *const prev_ts, const std::vector<filter *> *const filters, uint8_t **prev_frame, std::vector<frame_t> **pre_record)
 {
 	AVCodecContext *c = ost->enc;
 
@@ -474,10 +478,27 @@ static AVFrame *get_video_frame(OutputStream *ost, source *const s, uint64_t *co
 	uint8_t *work = NULL;
 	int w = -1, h = -1;
 
-	for(;;) {
-		size_t work_len = 0;
-		if (s -> get_frame(E_RGB, -1, prev_ts, &w, &h, &work, &work_len))
-			break;
+	if (!*pre_record) {
+		for(;;) {
+			size_t work_len = 0;
+			if (s -> get_frame(E_RGB, -1, prev_ts, &w, &h, &work, &work_len))
+				break;
+		}
+	}
+	else {
+		if (!(*pre_record) -> empty()) {
+			work = (*pre_record) -> front().data;
+			w = (*pre_record) -> front().w;
+			h = (*pre_record) -> front().h;
+			*prev_ts = (*pre_record) -> front().ts;
+
+			(*pre_record) -> erase((*pre_record) -> begin());
+		}
+
+		if ((*pre_record) -> empty()) {
+			delete *pre_record;
+			*pre_record = NULL;
+		}
 	}
 
 	apply_filters(filters, *prev_frame, work, *prev_ts, w, h);
@@ -507,7 +528,7 @@ static AVFrame *get_video_frame(OutputStream *ost, source *const s, uint64_t *co
  * encode one video frame and send it to the muxer
  * return 1 when encoding is finished, 0 otherwise
  */
-static int write_video_frame(AVFormatContext *oc, OutputStream *ost, source *const s, uint64_t *const prev_ts, const std::vector<filter *> *const filters, uint8_t **prev_frame)
+static int write_video_frame(AVFormatContext *oc, OutputStream *ost, source *const s, uint64_t *const prev_ts, const std::vector<filter *> *const filters, uint8_t **prev_frame, std::vector<frame_t> **pre_record)
 {
 	int ret;
 	AVCodecContext *c;
@@ -517,7 +538,7 @@ static int write_video_frame(AVFormatContext *oc, OutputStream *ost, source *con
 
 	c = ost->enc;
 
-	frame = get_video_frame(ost, s, prev_ts, filters, prev_frame);
+	frame = get_video_frame(ost, s, prev_ts, filters, prev_frame, pre_record);
 
 	av_init_packet(&pkt);
 
@@ -663,12 +684,13 @@ void target_ffmpeg::operator()()
 			//			(!encode_audio || av_compare_ts(video_st.next_pts, video_st.enc->time_base,
 			//							audio_st.next_pts, audio_st.enc->time_base) <= 0)) {
 			//encode_video = !write_video_frame(oc, &video_st, s, &prev_ts);
-			write_video_frame(oc, &video_st, s, &prev_ts, filters, &prev_frame);
+			write_video_frame(oc, &video_st, s, &prev_ts, filters, &prev_frame, &pre_record);
 			//	} else {
 			//		encode_audio = !write_audio_frame(oc, &audio_st);
 			//	}
 
-			mysleep(interval, &local_stop_flag, s);
+			if (!pre_record || pre_record -> empty())
+				mysleep(interval, &local_stop_flag, s);
 		}
 
 		/* Write the trailer, if any. The trailer must be written before you
