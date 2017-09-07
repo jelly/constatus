@@ -15,7 +15,7 @@ extern "C" {
 #include "picio.h"
 #include "utils.h"
 
-target_ffmpeg::target_ffmpeg(const std::string & id, source *const s, const std::string & store_path, const std::string & prefix, const int max_time, const double interval, const int bitrate, const std::vector<filter *> *const filters, const char *const exec_start, const char *const exec_cycle, const char *const exec_end) : target(id, s, store_path, prefix, max_time, interval, filters, exec_start, exec_cycle, exec_end), bitrate(bitrate)
+target_ffmpeg::target_ffmpeg(const std::string & id, source *const s, const std::string & store_path, const std::string & prefix, const int max_time, const double interval, const std::string & type, const int bitrate, const std::vector<filter *> *const filters, const char *const exec_start, const char *const exec_cycle, const char *const exec_end) : target(id, s, store_path, prefix, max_time, interval, filters, exec_start, exec_cycle, exec_end), type(type), bitrate(bitrate)
 {
 	avcodec_register_all();
 #if 0
@@ -176,7 +176,7 @@ static bool add_stream(OutputStream *ost, AVFormatContext *oc, AVCodec **codec, 
 			ost->st->time_base = AVRational{1, fps};
 			c->time_base       = ost->st->time_base;
 
-			c->gop_size      = 12; /* emit one intra frame every twelve frames at most */
+			c->gop_size      = std::max(fps / 2, 1); /* emit one intra frame every twelve frames at most */
 			c->pix_fmt       = STREAM_PIX_FMT;
 			if (c->codec_id == AV_CODEC_ID_MPEG2VIDEO) {
 				/* just for testing, we also add B-frames */
@@ -592,7 +592,7 @@ void target_ffmpeg::operator()()
 		int i;
 
 		/* Initialize libavcodec, and register all codecs and formats. */
-		name = gen_filename(store_path, prefix, "mp4", get_us(), f_nr++);
+		name = gen_filename(store_path, prefix, type.c_str(), get_us(), f_nr++);
 
 		if (exec_start && is_start) {
 			exec(exec_start, name);
