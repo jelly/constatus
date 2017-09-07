@@ -667,6 +667,8 @@ void target_ffmpeg::operator()()
 			//	} else {
 			//		encode_audio = !write_audio_frame(oc, &audio_st);
 			//	}
+
+			mysleep(interval, &local_stop_flag, s);
 		}
 
 		/* Write the trailer, if any. The trailer must be written before you
