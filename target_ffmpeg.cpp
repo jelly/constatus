@@ -647,8 +647,10 @@ void target_ffmpeg::operator()()
 
 		/* Now that all the parameters are set, we can open the audio and
 		 * video codecs and allocate the necessary encode buffers. */
-		if (have_video)
+		if (have_video) {
+			av_opt_set(opt, "preset", "fast", 0);
 			open_video(oc, video_codec, &video_st, opt);
+		}
 
 		//if (have_audio)
 		//	open_audio(oc, audio_codec, &audio_st, opt);
