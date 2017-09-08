@@ -49,7 +49,7 @@ def process(f, cfg):
 	includes = load_file(f, cfg)
 
 	j = dict()
-	j['general'] = {	'logfile' : lu(cfg, 'logfile'),
+	j['general'] = {	'logfile' : lu(cfg, 'logfile', 'constatus.log'),
                 	"log-level" : "debug",
 			"resize-type" : "regular"
 			}
@@ -65,7 +65,7 @@ def process(f, cfg):
 
 	quality = lui(cfg, 'quality')
 
-	td = lu(cfg, 'target_dir')
+	td = lu(cfg, 'target_dir', './')
 
 	width = lui(cfg, 'width', 320)
 	height = lui(cfg, 'height', 240)
