@@ -27,6 +27,7 @@ Supports:
    - boost contrast
    - convert to grayscale
    - add box around movement
+   - show only pixels that have changed
    - mirror vertical and/or horizontal
    - neighbour average noise filter
    - picture overlay (with alpha blending)

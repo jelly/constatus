@@ -42,6 +42,7 @@
 #include "log.h"
 #include "cfg.h"
 #include "resize_cairo.h"
+#include "filter_motion_only.h"
 
 const char *json_str(const json_t *const in, const char *const key, const char *const descr)
 {
@@ -213,6 +214,12 @@ std::vector<filter *> *load_filters(const json_t *const in)
 			const uint8_t *sb = load_selection_bitmap(selection_bitmap);
 
 			filters -> push_back(new filter_marker_simple(sm, sb));
+		}
+		else if (strcasecmp(s_type, "motion-only") == 0) {
+			const char *selection_bitmap = json_str(ae, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.");
+			const uint8_t *sb = load_selection_bitmap(selection_bitmap);
+
+			filters -> push_back(new filter_motion_only(sb));
 		}
 		else if (strcasecmp(s_type, "boost-contrast") == 0)
 			filters -> push_back(new filter_boost_contrast());
