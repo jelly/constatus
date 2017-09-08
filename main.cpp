@@ -453,9 +453,9 @@ int main(int argc, char *argv[])
 		const char *s_type = json_str(j_source, "type", "source-type");
 
 		std::string id = json_str_optional(j_source, "id");
-		double max_fps = json_float(j_source, "max-fps", "limit the number of frames per second acquired to this value or -1 to disabe");
+		double max_fps = json_float(j_source, "max-fps", "limit the number of frames per second acquired to this value or -1.0 to disabe");
 		if (max_fps == 0)
-			error_exit(false, "Video-source: max-fps must be either > 0 or -1. Use -1 for no FPS limit.");
+			error_exit(false, "Video-source: max-fps must be either > 0 or -1.0. Use -1.0 for no FPS limit.");
 
 		int resize_w = json_int(j_source, "resize-width", "resize picture width to this (-1 to disable)");
 		int resize_h = json_int(j_source, "resize-height", "resize picture height to this (-1 to disable)");
@@ -593,9 +593,9 @@ int main(int argc, char *argv[])
 			int mute_duration = json_int(mte, "mute-duration", "how long not to record (in frames) after motion has stopped");
 			int warmup_duration = json_int(mte, "warmup-duration", "how many frames to ignore so that the camera can warm-up");
 			int pre_motion_record_duration = json_int(mte, "pre-motion-record-duration", "how many frames to record that happened before the motion started");
-			double max_fps = json_float(mte, "max-fps", "maximum number of frames per second to analyze (or -1 for no limit)");
+			double max_fps = json_float(mte, "max-fps", "maximum number of frames per second to analyze (or -1.0 for no limit)");
 			if (max_fps == 0)
-				error_exit(false, "Motion triggers: max-fps must be either > 0 or -1. Use -1 for no FPS limit.");
+				error_exit(false, "Motion triggers: max-fps must be either > 0 or -1.0. Use -1.0 for no FPS limit.");
 
 			const char *selection_bitmap = json_str(mte, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.");
 
