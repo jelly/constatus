@@ -353,6 +353,7 @@ void help()
 {
 	printf("-c x   select configuration file\n");
 	printf("-f     fork into the background\n");
+	printf("-p x   file to write PID to\n");
 	printf("-v     enable verbose mode\n");
 	printf("-V     show version & exit\n");
 	printf("-h     this help\n");
@@ -360,15 +361,20 @@ void help()
 
 int main(int argc, char *argv[])
 {
+	const char *pid_file = NULL;
 	const char *cfg_file = "constatus.conf";
 	bool do_fork = false, verbose = false;
 	int ll = LL_INFO;
 
 	int c = -1;
-	while((c = getopt(argc, argv, "c:fhvV")) != -1) {
+	while((c = getopt(argc, argv, "c:p:fhvV")) != -1) {
 		switch(c) {
 			case 'c':
 				cfg_file = optarg;
+				break;
+
+			case 'p':
+				pid_file = optarg;
 				break;
 
 			case 'f':
@@ -712,9 +718,22 @@ int main(int argc, char *argv[])
 			error_exit(false, "Entry \"%s\" in %s is not understood", key, cfg_file);
 	}
 
+	if (pid_file && !do_fork)
+		log(LL_WARNING, "Will not write a PID file when not forking");
+
 	if (do_fork) {
 		if (daemon(0, 0) == -1)
 			error_exit(true, "daemon() failed");
+
+		if (pid_file) {
+			FILE *fh = fopen(pid_file, "w");
+			if (!fh)
+				error_exit(true, "Cannot create %s", pid_file);
+
+
+			fprintf(fh, "%d", getpid());
+			fclose(fh);
+		}
 
 		for(;;)
 			sleep(86400);
