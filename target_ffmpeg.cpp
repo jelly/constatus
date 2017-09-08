@@ -18,25 +18,6 @@ extern "C" {
 target_ffmpeg::target_ffmpeg(const std::string & id, source *const s, const std::string & store_path, const std::string & prefix, const int max_time, const double interval, const std::string & type, const int bitrate, const std::vector<filter *> *const filters, const char *const exec_start, const char *const exec_cycle, const char *const exec_end) : target(id, s, store_path, prefix, max_time, interval, filters, exec_start, exec_cycle, exec_end), type(type), bitrate(bitrate)
 {
 	avcodec_register_all();
-#if 0
-
-	std::string encoders;
-
-	AVCodec *current_codec = av_codec_next(NULL);
-	while (current_codec != NULL)
-	{
-		if (av_codec_is_encoder(current_codec) && avcodec_get_type(current_codec -> id) == AVMEDIA_TYPE_VIDEO) {
-			if (!encoders.empty())
-				encoders += " ";
-
-			encoders += current_codec -> name;
-		}
-
-		current_codec = av_codec_next(current_codec);
-	}
-
-	log(LL_INFO, "Available codecs: %s", encoders.c_str());
-#endif
 }
 
 target_ffmpeg::~target_ffmpeg()
@@ -615,14 +596,13 @@ void target_ffmpeg::operator()()
 
 	for(;!local_stop_flag;) {
 		OutputStream video_st = { 0 }, audio_st = { 0 };
-		AVOutputFormat *fmt;
-		AVFormatContext *oc;
-		AVCodec *audio_codec, *video_codec;
-		int ret;
+		AVOutputFormat *fmt = NULL;
+		AVFormatContext *oc = NULL;
+		AVCodec *audio_codec = NULL, *video_codec = NULL;
+		int ret = -1;
 		int have_video = 0, have_audio = 0;
 		int encode_video = 0, encode_audio = 0;
 		AVDictionary *opt = NULL;
-		int i;
 
 		/* Initialize libavcodec, and register all codecs and formats. */
 		name = gen_filename(store_path, prefix, type.c_str(), get_us(), f_nr++);
@@ -656,6 +636,9 @@ void target_ffmpeg::operator()()
 		//	have_audio = 1;
 		//	encode_audio = 1;
 		//}
+
+		if (!have_video)
+			error_exit(false, "Target encoder does not have video capabilities");
 
 		/* Now that all the parameters are set, we can open the audio and
 		 * video codecs and allocate the necessary encode buffers. */
