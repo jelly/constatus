@@ -129,19 +129,19 @@ static bool add_stream(OutputStream *ost, AVFormatContext *oc, AVCodec **codec, 
 	/* find the encoder */
 	*codec = avcodec_find_encoder(codec_id);
 	if (!(*codec)) {
-		log(LL_ERR, "Could not find encoder for '%s'\n", avcodec_get_name(codec_id));
+		log(LL_ERR, "Can't find encoder for '%s'", avcodec_get_name(codec_id));
 		return false;
 	}
 
 	ost->st = avformat_new_stream(oc, NULL);
 	if (!ost->st) {
-		log(LL_ERR, "Could not allocate stream\n");
+		log(LL_ERR, "Can't allocate stream");
 		return false;
 	}
 	ost->st->id = oc->nb_streams-1;
 	c = avcodec_alloc_context3(*codec);
 	if (!c) {
-		log(LL_ERR, "Could not alloc an encoding context\n");
+		log(LL_ERR, "Can't alloc an encoding context");
 		return false;
 	}
 	ost->enc = c;
@@ -257,7 +257,7 @@ static void open_audio(AVFormatContext *oc, AVCodec *codec, OutputStream *ost, A
 	ret = avcodec_open2(c, codec, &opt);
 	av_dict_free(&opt);
 	if (ret < 0) {
-		log(LL_ERR, "Could not open audio codec: %s", my_av_err2str(ret).c_str());
+		log(LL_ERR, "Can't open audio codec: %s", my_av_err2str(ret).c_str());
 		exit(1);
 	}
 
@@ -280,14 +280,14 @@ static void open_audio(AVFormatContext *oc, AVCodec *codec, OutputStream *ost, A
 	/* copy the stream parameters to the muxer */
 	ret = avcodec_parameters_from_context(ost->st->codecpar, c);
 	if (ret < 0) {
-		log(LL_ERR, "Could not copy the stream parameters\n");
+		log(LL_ERR, "Can't copy the stream parameters");
 		exit(1);
 	}
 
 	/* create resampler context */
 	ost->swr_ctx = swr_alloc();
 	if (!ost->swr_ctx) {
-		log(LL_ERR, "Could not allocate resampler context\n");
+		log(LL_ERR, "Can't allocate resampler context");
 		exit(1);
 	}
 
@@ -417,7 +417,7 @@ static AVFrame *alloc_picture(enum AVPixelFormat pix_fmt, int width, int height)
 	/* allocate the buffers for the frame data */
 	ret = av_frame_get_buffer(picture, 32);
 	if (ret < 0) {
-		log(LL_ERR, "Could not allocate frame data.\n");
+		log(LL_ERR, "Can't allocate frame data");
 		av_frame_free(&picture);
 		return NULL;
 	}
@@ -437,14 +437,14 @@ static bool open_video(AVFormatContext *oc, AVCodec *codec, OutputStream *ost, A
 	ret = avcodec_open2(c, codec, &opt);
 	av_dict_free(&opt);
 	if (ret < 0) {
-		log(LL_ERR, "Could not open video codec: %s", my_av_err2str(ret).c_str());
+		log(LL_ERR, "Can't open video codec: %s", my_av_err2str(ret).c_str());
 		return false;
 	}
 
 	/* allocate and init a re-usable frame */
 	ost->frame = alloc_picture(c->pix_fmt, c->width, c->height);
 	if (!ost->frame) {
-		log(LL_ERR, "Could not allocate video frame");
+		log(LL_ERR, "Can't allocate video frame");
 		return false;
 	}
 
@@ -455,7 +455,7 @@ static bool open_video(AVFormatContext *oc, AVCodec *codec, OutputStream *ost, A
 	if (c->pix_fmt != AV_PIX_FMT_YUV420P) {
 		ost->tmp_frame = alloc_picture(AV_PIX_FMT_YUV420P, c->width, c->height);
 		if (!ost->tmp_frame) {
-			log(LL_ERR, "Could not allocate temporary picture");
+			log(LL_ERR, "Can't allocate temporary picture");
 			return false;
 		}
 	}
@@ -463,7 +463,7 @@ static bool open_video(AVFormatContext *oc, AVCodec *codec, OutputStream *ost, A
 	/* copy the stream parameters to the muxer */
 	ret = avcodec_parameters_from_context(ost->st->codecpar, c);
 	if (ret < 0) {
-		log(LL_ERR, "Could not copy the stream parameters\n");
+		log(LL_ERR, "Can't copy the stream parameters\n");
 		return false;
 	}
 
@@ -517,7 +517,7 @@ static AVFrame *get_video_frame(OutputStream *ost, source *const s, uint64_t *co
 	if (!ost->sws_ctx) {
 		ost->sws_ctx = sws_getContext(c->width, c->height, AV_PIX_FMT_RGB24, c->width, c->height, c->pix_fmt, SCALE_FLAGS, NULL, NULL, NULL);
 		if (!ost->sws_ctx) {
-			log(LL_ERR, "Could not initialize the conversion context\n");
+			log(LL_ERR, "Can't initialize the conversion context\n");
 			exit(1);
 		}
 	}
@@ -635,7 +635,7 @@ void target_ffmpeg::operator()()
 		/* allocate the output media context */
 		avformat_alloc_output_context2(&oc, NULL, NULL, name.c_str());
 		if (!oc) {
-			printf("Could not deduce output format from file extension: using MPEG.\n");
+			printf("Can't deduce output format from file extension: using MPEG");
 			avformat_alloc_output_context2(&oc, NULL, "mpeg", name.c_str());
 		}
 
@@ -670,7 +670,7 @@ void target_ffmpeg::operator()()
 		if (!(fmt->flags & AVFMT_NOFILE)) {
 			ret = avio_open(&oc->pb, name.c_str(), AVIO_FLAG_WRITE);
 			if (ret < 0) {
-				log(LL_ERR, "Could not open '%s': %s", name.c_str(), my_av_err2str(ret).c_str());
+				log(LL_ERR, "Can't open '%s': %s", name.c_str(), my_av_err2str(ret).c_str());
 				// FIXME return 1;
 			}
 		}
