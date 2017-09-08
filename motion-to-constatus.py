@@ -167,6 +167,7 @@ def process(f, cfg):
 						"quality": quality,
 						"restart-interval" : 86400,
 						"fps" : fps,
+						"override-fps" : -1.0,
 						"format" : "avi",
 						"stream-writer-plugin-file" : "",
 						"stream-writer-plugin-parameter" : "",
