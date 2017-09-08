@@ -50,7 +50,11 @@ const char *json_str(const json_t *const in, const char *const key, const char *
 	if (!j_value)
 		error_exit(false, "\"%s\" missing (%s)", key, descr);
 
-	return json_string_value(j_value);
+	char *value = NULL;
+	if (json_unpack(j_value, "s", &value) == -1)
+		error_exit(false, "\"%s\" does not have a string value", key);
+
+	return value;
 }
 
 const char *json_str_optional(const json_t *const in, const char *const key)
@@ -60,7 +64,11 @@ const char *json_str_optional(const json_t *const in, const char *const key)
 	if (!j_value)
 		return "";
 
-	return json_string_value(j_value);
+	char *value = NULL;
+	if (json_unpack(j_value, "s", &value) == -1)
+		error_exit(false, "\"%s\" does not have a string value", key);
+
+	return value;
 }
 
 bool json_bool(const json_t *const in, const char *const key, const char * const descr)
@@ -70,7 +78,11 @@ bool json_bool(const json_t *const in, const char *const key, const char * const
 	if (!j_value)
 		error_exit(false, "\"%s\" missing (%s)", key, descr);
 
-	return json_boolean_value(j_value);
+	bool value = false;
+	if (json_unpack(j_value, "b", &value) == -1)
+		error_exit(false, "\"%s\" does not have a boolean value (use \"true\" or \"false\" without quotes)", key);
+
+	return value;
 }
 
 int json_int(const json_t *const in, const char *const key, const char * const descr)
@@ -80,7 +92,11 @@ int json_int(const json_t *const in, const char *const key, const char * const d
 	if (!j_value)
 		error_exit(false, "\"%s\" missing (%s)", key, descr);
 
-	return json_integer_value(j_value);
+	int value = 0;
+	if (json_unpack(j_value, "i", &value) == -1)
+		error_exit(false, "\"%s\" does not have an int value (do not put quotes around the value)", key);
+
+	return value;
 }
 
 double json_float(const json_t *const in, const char *const key, const char * const descr)
@@ -90,7 +106,11 @@ double json_float(const json_t *const in, const char *const key, const char * co
 	if (!j_value)
 		error_exit(false, "\"%s\" missing (%s)", key, descr);
 
-	return json_real_value(j_value);
+	double value = 0;
+	if (json_unpack(j_value, "f", &value) == -1)
+		error_exit(false, "\"%s\" does not have a float value (do not put quotes around the value, and make sure there's a dot in it)", key);
+
+	return value;
 }
 
 void add_filters(std::vector<filter *> *af, const std::vector<filter *> *const in)
@@ -126,7 +146,7 @@ bool find_interval_or_fps(const json_t *const in, double *const interval, const 
 		return false;
 
 	if (j_interval) {
-		*interval = json_real_value(j_interval);
+		*interval = json_float(in, "interval", "interval or fps");
 
 		if (*interval == 0)
 			return false;
@@ -137,7 +157,7 @@ bool find_interval_or_fps(const json_t *const in, double *const interval, const 
 			*fps = 1.0 / *interval;
 	}
 	else {
-		*fps = json_real_value(j_fps);
+		*fps = json_float(in, fps_name.c_str(), "interval or fps");
 
 		if (*fps == 0)
 			return false;
