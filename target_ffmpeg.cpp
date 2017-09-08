@@ -44,6 +44,16 @@ target_ffmpeg::~target_ffmpeg()
 	stop();
 }
 
+
+static const std::string my_av_err2str(const int nr)
+{
+	char buffer[AV_ERROR_MAX_STRING_SIZE];
+
+	av_strerror(nr, buffer, sizeof buffer);
+
+        return buffer;
+}
+
 // based on https://www.ffmpeg.org/doxygen/2.0/doc_2examples_2muxing_8c-example.html
 /*
  * Copyright (c) 2003 Fabrice Bellard
@@ -247,7 +257,7 @@ static void open_audio(AVFormatContext *oc, AVCodec *codec, OutputStream *ost, A
 	ret = avcodec_open2(c, codec, &opt);
 	av_dict_free(&opt);
 	if (ret < 0) {
-		// FIXME log(LL_ERR, "Could not open audio codec: %s\n", av_err2str(ret));
+		log(LL_ERR, "Could not open audio codec: %s", my_av_err2str(ret).c_str());
 		exit(1);
 	}
 
@@ -372,15 +382,14 @@ static int write_audio_frame(AVFormatContext *oc, OutputStream *ost)
 
 	ret = avcodec_encode_audio2(c, &pkt, frame, &got_packet);
 	if (ret < 0) {
-// FIXME 		log(LL_ERR, "Error encoding audio frame: %s\n", av_err2str(ret));
+		log(LL_ERR, "Error encoding audio frame: %s", my_av_err2str(ret).c_str());
 		exit(1);
 	}
 
 	if (got_packet) {
 		ret = write_frame(oc, &c->time_base, ost->st, &pkt);
 		if (ret < 0) {
-// FIXME 			log(LL_ERR, "Error while writing audio frame: %s\n",
-// FIXME 					av_err2str(ret));
+			log(LL_ERR, "Error while writing audio frame: %s", my_av_err2str(ret).c_str());
 			exit(1);
 		}
 	}
@@ -428,14 +437,14 @@ static bool open_video(AVFormatContext *oc, AVCodec *codec, OutputStream *ost, A
 	ret = avcodec_open2(c, codec, &opt);
 	av_dict_free(&opt);
 	if (ret < 0) {
-// FIXME 		log(LL_ERR, "Could not open video codec: %s\n", av_err2str(ret));
+		log(LL_ERR, "Could not open video codec: %s", my_av_err2str(ret).c_str());
 		return false;
 	}
 
 	/* allocate and init a re-usable frame */
 	ost->frame = alloc_picture(c->pix_fmt, c->width, c->height);
 	if (!ost->frame) {
-		log(LL_ERR, "Could not allocate video frame\n");
+		log(LL_ERR, "Could not allocate video frame");
 		return false;
 	}
 
@@ -446,7 +455,7 @@ static bool open_video(AVFormatContext *oc, AVCodec *codec, OutputStream *ost, A
 	if (c->pix_fmt != AV_PIX_FMT_YUV420P) {
 		ost->tmp_frame = alloc_picture(AV_PIX_FMT_YUV420P, c->width, c->height);
 		if (!ost->tmp_frame) {
-			log(LL_ERR, "Could not allocate temporary picture\n");
+			log(LL_ERR, "Could not allocate temporary picture");
 			return false;
 		}
 	}
@@ -545,7 +554,7 @@ static int write_video_frame(AVFormatContext *oc, OutputStream *ost, source *con
 	/* encode the image */
 	ret = avcodec_encode_video2(c, &pkt, frame, &got_packet);
 	if (ret < 0) {
-		// FIXME log(LL_ERR, "Error encoding video frame: %s\n", av_err2str(ret));
+		log(LL_ERR, "Error encoding video frame: %s", my_av_err2str(ret).c_str());
 		exit(1);
 	}
 
@@ -555,7 +564,7 @@ static int write_video_frame(AVFormatContext *oc, OutputStream *ost, source *con
 		ret = 0;
 
 	if (ret < 0) {
-// FIXME 		log(LL_ERR, "Error while writing video frame: %s\n", av_err2str(ret));
+		log(LL_ERR, "Error while writing video frame: %s", my_av_err2str(ret).c_str());
 		exit(1);
 	}
 
@@ -661,8 +670,7 @@ void target_ffmpeg::operator()()
 		if (!(fmt->flags & AVFMT_NOFILE)) {
 			ret = avio_open(&oc->pb, name.c_str(), AVIO_FLAG_WRITE);
 			if (ret < 0) {
-				// FIXME 			log(LL_ERR, "Could not open '%s': %s\n", name.c_str(),
-				// FIXME 					av_err2str(ret));
+				log(LL_ERR, "Could not open '%s': %s", name.c_str(), my_av_err2str(ret).c_str());
 				// FIXME return 1;
 			}
 		}
@@ -670,8 +678,7 @@ void target_ffmpeg::operator()()
 		/* Write the stream header, if any. */
 		ret = avformat_write_header(oc, &opt);
 		if (ret < 0) {
-			// FIXME 		log(LL_ERR, "Error occurred when opening output file: %s\n",
-			// FIXME 				av_err2str(ret));
+			log(LL_ERR, "Error occurred when opening output file: %s", my_av_err2str(ret).c_str());
 			// FIXME return 1;
 		}
 
