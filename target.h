@@ -29,11 +29,12 @@ protected:
 	const double interval;
 	const std::vector<filter *> *const filters;
 	const char *const exec_start, *const exec_cycle, *const exec_end;
+	const int override_fps;
 
 	std::vector<frame_t> *pre_record;
 
 public:
-	target(const std::string & id, source *const s, const std::string & store_path, const std::string & prefix, const int max_time, const double interval, const std::vector<filter *> *const filters, const char *const exec_start, const char *const exec_cycle, const char *const exec_end);
+	target(const std::string & id, source *const s, const std::string & store_path, const std::string & prefix, const int max_time, const double interval, const std::vector<filter *> *const filters, const char *const exec_start, const char *const exec_cycle, const char *const exec_end, const int override_fps);
 	virtual ~target();
 
 	void start(std::vector<frame_t> *const pre_record);

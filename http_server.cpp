@@ -590,7 +590,7 @@ interface * start_a_video(source *const s, const std::string & snapshot_dir, con
 
 	std::vector<filter *> *const filters = new std::vector<filter *>();
 
-	interface *i = new target_avi(id, s, snapshot_dir, "snapshot-", quality, -1, -1, filters, "", "", "");
+	interface *i = new target_avi(id, s, snapshot_dir, "snapshot-", quality, -1, -1, filters, "", "", "", -1);
 	i -> start();
 
 	return i;

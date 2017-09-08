@@ -10,7 +10,7 @@ extern "C" {
 #include "picio.h"
 #include "utils.h"
 
-target_avi::target_avi(const std::string & id, source *const s, const std::string & store_path, const std::string & prefix, const int quality, const int max_time, const double interval, const std::vector<filter *> *const filters, const char *const exec_start, const char *const exec_cycle, const char *const exec_end) : target(id, s, store_path, prefix, max_time, interval, filters, exec_start, exec_cycle, exec_end), quality(quality)
+target_avi::target_avi(const std::string & id, source *const s, const std::string & store_path, const std::string & prefix, const int quality, const int max_time, const double interval, const std::vector<filter *> *const filters, const char *const exec_start, const char *const exec_cycle, const char *const exec_end, const int override_fps) : target(id, s, store_path, prefix, max_time, interval, filters, exec_start, exec_cycle, exec_end, override_fps), quality(quality)
 {
 }
 
@@ -73,7 +73,7 @@ void target_avi::operator()()
 
 			int fps = interval <= 0 ? 25 : std::max(1, int(1.0 / interval));
 
-			gwavi = gwavi_open((char *)name.c_str(), w, h, (char *)"MJPG", fps, NULL);
+			gwavi = gwavi_open((char *)name.c_str(), w, h, (char *)"MJPG", override_fps != -1 ? override_fps : fps, NULL);
 			if (!gwavi)
 				error_exit(true, "Cannot create %s", name.c_str());
 

@@ -323,25 +323,27 @@ target * load_target(const json_t *const j_in, source *const s)
 
 	double fps = 0, interval = 0;
 	if (!find_interval_or_fps(j_in, &interval, "fps", &fps))
-		interval_fps_error("fps", "for writing frames to disk", id.c_str());
+		interval_fps_error("fps", "for writing frames to disk (FPS as the video frames are retrieved)", id.c_str());
+
+	double override_fps = json_float(j_in, "override-fps", "What FPS to use in the output file. That way you can let the resulting file be played faster (or slower) than how the stream is obtained from the camera. -1.0 to disable");
 
 	std::vector<filter *> *filters = load_filters(json_object_get(j_in, "filters"));
 
 	if (strcasecmp(format, "AVI") == 0)
-		t = new target_avi(id, s, path, prefix, jpeg_quality, restart_interval, interval, filters, exec_start, exec_cycle, exec_end);
+		t = new target_avi(id, s, path, prefix, jpeg_quality, restart_interval, interval, filters, exec_start, exec_cycle, exec_end, override_fps);
 	else if (strcasecmp(format, "FFMPEG") == 0) {
 		int bitrate = json_int(j_in, "bitrate", "How many bits per second to emit. For 352x288 200000 is a sane value. This value affects the quality.");
 		std::string type = json_str(j_in, "ffmpeg-type", "E.g. flv, mp4");
 		const char *const parameters = json_str_optional(j_in, "ffmpeg-parameters");
 
-		t = new target_ffmpeg(id, parameters, s, path, prefix, restart_interval, interval, type, bitrate, filters, exec_start, exec_cycle, exec_end);
+		t = new target_ffmpeg(id, parameters, s, path, prefix, restart_interval, interval, type, bitrate, filters, exec_start, exec_cycle, exec_end, override_fps);
 	}
 	else if (strcasecmp(format, "JPEG") == 0)
 		t = new target_jpeg(id, s, path, prefix, jpeg_quality, restart_interval, interval, filters, exec_start, exec_cycle, exec_end);
 	else if (strcasecmp(format, "PLUGIN") == 0) {
 		stream_plugin_t *sp = load_stream_plugin(j_in);
 
-		t = new target_plugin(id, s, path, prefix, jpeg_quality, restart_interval, interval, filters, exec_start, exec_cycle, exec_end, sp);
+		t = new target_plugin(id, s, path, prefix, jpeg_quality, restart_interval, interval, filters, exec_start, exec_cycle, exec_end, sp, override_fps);
 	}
 	else {
 		error_exit(false, "Format %s is unknown (stream to disk backends)", format);
@@ -487,7 +489,7 @@ int main(int argc, char *argv[])
 		const char *s_type = json_str(j_source, "type", "source-type");
 
 		std::string id = json_str_optional(j_source, "id");
-		double max_fps = json_float(j_source, "max-fps", "limit the number of frames per second acquired to this value or -1.0 to disabe");
+		double max_fps = json_float(j_source, "max-fps", "limit the number of frames per second acquired to this value or -1.0 to disable");
 		if (max_fps == 0)
 			error_exit(false, "Video-source: max-fps must be either > 0 or -1.0. Use -1.0 for no FPS limit.");
 

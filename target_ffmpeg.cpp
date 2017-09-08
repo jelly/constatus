@@ -15,7 +15,7 @@ extern "C" {
 #include "picio.h"
 #include "utils.h"
 
-target_ffmpeg::target_ffmpeg(const std::string & id, const char *const parameters, source *const s, const std::string & store_path, const std::string & prefix, const int max_time, const double interval, const std::string & type, const int bitrate, const std::vector<filter *> *const filters, const char *const exec_start, const char *const exec_cycle, const char *const exec_end) : target(id, s, store_path, prefix, max_time, interval, filters, exec_start, exec_cycle, exec_end), parameters(parameters), type(type), bitrate(bitrate)
+target_ffmpeg::target_ffmpeg(const std::string & id, const char *const parameters, source *const s, const std::string & store_path, const std::string & prefix, const int max_time, const double interval, const std::string & type, const int bitrate, const std::vector<filter *> *const filters, const char *const exec_start, const char *const exec_cycle, const char *const exec_end, const int override_fps) : target(id, s, store_path, prefix, max_time, interval, filters, exec_start, exec_cycle, exec_end, override_fps), parameters(parameters), type(type), bitrate(bitrate)
 {
 	avcodec_register_all();
 }
@@ -630,7 +630,7 @@ void target_ffmpeg::operator()()
 		/* Add the audio and video streams using the default format codecs
 		 * and initialize the codecs. */
 		if (fmt->video_codec != AV_CODEC_ID_NONE) {
-			add_stream(&video_st, oc, &video_codec, fmt->video_codec, fps, bitrate, width, height);
+			add_stream(&video_st, oc, &video_codec, fmt->video_codec, override_fps != -1 ? override_fps : fps, bitrate, width, height);
 			have_video = 1;
 			encode_video = 1;
 		}
