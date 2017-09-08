@@ -481,8 +481,11 @@ static AVFrame *get_video_frame(OutputStream *ost, source *const s, uint64_t *co
 
 	/* when we pass a frame to the encoder, it may keep a reference to it
 	 * internally; make sure we do not overwrite it here */
-	if (av_frame_make_writable(ost->frame) < 0)
-		exit(1);
+	int ret = -1;
+	if ((ret = av_frame_make_writable(ost->frame)) < 0) {
+		log(LL_ERR, "Can't initialize the conversion context %s", my_av_err2str(ret).c_str());
+		return NULL;
+	}
 
 	uint8_t *work = NULL;
 	int w = -1, h = -1;
@@ -518,7 +521,7 @@ static AVFrame *get_video_frame(OutputStream *ost, source *const s, uint64_t *co
 		ost->sws_ctx = sws_getContext(c->width, c->height, AV_PIX_FMT_RGB24, c->width, c->height, c->pix_fmt, SCALE_FLAGS, NULL, NULL, NULL);
 		if (!ost->sws_ctx) {
 			log(LL_ERR, "Can't initialize the conversion context\n");
-			exit(1);
+			return NULL;
 		}
 	}
 
@@ -533,42 +536,42 @@ static AVFrame *get_video_frame(OutputStream *ost, source *const s, uint64_t *co
 	return ost->frame;
 }
 
-/*
- * encode one video frame and send it to the muxer
- * return 1 when encoding is finished, 0 otherwise
- */
-static int write_video_frame(AVFormatContext *oc, OutputStream *ost, source *const s, uint64_t *const prev_ts, const std::vector<filter *> *const filters, uint8_t **prev_frame, std::vector<frame_t> **pre_record)
+static bool write_video_frame(AVFormatContext *oc, OutputStream *ost, source *const s, uint64_t *const prev_ts, const std::vector<filter *> *const filters, uint8_t **prev_frame, std::vector<frame_t> **pre_record)
 {
-	int ret;
-	AVCodecContext *c;
-	AVFrame *frame;
-	int got_packet = 0;
+	AVCodecContext *c = ost->enc;
+
+	AVFrame *frame = get_video_frame(ost, s, prev_ts, filters, prev_frame, pre_record);
+	if (!frame)
+		return false;
+
 	AVPacket pkt = { 0 };
-
-	c = ost->enc;
-
-	frame = get_video_frame(ost, s, prev_ts, filters, prev_frame, pre_record);
-
 	av_init_packet(&pkt);
 
-	/* encode the image */
-	ret = avcodec_encode_video2(c, &pkt, frame, &got_packet);
+	int ret = avcodec_send_frame(c, frame);
 	if (ret < 0) {
-		log(LL_ERR, "Error encoding video frame: %s", my_av_err2str(ret).c_str());
-		exit(1);
+		log(LL_ERR, "Error sending a frame for encoding %s", my_av_err2str(ret).c_str());
+		return false;
 	}
 
-	if (got_packet)
+	while (ret >= 0) {
+		ret = avcodec_receive_packet(c, &pkt);
+		if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+			break;
+		else if (ret < 0) {
+			log(LL_ERR, "Error during encoding %s", my_av_err2str(ret).c_str());
+			return false;
+		}
+
 		ret = write_frame(oc, &c->time_base, ost->st, &pkt);
-	else
-		ret = 0;
+		if (ret < 0) {
+			log(LL_ERR, "Error while writing video frame: %s", my_av_err2str(ret).c_str());
+			return false;
+		}
 
-	if (ret < 0) {
-		log(LL_ERR, "Error while writing video frame: %s", my_av_err2str(ret).c_str());
-		exit(1);
+		av_packet_unref(&pkt);
 	}
 
-	return (frame || got_packet) ? 0 : 1;
+	return true;
 }
 
 static void close_stream(AVFormatContext *oc, OutputStream *ost)
@@ -671,7 +674,7 @@ void target_ffmpeg::operator()()
 			ret = avio_open(&oc->pb, name.c_str(), AVIO_FLAG_WRITE);
 			if (ret < 0) {
 				log(LL_ERR, "Can't open '%s': %s", name.c_str(), my_av_err2str(ret).c_str());
-				// FIXME return 1;
+				break;
 			}
 		}
 
@@ -679,7 +682,7 @@ void target_ffmpeg::operator()()
 		ret = avformat_write_header(oc, &opt);
 		if (ret < 0) {
 			log(LL_ERR, "Error occurred when opening output file: %s", my_av_err2str(ret).c_str());
-			// FIXME return 1;
+			break;
 		}
 
 		time_t cut_ts = time(NULL) + max_time;
@@ -693,7 +696,8 @@ void target_ffmpeg::operator()()
 			//			(!encode_audio || av_compare_ts(video_st.next_pts, video_st.enc->time_base,
 			//							audio_st.next_pts, audio_st.enc->time_base) <= 0)) {
 			//encode_video = !write_video_frame(oc, &video_st, s, &prev_ts);
-			write_video_frame(oc, &video_st, s, &prev_ts, filters, &prev_frame, &pre_record);
+			if (!write_video_frame(oc, &video_st, s, &prev_ts, filters, &prev_frame, &pre_record))
+				break;
 			//	} else {
 			//		encode_audio = !write_audio_frame(oc, &audio_st);
 			//	}
