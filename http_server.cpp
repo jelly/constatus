@@ -454,22 +454,27 @@ std::string describe_interface(const interface *const i)
 	std::string id_int = myformat("%p", i);
 	std::string id_ext = i -> get_id();
 
-	std::string type = "!!!";
+	std::string type = "!!!", div = "some_section";
 	switch(i -> get_class_type()) {
 		case CT_HTTPSERVER:
 			type = "HTTP server";
+			div = "http-server";
 			break;
 		case CT_MOTIONTRIGGER:
 			type = "motion trigger";
+			div = "motion-trigger";
 			break;
 		case CT_TARGET:
 			type = "stream writer";
+			div = "stream-writer";
 			break;
 		case CT_SOURCE:
 			type = "source";
+			div = "source";
 			break;
 		case CT_LOOPBACK:
 			type = "video4linux loopback";
+			div = "v4l-loopback";
 			break;
 		case CT_NONE:
 			type = "???";
@@ -479,7 +484,7 @@ std::string describe_interface(const interface *const i)
 	if (id_ext.empty())
 		id_ext = type;
 
-	std::string out = std::string("<h2>") + id_ext + "</h2><p>description: " + i -> get_description() + "<br>type: " + type + "</p><ul>";
+	std::string out = std::string("<div id=\"") + div + "\"><h2>" + id_ext + "</h2><p>description: " + i -> get_description() + "<br>type: " + type + "</p><ul>";
 
 	if (i -> is_paused()) {
 		out += myformat("<li><a href=\"unpause?%s\">unpause</a>", id_int.c_str());
@@ -496,7 +501,7 @@ std::string describe_interface(const interface *const i)
 	}
 	out += myformat("<li><a href=\"restart?%s\">restart</a>", id_int.c_str());
 
-	out += "</ul>";
+	out += "</ul></div>";
 
 	return out;
 }
@@ -793,6 +798,8 @@ void send_file(const int cfd, const std::string & path, const char *const name)
 			type = "image/png";
 		else if (ext == "jpg")
 			type = "image/jpeg";
+		else if (ext == "css")
+			type = "text/css";
 
 		dl = ext == "avi";
 	}
@@ -969,7 +976,7 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 	}
 	else if (strcmp(path, "/index.html") == 0 || strcmp(path, "/") == 0)
 	{
-		std::string reply = http_200_header + html_header + "<h1>" NAME " " VERSION "</h1>"
+		std::string reply = http_200_header + html_header + "<div id=\"main\"><h1>" NAME " " VERSION "</h1>"
 			"<ul>"
 			"<li><a href=\"/stream.mjpeg\">MJPEG stream</a>"
 			"<li><a href=\"/stream.html\">Same MJPEG stream but in a HTML wrapper</a>"
@@ -986,7 +993,7 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 				reply += "<li><a href=\"/view-snapshots/\">View recordings</a>";
 			}
 
-			reply += "</ul>" + html_tail
+			reply += "</ul></div>"
 			;
 
 		if (allow_admin) {
@@ -995,6 +1002,8 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 				reply += describe_interface(i);
 			cfg -> lock.unlock();
 		}
+
+		reply += html_tail; 
 
 		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
 			log(LL_DEBUG, "short write on response header");
