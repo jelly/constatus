@@ -325,8 +325,9 @@ target * load_target(const json_t *const j_in, source *const s)
 	else if (strcasecmp(format, "FFMPEG") == 0) {
 		int bitrate = json_int(j_in, "bitrate", "How many bits per second to emit. For 352x288 200000 is a sane value. This value affects the quality.");
 		std::string type = json_str(j_in, "ffmpeg-type", "E.g. flv, mp4");
+		const char *const parameters = json_str_optional(j_in, "ffmpeg-parameters");
 
-		t = new target_ffmpeg(id, s, path, prefix, restart_interval, interval, type, bitrate, filters, exec_start, exec_cycle, exec_end);
+		t = new target_ffmpeg(id, parameters, s, path, prefix, restart_interval, interval, type, bitrate, filters, exec_start, exec_cycle, exec_end);
 	}
 	else if (strcasecmp(format, "JPEG") == 0)
 		t = new target_jpeg(id, s, path, prefix, jpeg_quality, restart_interval, interval, filters, exec_start, exec_cycle, exec_end);

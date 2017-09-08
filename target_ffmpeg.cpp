@@ -15,7 +15,7 @@ extern "C" {
 #include "picio.h"
 #include "utils.h"
 
-target_ffmpeg::target_ffmpeg(const std::string & id, source *const s, const std::string & store_path, const std::string & prefix, const int max_time, const double interval, const std::string & type, const int bitrate, const std::vector<filter *> *const filters, const char *const exec_start, const char *const exec_cycle, const char *const exec_end) : target(id, s, store_path, prefix, max_time, interval, filters, exec_start, exec_cycle, exec_end), type(type), bitrate(bitrate)
+target_ffmpeg::target_ffmpeg(const std::string & id, const char *const parameters, source *const s, const std::string & store_path, const std::string & prefix, const int max_time, const double interval, const std::string & type, const int bitrate, const std::vector<filter *> *const filters, const char *const exec_start, const char *const exec_cycle, const char *const exec_end) : target(id, s, store_path, prefix, max_time, interval, filters, exec_start, exec_cycle, exec_end), parameters(parameters), type(type), bitrate(bitrate)
 {
 	avcodec_register_all();
 }
@@ -621,6 +621,9 @@ void target_ffmpeg::operator()()
 			printf("Can't deduce output format from file extension: using MPEG");
 			avformat_alloc_output_context2(&oc, NULL, "mpeg", name.c_str());
 		}
+
+		if ((ret = av_set_options_string(opt, parameters, "=", ":")) < 0)
+			error_exit(false, "ffmpeg parameters are incorrect");
 
 		fmt = oc->oformat;
 
