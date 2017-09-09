@@ -861,6 +861,7 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 			"<body>";
 
 	const std::string html_tail =
+			"<p><br><br><br></p><hr><div id=\"tail\"><p>" NAME " was written by folkert@vanheusden.com</p></div>"
 			"</body>"
 			"</html>";
 
