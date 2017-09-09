@@ -18,11 +18,21 @@ libcurl = dependency('libcurl')
 libpng = dependency('libpng')
 cairo = dependency('cairo')
 jansson = dependency('jansson')
+libswscale = dependency('libswscale')
+libavutil_dep = dependency('libavutil')
+libavformat_dep = dependency('libavformat')
+libavcodec_dep = dependency('libavcodec')
+libavresample_dep = dependency('libavresample')
+thread_dep = dependency('threads')
+swresample = dependency('libswresample')
+
 
 cc = meson.get_compiler('cpp')
 m_dep = cc.find_library('m', required : true)
+dl_dep = cc.find_library('dl', required : true)
 netpbm = cc.find_library('netpbm', required : true)
-
+netpbm_inc = include_directories('/usr/include/netpbm')
+gwavi = cc.find_library('gwavi', required: true)
 
 constatus_sources = '''
   cairo.cpp error.cpp exec.cpp filter_add_scaled_text.cpp filter_add_text.cpp
@@ -39,6 +49,8 @@ constatus_sources = '''
 executable(
     'constatus', 
     constatus_sources,
-    dependencies:  [libjpeg, libpng, libcurl, cairo, jansson, netpbm, m_dep],
+    dependencies:  [libjpeg, libpng, libcurl, cairo, jansson, netpbm, m_dep,
+      libavutil_dep, libavcodec_dep, libavformat_dep, libavresample_dep,
+      libswscale, thread_dep, dl_dep, swresample, gwavi],
+    include_directories: [netpbm_inc],
     install: true)
-
