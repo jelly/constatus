@@ -855,6 +855,7 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 			"<html>"
 			"<head>"
 			"<link href=\"/stylesheet.css\" rel=\"stylesheet\" media=\"screen\">"
+			"<link rel=\"shortcut icon\" href=\"/favicon.ico\">"
 			"<title>" NAME " " VERSION "</title>"
 			"</head>"
 			"<body>";
