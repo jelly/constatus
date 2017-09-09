@@ -9,6 +9,8 @@
 #include <unistd.h>
 #include <vector>
 
+#include "config.h"
+
 #include <curl/curl.h>
 
 using namespace libconfig;
