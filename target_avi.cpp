@@ -75,7 +75,7 @@ void target_avi::operator()()
 
 			int fps = interval <= 0 ? 25 : std::max(1, int(1.0 / interval));
 
-			gwavi = gwavi_open((char *)name.c_str(), w, h, (char *)"MJPG", override_fps != -1 ? override_fps : fps, NULL);
+			gwavi = gwavi_open((char *)name.c_str(), w, h, (char *)"MJPG", override_fps >= 1 ? override_fps : fps, NULL);
 			if (!gwavi)
 				error_exit(true, "Cannot create %s", name.c_str());
 

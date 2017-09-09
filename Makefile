@@ -32,5 +32,5 @@ package: clean
 	tar czf constatus-$(VERSION).tgz constatus-$(VERSION)
 	rm -rf constatus-$(VERSION)
 
-check:
+ccheck:
 	cppcheck -v --force -j 3 --enable=all --std=c++11 --inconclusive -I. . 2> err.txt

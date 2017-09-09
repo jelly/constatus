@@ -58,7 +58,7 @@ void target_plugin::operator()()
 		if (!is_open) {
 			double fps = interval <= 0 ? 25.0 : (1.0 / interval);
 
-			sp -> open_file(sp -> arg, (store_path + prefix).c_str(), override_fps != -1 ? override_fps : fps, quality);
+			sp -> open_file(sp -> arg, (store_path + prefix).c_str(), override_fps >= 1 ? override_fps : fps, quality);
 			is_open = true;
 
 			if (exec_start && is_start) {
