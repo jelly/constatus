@@ -2,9 +2,9 @@ h1 {
     font-family: Georgia, serif;
     font-size: 18px;
     font-weight: bold;
-    color: #006600;
+    color: #111111;
     letter-spacing: 1.4px;
-    border-bottom: solid 1px #006600;
+    border-bottom: solid 1px #000066;
     text-transform: uppercase;
 }
 h2 {
@@ -12,7 +12,7 @@ h2 {
     font-size: 14px;
     font-weight: normal;
     letter-spacing: 1.2px;
-    color: #009900;
+    color: #111111;
 }
 p {
     font-family: Verdana;
@@ -22,8 +22,9 @@ p {
     letter-spacing: .25px;
 }
 a {
-    color: #006600;
+    color: #000000;
 }
 hr {
-    color: #009900;
+    color: #000011;
+    border-color: inherit
 }
