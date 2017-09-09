@@ -1,6 +1,3 @@
-extern "C" {
-#include <gwavi.h>
-}
 #include <unistd.h>
 
 #include "target_plugin.h"
