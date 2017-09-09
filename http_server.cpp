@@ -32,6 +32,7 @@
 #include "log.h"
 #include "target.h"
 #include "target_avi.h"
+#include "target_ffmpeg.h"
 
 typedef struct {
 	int fd;
@@ -595,7 +596,11 @@ interface * start_a_video(source *const s, const std::string & snapshot_dir, con
 
 	std::vector<filter *> *const filters = new std::vector<filter *>();
 
+#ifdef WITH_GWAVI
 	interface *i = new target_avi(id, s, snapshot_dir, "snapshot-", quality, -1, -1, filters, "", "", "", -1);
+#else
+	interface *i = new target_ffmpeg(id, "", s, snapshot_dir, "snapshot-", -1, -1, "mp4", 201000, filters, "", "", "", -1);
+#endif
 	i -> start();
 
 	return i;

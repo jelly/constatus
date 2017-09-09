@@ -1,3 +1,5 @@
+#include "config.h"
+#ifdef WITH_GWAVI
 extern "C" {
 #include <gwavi.h>
 }
@@ -130,3 +132,4 @@ void target_avi::operator()()
 
 	s -> unregister_user();
 }
+#endif

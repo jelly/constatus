@@ -2,7 +2,7 @@
 
 DEBUG=-ggdb3
 NAME="constatus"
-PREFIX=/usr/local
+PREFIX=/usr
 VERSION="1.6"
 CXXFLAGS=$(DEBUG) -pedantic -std=c++11 -DNAME=\"$(NAME)\" -DVERSION=\"$(VERSION)\" -O3 # -march=native -mtune=native -fomit-frame-pointer -flto
 LDFLAGS=$(DEBUG) -ldl -ljpeg -lpng -lcurl -ljansson -lgwavi `pkg-config --cflags --libs libavformat libswscale libavcodec libavutil libavresample` -lswresample `pkg-config --libs cairo` -lnetpbm # -flto
@@ -28,7 +28,7 @@ clean:
 
 package: clean
 	mkdir constatus-$(VERSION)
-	cp -a *.cpp *.h constatus*conf Makefile constatus-$(VERSION)
+	cp -a *.cpp *.h README constatus*conf Makefile constatus-$(VERSION)
 	tar czf constatus-$(VERSION).tgz constatus-$(VERSION)
 	rm -rf constatus-$(VERSION)
 

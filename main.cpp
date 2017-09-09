@@ -11,6 +11,7 @@
 
 #include <curl/curl.h>
 
+#include "config.h"
 #include "error.h"
 #include "utils.h"
 #include "source.h"
@@ -22,7 +23,9 @@
 #include "http_server.h"
 #include "motion_trigger.h"
 #include "target.h"
+#ifdef WITH_GWAVI
 #include "target_avi.h"
+#endif
 #include "target_ffmpeg.h"
 #include "target_jpeg.h"
 #include "target_plugin.h"
@@ -318,7 +321,11 @@ target * load_target(const json_t *const j_in, source *const s)
 	const char *exec_cycle = json_str(j_in, "exec-cycle", "script to start when the record file is restarted");
 	const char *exec_end = json_str(j_in, "exec-end", "script to start when the recording stops");
 	int restart_interval = json_int(j_in, "restart-interval", "after how many seconds should the stream-file be restarted");
+#ifdef WITH_GWAVI
 	const char *format = json_str(j_in, "format", "AVI, FFMPEG (for mp4, flv, etc), JPEG or PLUGIN");
+#else
+	const char *format = json_str(j_in, "format", "FFMPEG (for mp4, flv, etc), JPEG or PLUGIN");
+#endif
 	int jpeg_quality = json_int(j_in, "quality", "JPEG quality, this influences the size");
 
 	double fps = 0, interval = 0;
@@ -330,7 +337,11 @@ target * load_target(const json_t *const j_in, source *const s)
 	std::vector<filter *> *filters = load_filters(json_object_get(j_in, "filters"));
 
 	if (strcasecmp(format, "AVI") == 0)
+#ifdef WITH_GWAVI
 		t = new target_avi(id, s, path, prefix, jpeg_quality, restart_interval, interval, filters, exec_start, exec_cycle, exec_end, override_fps);
+#else
+		error_exit(false, "libgwavi not compiled in");
+#endif
 	else if (strcasecmp(format, "FFMPEG") == 0) {
 		int bitrate = json_int(j_in, "bitrate", "How many bits per second to emit. For 352x288 200000 is a sane value. This value affects the quality.");
 		std::string type = json_str(j_in, "ffmpeg-type", "E.g. flv, mp4");
