@@ -11,7 +11,6 @@ class filter_motion_only : public filter
 private:
 	const uint8_t *const psb;
 	uint8_t *prev1, *prev2;
-	uint8_t *cp;
 
 public:
 	filter_motion_only(const uint8_t *pixel_select_bitmap);
