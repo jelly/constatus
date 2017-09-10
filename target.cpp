@@ -12,12 +12,14 @@ std::string gen_filename(const std::string & store_path, const std::string & pre
 	struct tm tm;
 	localtime_r(&tv_sec, &tm);
 
-	return myformat("%s/%s%04d-%02d-%02d_%02d:%02d:%02d.%03d-%u.%s",
+	std::string use_ext = !ext.empty() ? "." + ext : "";
+
+	return myformat("%s/%s%04d-%02d-%02d_%02d:%02d:%02d.%03d-%u%s",
 			store_path.c_str(), prefix.c_str(),
 			tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
 			tm.tm_hour, tm.tm_min, tm.tm_sec,
 			unsigned(tv_usec / 1000),
-			f_nr, ext.c_str());
+			f_nr, use_ext.c_str());
 }
 
 target::target(const std::string & id, source *const s, const std::string & store_path, const std::string & prefix, const int max_time, const double interval, const std::vector<filter *> *const filters, const char *const exec_start, const char *const exec_cycle, const char *const exec_end, const int override_fps) : interface(id), s(s), store_path(store_path), prefix(prefix), max_time(max_time), interval(interval), filters(filters), exec_start(exec_start), exec_cycle(exec_cycle), exec_end(exec_end), override_fps(override_fps)

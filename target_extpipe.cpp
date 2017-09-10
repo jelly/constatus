@@ -122,7 +122,7 @@ void target_extpipe::operator()()
 		}
 
 		if (p_fd == NULL) {
-			name = gen_filename(store_path, prefix, "avi", get_us(), f_nr++);
+			name = gen_filename(store_path, prefix, "", get_us(), f_nr++);
 
 			if (exec_start && is_start) {
 				exec(exec_start, name);
