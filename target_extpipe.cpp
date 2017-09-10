@@ -23,45 +23,40 @@ target_extpipe::~target_extpipe()
 // this function is based on https://stackoverflow.com/questions/9465815/rgb-to-yuv420-algorithm-efficiency
 static void Bitmap2Yuv420p_calc2(uint8_t *const destination, const uint8_t *const rgb, const size_t width, const size_t height)
 {
-    size_t image_size = width * height;
-    size_t upos = image_size;
-    size_t vpos = upos + upos / 4;
-    size_t i = 0;
+	const size_t image_size = width * height, w2 = width / 2;
+	const uint8_t *p = rgb;
+	uint8_t *Y = destination;
+	uint8_t *U = Y + image_size;
+	uint8_t *V = Y + image_size + image_size / 4;
 
-    for( size_t line = 0; line < height; ++line )
-    {
-        if( !(line % 2) )
-        {
-            for( size_t x = 0; x < width; x += 2 )
-            {
-                uint8_t r = rgb[3 * i];
-                uint8_t g = rgb[3 * i + 1];
-                uint8_t b = rgb[3 * i + 2];
+	for(size_t line = 0; line < height; ++line) {
+		if (line & 1) {
+			for(size_t x = 0; x < width; x++) {
+				uint8_t r = *p++;
+				uint8_t g = *p++;
+				uint8_t b = *p++;
 
-                destination[i++] = ((66*r + 129*g + 25*b) >> 8) + 16;
+				*Y++ = ((66*r + 129*g + 25*b) >> 8) + 16;
+			}
+		}
+		else {
+			for(size_t x = 0; x < w2; x++) {
+				uint8_t r = *p++;
+				uint8_t g = *p++;
+				uint8_t b = *p++;
 
-                destination[upos++] = ((-38*r + -74*g + 112*b) >> 8) + 128;
-                destination[vpos++] = ((112*r + -94*g + -18*b) >> 8) + 128;
+				*Y++ = ((66*r + 129*g + 25*b) >> 8) + 16;
+				*U++ = ((-38*r + -74*g + 112*b) >> 8) + 128;
+				*V++ = ((112*r + -94*g + -18*b) >> 8) + 128;
 
-                r = rgb[3 * i];
-                g = rgb[3 * i + 1];
-                b = rgb[3 * i + 2];
+				r = *p++;
+				g = *p++;
+				b = *p++;
 
-                destination[i++] = ((66*r + 129*g + 25*b) >> 8) + 16;
-            }
-        }
-        else
-        {
-            for( size_t x = 0; x < width; x += 1 )
-            {
-                uint8_t r = rgb[3 * i];
-                uint8_t g = rgb[3 * i + 1];
-                uint8_t b = rgb[3 * i + 2];
-
-                destination[i++] = ((66*r + 129*g + 25*b) >> 8) + 16;
-            }
-        }
-    }
+				*Y++ = ((66*r + 129*g + 25*b) >> 8) + 16;
+			}
+		}
+	}
 }
 
 static void put_frame(FILE *fh, const uint8_t *const in, const int w, const int h)
