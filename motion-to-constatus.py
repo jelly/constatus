@@ -103,6 +103,24 @@ def process(f, cfg):
 			"resize-height" : -1
 			}
 
+	filters = []
+
+	tr = lu(cfg, 'text_right', None)
+	if tr != None:
+		filters.append({
+			"type" : "text",
+			"text" : tr,
+			"position" : "lower-right"
+			})
+
+	tl = lu(cfg, 'text_left', None)
+	if tl != None:
+		filters.append({
+			"type" : "text",
+			"text" : tl,
+			"position" : "lower-left"
+			})
+
 	s_adapter = '::FFFF:127.0.0.1'
 	if lu(cfg, 'stream_localhost') != 'on':
 		s_adapter = '0.0.0.0'
@@ -139,6 +157,7 @@ def process(f, cfg):
 				"allow-admin" : True,
 				"archive-access" : True,
 				"snapshot-dir" : td,
+				"filters" : filters
 			}	 )
 
 	j['http-server'] = h
@@ -160,8 +179,7 @@ def process(f, cfg):
 			"exec-start" : lu(cfg, "on_movie_start", ""),
 			"exec-cycle" : "",
 			"exec-end" : lu(cfg, "on_movie_end", ""),
-			"filters" : [   
-				]
+			"filters" : filters
 		}
 
 	ep = lu(cfg, "extpipe", None)
