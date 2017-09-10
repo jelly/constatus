@@ -13,7 +13,6 @@ configure_file(
     configuration : conf)
 
 add_project_arguments('-include', 'config.h', language : 'cpp')
-#add_global_arguments('-O3', language: 'C')
 
 libjpeg = dependency('libjpeg')
 libcurl = dependency('libcurl')
