@@ -18,6 +18,8 @@ typedef enum
 	lower_right
 } text_pos_t;
 
+void find_text_dim(const char *const in, int *const n_lines, int *const n_cols);
+
 class filter_add_text : public filter
 {
 private:

@@ -4,9 +4,11 @@
 #include <time.h>
 #include <cairo/cairo.h>
 
+#include "filter_add_text.h"
 #include "filter_add_scaled_text.h"
 #include "error.h"
 #include "cairo.h"
+#include "utils.h"
 
 filter_add_scaled_text::filter_add_scaled_text(const std::string & what, const std::string & font_name, const int x, const int y, const int font_size, const int r, const int g, const int b) : what(what), font_name(font_name), x(x), y(y), font_size(font_size), r(r), g(g), b(b)
 {
@@ -37,14 +39,27 @@ void filter_add_scaled_text::apply_io(const uint64_t ts, const int w, const int 
 	cairo_select_font_face(cr, font_name.c_str(), CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
 	cairo_set_font_size(cr, font_size);
 
-	cairo_set_source_rgb(cr, 0.1, 0.1, 0.1); 
-	cairo_move_to(cr, x, y);
-	cairo_show_text(cr, text_out);
+	int n_lines = 0, n_cols = 0;
+	find_text_dim(text_out, &n_lines, &n_cols);
 
-	cairo_set_source_rgb(cr, r / 255.0, g / 255.0, b / 255.0);
-	cairo_move_to(cr, x + 1, y + 1);
-	cairo_show_text(cr, text_out);
+	std::vector<std::string> *parts = split(text_out, "\\n");
+
+	int work_y = y;
+	for(std::string cl : *parts) {
+		cairo_set_source_rgb(cr, 0.1, 0.1, 0.1); 
+		cairo_move_to(cr, x, work_y);
+		cairo_show_text(cr, cl.c_str());
+
+		cairo_set_source_rgb(cr, r / 255.0, g / 255.0, b / 255.0);
+		cairo_move_to(cr, x + 1, work_y + 1);
+
+		cairo_show_text(cr, cl.c_str());
+
+		work_y += font_size + 1;
+	}
 	///
+
+	delete parts;
 
 	cairo_to_rgb(cs, w, h, out);
 

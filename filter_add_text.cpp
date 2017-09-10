@@ -1406,6 +1406,32 @@ constexpr unsigned char font[128][8][8] = {
 
 };
 
+void find_text_dim(const char *const in, int *const n_lines, int *const n_cols)
+{
+	*n_lines = 1;
+	*n_cols = 0;
+
+	const int len = strlen(in);
+	int cur_ll = 0;
+
+	for(int i=0; i<len; i++) {
+		if (in[i] == '\\' && in[i + 1] == 'n') {
+			if (cur_ll > *n_cols)
+				*n_cols = cur_ll;
+
+			(*n_lines)++;
+			cur_ll = 0;
+			i++;
+		}
+		else {
+			cur_ll++;
+		}
+	}
+
+	if (cur_ll > *n_cols)
+		*n_cols = cur_ll;
+}
+
 filter_add_text::filter_add_text(const std::string & whatIn, const text_pos_t tpIn) : what(whatIn), tp(tpIn)
 {
 }
@@ -1467,24 +1493,10 @@ void print_timestamp(unsigned char *const img, const int width, const int height
 	if (!text_out)
 		error_exit(true, "out of memory while allocating %d bytes", bytes);
 
-	int new_len = strftime(text_out, bytes, text, &ptm);
+	strftime(text_out, bytes, text, &ptm);
 
-	int n_lines = 1, cur_ll = 0, max_ll = 0;
-	for(int i=0; i<new_len; i++) {
-		if (text_out[i] == '\\' && text_out[i + 1] == 'n') {
-			if (cur_ll > max_ll)
-				max_ll = cur_ll;
-
-			n_lines++;
-			cur_ll = 0;
-			i++;
-		}
-		else {
-			cur_ll++;
-		}
-	}
-	if (cur_ll > max_ll)
-		max_ll = cur_ll;
+	int n_lines = 0, max_ll = 0;
+	find_text_dim(text_out, &n_lines, &max_ll);
 
 	if (n_pos == upper_left || n_pos == upper_center || n_pos == upper_right)
 		y = 1;
