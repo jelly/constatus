@@ -1477,6 +1477,7 @@ void print_timestamp(unsigned char *const img, const int width, const int height
 
 			n_lines++;
 			cur_ll = 0;
+			i++;
 		}
 		else {
 			cur_ll++;
