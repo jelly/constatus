@@ -1414,25 +1414,32 @@ filter_add_text::~filter_add_text()
 {
 }
 
-void add_text(unsigned char *img, int width, int height, char *text, int xpos, int ypos)
+void add_text(unsigned char *const img, const int width, const int height, const char *const text, const int xpos, const int ypos)
 {
-	int loop, x, y;
-	int len = strlen(text);
+	int cx = 0, cy = 0;
+	const int len = strlen(text);
 
-	for(loop=0; loop<len; loop++)
+	for(int loop=0; loop<len; loop++)
 	{
-		for(y=0; y<8; y++)
+		if (text[loop] == '\\' && text[loop + 1] == 'n') {
+			cy++;
+			cx = 0;
+			loop++; // ignore 'n'
+			continue;
+		}
+
+		for(int y=0; y<8; y++)
 		{
-			for(x=0; x<8; x++)
+			for(int x=0; x<8; x++)
 			{
 				int cur_char = text[loop];
-				int realx = xpos + x + 8 * loop, realy = ypos + y;
+				int realx = xpos + x + 8 * cx, realy = ypos + y + cy * 9;
 				int offset = (realy * width * 3) + (realx * 3);
 
 				if (realx >= width || realx < 0 || realy >= height || realy < 0)
 					break;
 
-				if (cur_char < 32 || cur_char > 126)
+				if (cur_char < 0)
 					cur_char = 32;
 
 				img[offset + 0] = font[cur_char][y][x];
@@ -1440,6 +1447,8 @@ void add_text(unsigned char *img, int width, int height, char *text, int xpos, i
 				img[offset + 2] = font[cur_char][y][x];
 			}
 		}
+
+		cx++;
 	}
 }
 
@@ -1460,12 +1469,28 @@ void print_timestamp(unsigned char *const img, const int width, const int height
 
 	int new_len = strftime(text_out, bytes, text, &ptm);
 
+	int n_lines = 1, cur_ll = 0, max_ll = 0;
+	for(int i=0; i<new_len; i++) {
+		if (text_out[i] == '\\' && text_out[i + 1] == 'n') {
+			if (cur_ll > max_ll)
+				max_ll = cur_ll;
+
+			n_lines++;
+			cur_ll = 0;
+		}
+		else {
+			cur_ll++;
+		}
+	}
+	if (cur_ll > max_ll)
+		max_ll = cur_ll;
+
 	if (n_pos == upper_left || n_pos == upper_center || n_pos == upper_right)
 		y = 1;
 	else if (n_pos == center_left || n_pos == center_center || n_pos == center_right)
 		y = (height / 2) - 4;
 	else if (n_pos == lower_left || n_pos == lower_center || n_pos == lower_right)
-		y = height - 9;
+		y = height - 9 * n_lines;
 
 	if (n_pos == upper_left || n_pos == center_left || n_pos == lower_left)
 	{
@@ -1473,11 +1498,11 @@ void print_timestamp(unsigned char *const img, const int width, const int height
 	}
 	else if (n_pos == upper_center || n_pos == center_center || n_pos == lower_center)
 	{
-		x = (width / 2) - (new_len / 2) * 8;
+		x = (width / 2) - (max_ll / 2) * 8;
 	}
 	else if (n_pos == upper_right || n_pos == center_right || n_pos == lower_right)
 	{
-		x = width - new_len * 8;
+		x = width - max_ll * 8;
 	}
 
 	add_text(img, width, height, text_out, x, y);
