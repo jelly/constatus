@@ -146,6 +146,35 @@ def process(f, cfg):
 	threshold = luf(cfg, "threshold", 1500.0)
 	pcp = threshold * 100.0 / (width * height)
 
+
+	target = {
+			"id" : "motion output",
+			"path" : td,
+			"prefix" : "m-",
+			"quality": quality,
+			"restart-interval" : 86400,
+			"fps" : fps,
+			"override-fps" : -1.0,
+			"stream-writer-plugin-file" : "",
+			"stream-writer-plugin-parameter" : "",
+			"exec-start" : lu(cfg, "on_movie_start", ""),
+			"exec-cycle" : "",
+			"exec-end" : lu(cfg, "on_movie_end", ""),
+			"filters" : [   
+				]
+		}
+
+	ep = lu(cfg, "extpipe", None)
+	if ep == None:
+		target["format"] = "ffmpeg"
+		target["ffmpeg-type"] = "avi"
+		target["ffmpeg-parameters"] = ""
+		target["bitrate"] = 400000
+
+	else:
+		target["format"] = "extpipe"
+		target["cmd"] = ep
+
 	m = []
 	m.append( {
                         "noise-factor" : lui(cfg, "noise_level", 32),
@@ -159,25 +188,7 @@ def process(f, cfg):
                         "pre-motion-record-duration" : lui(cfg, "pre_capture", 0),
                         "max-fps" : fps,
                         "filters-detection" : [ ],
-                        "targets" : [
-					{
-						"id" : "motion output",
-						"path" : td,
-						"prefix" : "m-",
-						"quality": quality,
-						"restart-interval" : 86400,
-						"fps" : fps,
-						"override-fps" : -1.0,
-						"format" : "avi",
-						"stream-writer-plugin-file" : "",
-						"stream-writer-plugin-parameter" : "",
-						"exec-start" : lu(cfg, "on_movie_start", ""),
-						"exec-cycle" : "",
-						"exec-end" : lu(cfg, "on_movie_end", ""),
-						"filters" : [   
-							]
-					}
-				]
+                        "targets" : [ target ]
 
 		} )
 	j['motion-trigger'] = m
