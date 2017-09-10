@@ -19,6 +19,7 @@ install: constatus
 	install -Dm644 constatus-rtsp.conf ${DESTDIR}${PREFIX}/share/doc/constatus/constatus-rtsp.conf
 	install -Dm644 constatus-jpeg.conf ${DESTDIR}${PREFIX}/share/doc/constatus/constatus-jpeg.conf
 	install -Dm644 constatus-mjpeg.conf ${DESTDIR}${PREFIX}/share/doc/constatus/constatus-mjpeg.conf
+	install -Dm644 man/constatus.1 ${DESTDIR}${PREFIX}/share/man/man1/constatus.1
 
 uninstall:
 	rm -f ${DESTDIR}${PREFIX}/bin/constatus
