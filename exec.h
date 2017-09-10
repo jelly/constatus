@@ -2,3 +2,4 @@
 #include <string>
 
 void exec(const std::string & what, const std::string & parameter);
+FILE * exec(const std::string & command_line);

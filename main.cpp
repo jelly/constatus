@@ -29,6 +29,7 @@
 #include "target_ffmpeg.h"
 #include "target_jpeg.h"
 #include "target_plugin.h"
+#include "target_extpipe.h"
 #include "filter.h"
 #include "filter_mirror_v.h"
 #include "filter_mirror_h.h"
@@ -322,9 +323,9 @@ target * load_target(const json_t *const j_in, source *const s)
 	const char *exec_end = json_str(j_in, "exec-end", "script to start when the recording stops");
 	int restart_interval = json_int(j_in, "restart-interval", "after how many seconds should the stream-file be restarted");
 #ifdef WITH_GWAVI
-	const char *format = json_str(j_in, "format", "AVI, FFMPEG (for mp4, flv, etc), JPEG or PLUGIN");
+	const char *format = json_str(j_in, "format", "AVI, EXTPIPE, FFMPEG (for mp4, flv, etc), JPEG or PLUGIN");
 #else
-	const char *format = json_str(j_in, "format", "FFMPEG (for mp4, flv, etc), JPEG or PLUGIN");
+	const char *format = json_str(j_in, "format", "EXTPIPE, FFMPEG (for mp4, flv, etc), JPEG or PLUGIN");
 #endif
 	int jpeg_quality = json_int(j_in, "quality", "JPEG quality, this influences the size");
 
@@ -342,6 +343,11 @@ target * load_target(const json_t *const j_in, source *const s)
 #else
 		error_exit(false, "libgwavi not compiled in");
 #endif
+	else if (strcasecmp(format, "EXTPIPE") == 0) {
+		std::string cmd = json_str(j_in, "cmd", "Command to send the frames to");
+
+		t = new target_extpipe(id, s, path, prefix, jpeg_quality, restart_interval, interval, filters, exec_start, exec_cycle, exec_end, cmd);
+	}
 	else if (strcasecmp(format, "FFMPEG") == 0) {
 		int bitrate = json_int(j_in, "bitrate", "How many bits per second to emit. For 352x288 200000 is a sane value. This value affects the quality.");
 		std::string type = json_str(j_in, "ffmpeg-type", "E.g. flv, mp4");

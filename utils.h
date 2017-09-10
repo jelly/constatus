@@ -22,3 +22,4 @@ char * un_url_escape(const char *const in);
 std::vector<std::string> * split(std::string in, std::string splitter);
 std::vector<std::pair<std::string, time_t> > * load_filelist(const std::string & dir, const std::string & prefix);
 std::string myctime(const time_t t);
+std::string search_replace(const std::string & in, const std::string & search, const std::string & replace);

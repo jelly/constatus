@@ -325,6 +325,19 @@ std::vector<std::string> * split(std::string in, std::string splitter)
 	return out;
 }
 
+std::string search_replace(const std::string & in, const std::string & search, const std::string & replace)
+{
+	std::string work = in;
+	std::string::size_type pos = 0u;
+
+	while((pos = work.find(search, pos)) != std::string::npos) {
+		work.replace(pos, search.length(), replace);
+		pos += replace.length();
+	}
+
+	return work;
+}
+
 std::vector<std::pair<std::string, time_t> > * load_filelist(const std::string & dir, const std::string & prefix)
 {
 	auto *out = new std::vector<std::pair<std::string, time_t> >;

@@ -22,3 +22,13 @@ void exec(const std::string & what, const std::string & parameter)
 		}
 	}
 }
+
+FILE * exec(const std::string & command_line)
+{
+	FILE *fh = popen(command_line.c_str(), "w");
+
+	if (!fh)
+		error_exit(true, "Cannot exec %s", command_line.c_str());
+
+	return fh;
+}
