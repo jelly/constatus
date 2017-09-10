@@ -1,10 +1,11 @@
 project('constatus', 'cpp',
-	version: '0',
-	license: 'GPLv2')
+	version: '1.6',
+	license: 'GPLv2',
+	default_options: ['cpp_std=c++11'])
 
 conf = configuration_data()
 conf.set('NAME', '"constatus"')
-conf.set('VERSION', '"0"') #meson.project_version())
+conf.set_quoted('VERSION', meson.project_version())
 
 
 configure_file(
@@ -12,6 +13,7 @@ configure_file(
     configuration : conf)
 
 add_project_arguments('-include', 'config.h', language : 'cpp')
+#add_global_arguments('-O3', language: 'C')
 
 libjpeg = dependency('libjpeg')
 libcurl = dependency('libcurl')
@@ -49,6 +51,7 @@ constatus_sources = '''
 executable(
     'constatus', 
     constatus_sources,
+    cpp_args: ['-O3', '-pedantic'],
     dependencies:  [libjpeg, libpng, libcurl, cairo, jansson, netpbm, m_dep,
       libavutil_dep, libavcodec_dep, libavformat_dep, libavresample_dep,
       libswscale, thread_dep, dl_dep, swresample, gwavi],
