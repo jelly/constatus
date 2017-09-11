@@ -7,7 +7,7 @@
 #include "filter_marker_simple.h"
 #include "log.h"
 
-filter_marker_simple::filter_marker_simple(const sm_mode_t modeIn, const uint8_t *const pixel_select_bitmap) : mode(modeIn), psb(pixel_select_bitmap)
+filter_marker_simple::filter_marker_simple(const sm_mode_t modeIn, const uint8_t *const pixel_select_bitmap, meta *const m) : mode(modeIn), psb(pixel_select_bitmap), m(m)
 {
 }
 
@@ -87,6 +87,9 @@ void filter_marker_simple::apply(const uint64_t ts, const int w, const int h, co
 	cx /= cn;
 	cy /= cn;
 
+	m -> setInt("$motion-center-x$", std::pair<uint64_t, int>(ts, cx));
+	m -> setInt("$motion-center-y$", std::pair<uint64_t, int>(ts, cy));
+
 	int xdist = 0, ydist = 0;
 
 	for(int o=0; o<w*h; o++) {
@@ -103,6 +106,9 @@ void filter_marker_simple::apply(const uint64_t ts, const int w, const int h, co
 
 	xdist /= cn;
 	ydist /= cn;
+
+	m -> setInt("$motion-width$", std::pair<uint64_t, int>(ts, xdist));
+	m -> setInt("$motion-height$", std::pair<uint64_t, int>(ts, ydist));
 
 	int xmin = std::max(0, cx - xdist), xmax = std::min(w - 1, cx + xdist);
 	int ymin = std::max(0, cy - ydist), ymax = std::min(h - 1, cy + ydist);

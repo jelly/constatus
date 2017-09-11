@@ -1434,7 +1434,7 @@ void find_text_dim(const char *const in, int *const n_lines, int *const n_cols)
 		*n_cols = cur_ll;
 }
 
-std::string unescape(const std::string & in, const uint64_t ts, meta *const m)
+std::string unescape(const std::string & in, const uint64_t ts, source *const s)
 {
 	time_t now = (time_t)(ts / 1000 / 1000);
 	struct tm ptm;
@@ -1452,13 +1452,17 @@ std::string unescape(const std::string & in, const uint64_t ts, meta *const m)
 	std::string work = text_out;
 	free(text_out);
 
+	meta *m = s -> getMeta();
+
 	work = search_replace(work, "$http-viewers$", myformat("%u", m -> getInt("http-viewers").second));
 	work = search_replace(work, "$pixels-changed$", myformat("%.2f%%", m -> getDouble("pixels-changed").second));
+	work = search_replace(work, "$width$", myformat("%d", s -> get_width()));
+	work = search_replace(work, "$height$", myformat("%d", s -> get_height()));
 
 	return work;
 }
 
-filter_add_text::filter_add_text(const std::string & whatIn, const text_pos_t tpIn, meta *const m) : what(whatIn), tp(tpIn), m(m)
+filter_add_text::filter_add_text(const std::string & whatIn, const text_pos_t tpIn, source *const s) : what(whatIn), tp(tpIn), s(s)
 {
 }
 
@@ -1504,11 +1508,11 @@ void add_text(unsigned char *const img, const int width, const int height, const
 	}
 }
 
-void print_timestamp(unsigned char *const img, const int width, const int height, const std::string & text, const text_pos_t n_pos, const uint64_t ts, meta *const m)
+void print_timestamp(unsigned char *const img, const int width, const int height, const std::string & text, const text_pos_t n_pos, const uint64_t ts, source *const s)
 {
 	int x = 0, y = 0;
 
-	std::string text_out = unescape(text, ts, m);
+	std::string text_out = unescape(text, ts, s);
 
 	int n_lines = 0, max_ll = 0;
 	find_text_dim(text_out.c_str(), &n_lines, &max_ll);
@@ -1538,5 +1542,5 @@ void print_timestamp(unsigned char *const img, const int width, const int height
 
 void filter_add_text::apply(const uint64_t ts, const int w, const int h, const uint8_t *const prev, uint8_t *const in_out)
 {
-	print_timestamp(in_out, w, h, what.c_str(), tp, ts, m);
+	print_timestamp(in_out, w, h, what.c_str(), tp, ts, s);
 }

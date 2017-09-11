@@ -38,6 +38,9 @@ public:
 	void set_size(const int w, const int h) { width = w; height = h; }
 	bool need_scale() const { return resize_h != -1 || resize_w != -1; }
 
+	int get_width() const { return width; }
+	int get_height() const { return height; }
+
 	virtual void operator()() = 0;
 
 	void register_user() { user_count++; }

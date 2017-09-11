@@ -44,6 +44,9 @@ def lui(d, k, df=None):
 def luf(d, k, df=None):
 	return float(lu(d, k, df))
 
+def convert_text(t):
+	return t.replace('%D', '$pixels-changed$').replace('%K', '$motion-center-x$').replace('%L', '$motion-center-y$').replace('%i', '$motion-width$').replace('%J', '$motion-height$')
+
 def process(f, cfg):
 	print 'processing %s' %f
 	includes = load_file(f, cfg)
@@ -107,6 +110,7 @@ def process(f, cfg):
 
 	tr = lu(cfg, 'text_right', None)
 	if tr != None:
+		tr = convert_text(tr)
 		filters.append({
 			"type" : "text",
 			"text" : tr,
@@ -115,6 +119,7 @@ def process(f, cfg):
 
 	tl = lu(cfg, 'text_left', None)
 	if tl != None:
+		tl = convert_text(tl)
 		filters.append({
 			"type" : "text",
 			"text" : tl,

@@ -218,7 +218,7 @@ std::vector<filter *> *load_filters(const json_t *const in, source *const s)
 			const char *selection_bitmap = json_str(ae, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.");
 			const uint8_t *sb = load_selection_bitmap(selection_bitmap);
 
-			filters -> push_back(new filter_marker_simple(sm, sb));
+			filters -> push_back(new filter_marker_simple(sm, sb, s -> getMeta()));
 		}
 		else if (strcasecmp(s_type, "apply-mask") == 0) {
 			const char *selection_bitmap = json_str(ae, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.");
@@ -268,7 +268,7 @@ std::vector<filter *> *load_filters(const json_t *const in, source *const s)
 			else
 				error_exit(false, "(text-)position %s is not understood", s_position);
 
-			filters -> push_back(new filter_add_text(s_text, tp, s -> getMeta()));
+			filters -> push_back(new filter_add_text(s_text, tp, s));
 		}
 		else if (strcasecmp(s_type, "scaled-text") == 0) {
 			const char *s_text = json_str(ae, "text", "what text to show");
