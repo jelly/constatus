@@ -7,7 +7,7 @@
 #include "filter_marker_simple.h"
 #include "log.h"
 
-filter_marker_simple::filter_marker_simple(const sm_mode_t modeIn, const uint8_t *pixel_select_bitmap) : mode(modeIn), psb(pixel_select_bitmap)
+filter_marker_simple::filter_marker_simple(const sm_mode_t modeIn, const uint8_t *const pixel_select_bitmap) : mode(modeIn), psb(pixel_select_bitmap)
 {
 }
 

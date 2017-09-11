@@ -3,6 +3,7 @@
 #include <string>
 
 #include "filter.h"
+#include "meta.h"
 
 typedef enum
 {
@@ -25,9 +26,10 @@ class filter_add_text : public filter
 private:
 	std::string what;
 	text_pos_t tp;
+	meta *const m;
 
 public:
-	filter_add_text(const std::string & what, const text_pos_t tp);
+	filter_add_text(const std::string & what, const text_pos_t tp, meta *const m);
 	~filter_add_text();
 
 	bool uses_in_out() const { return false; }

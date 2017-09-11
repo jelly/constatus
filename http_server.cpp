@@ -1203,6 +1203,8 @@ void http_server::operator()()
 				i++;
 		}
 
+		getMeta() -> setInt("http-viewers", std::pair<uint64_t, int>(get_us(), handles.size()));
+
 		pauseCheck();
 
 		if (poll(fds, 1, 500) == 0)

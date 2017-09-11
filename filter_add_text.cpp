@@ -5,6 +5,8 @@
 
 #include "filter_add_text.h"
 #include "error.h"
+#include "interface.h"
+#include "utils.h"
 
 constexpr unsigned char font[128][8][8] = {
 	{
@@ -1432,7 +1434,31 @@ void find_text_dim(const char *const in, int *const n_lines, int *const n_cols)
 		*n_cols = cur_ll;
 }
 
-filter_add_text::filter_add_text(const std::string & whatIn, const text_pos_t tpIn) : what(whatIn), tp(tpIn)
+std::string unescape(const std::string & in, const uint64_t ts, meta *const m)
+{
+	time_t now = (time_t)(ts / 1000 / 1000);
+	struct tm ptm;
+	localtime_r(&now, &ptm);
+
+	int len = in.size();
+	int bytes = len + 4096;
+
+	char *text_out = (char *)malloc(bytes);
+	if (!text_out)
+		error_exit(true, "out of memory while allocating %d bytes", bytes);
+
+	strftime(text_out, bytes, in.c_str(), &ptm);
+
+	std::string work = text_out;
+	free(text_out);
+
+	work = search_replace(work, "$http-viewers$", myformat("%u", m -> getInt("http-viewers").second));
+	work = search_replace(work, "$pixels-changed$", myformat("%.2f%%", m -> getDouble("pixels-changed").second));
+
+	return work;
+}
+
+filter_add_text::filter_add_text(const std::string & whatIn, const text_pos_t tpIn, meta *const m) : what(whatIn), tp(tpIn), m(m)
 {
 }
 
@@ -1478,25 +1504,14 @@ void add_text(unsigned char *const img, const int width, const int height, const
 	}
 }
 
-void print_timestamp(unsigned char *const img, const int width, const int height, const char *const text, const text_pos_t n_pos, const uint64_t ts)
+void print_timestamp(unsigned char *const img, const int width, const int height, const std::string & text, const text_pos_t n_pos, const uint64_t ts, meta *const m)
 {
 	int x = 0, y = 0;
 
-	time_t now = (time_t)(ts / 1000 / 1000);
-	struct tm ptm;
-	localtime_r(&now, &ptm);
-
-	int len = strlen(text);
-	int bytes = len + 4096;
-
-	char *text_out = (char *)malloc(bytes);
-	if (!text_out)
-		error_exit(true, "out of memory while allocating %d bytes", bytes);
-
-	strftime(text_out, bytes, text, &ptm);
+	std::string text_out = unescape(text, ts, m);
 
 	int n_lines = 0, max_ll = 0;
-	find_text_dim(text_out, &n_lines, &max_ll);
+	find_text_dim(text_out.c_str(), &n_lines, &max_ll);
 
 	if (n_pos == upper_left || n_pos == upper_center || n_pos == upper_right)
 		y = 1;
@@ -1518,12 +1533,10 @@ void print_timestamp(unsigned char *const img, const int width, const int height
 		x = width - max_ll * 8;
 	}
 
-	add_text(img, width, height, text_out, x, y);
-
-	free(text_out);
+	add_text(img, width, height, text_out.c_str(), x, y);
 }
 
 void filter_add_text::apply(const uint64_t ts, const int w, const int h, const uint8_t *const prev, uint8_t *const in_out)
 {
-	print_timestamp(in_out, w, h, what.c_str(), tp, ts);
+	print_timestamp(in_out, w, h, what.c_str(), tp, ts, m);
 }

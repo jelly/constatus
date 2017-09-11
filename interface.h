@@ -5,6 +5,8 @@
 #include <mutex>
 #include <thread>
 
+#include "meta.h"
+
 // C++ has no instanceOf
 typedef enum { CT_HTTPSERVER, CT_MOTIONTRIGGER, CT_TARGET, CT_SOURCE, CT_LOOPBACK, CT_NONE } classtype_t;
 
@@ -24,6 +26,8 @@ protected:
 public:
 	interface(const std::string & id);
 	virtual ~interface();
+
+	static meta * getMeta();
 
 	std::string get_id() const;
 	std::string get_description() const { return d; }

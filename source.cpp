@@ -5,6 +5,7 @@
 #include <sys/time.h>
 
 #include "source.h"
+#include "error.h"
 #include "picio.h"
 #include "filter.h"
 #include "filter_add_text.h"
@@ -50,7 +51,8 @@ void source::set_frame(const encoding_t pe, const uint8_t *const data, const siz
 	if (data == NULL || size == 0)
 		return;
 
-	pthread_mutex_lock(&lock);
+	if (pthread_mutex_lock(&lock) != 0)
+		error_exit(false, "pthread_mutex_lock failed (source::set_frame)");
 
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
@@ -89,9 +91,9 @@ void source::set_frame(const encoding_t pe, const uint8_t *const data, const siz
 		}
 	}
 
-	pthread_mutex_unlock(&lock);
-
 	pthread_cond_broadcast(&cond);
+
+	pthread_mutex_unlock(&lock);
 }
 
 bool source::get_frame(const encoding_t pe, const int jpeg_quality, uint64_t *ts, int *width, int *height, uint8_t **frame, size_t *frame_len)
@@ -106,7 +108,8 @@ bool source::get_frame(const encoding_t pe, const int jpeg_quality, uint64_t *ts
 	*frame = NULL;
 	*frame_len = 0;
 
-	pthread_mutex_lock(&lock);
+	if (pthread_mutex_lock(&lock) != 0)
+		error_exit(false, "pthread_mutex_lock failed (source::get_frame)");
 
 	while(this -> ts <= *ts) {
 		if (pthread_cond_timedwait(&cond, &lock, &tc) == ETIMEDOUT) {
@@ -125,11 +128,13 @@ bool source::get_frame(const encoding_t pe, const int jpeg_quality, uint64_t *ts
 			*height = this -> height;
 		}
 
+		pthread_mutex_unlock(&lock);
+
 		size_t bytes = *width * *height * 3;
 		uint8_t *fail = (uint8_t *)valloc(bytes);
 		memset(fail, 0x80, bytes);
 
-		filter_add_text fat("Camera down since %c", center_center);
+		filter_add_text fat("Camera down since %c", center_center, getMeta());
 		fat.apply(this -> ts, *width, *height, NULL, fail);
 
 		if (pe == E_RGB) {

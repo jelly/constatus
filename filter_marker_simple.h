@@ -17,7 +17,7 @@ private:
 	void updatePixel(uint8_t *const out, const int x, const int y, const int w);
 
 public:
-	filter_marker_simple(const sm_mode_t modeIn, const uint8_t *pixel_select_bitmap);
+	filter_marker_simple(const sm_mode_t modeIn, const uint8_t *const pixel_select_bitmap);
 	virtual ~filter_marker_simple();
 
 	bool uses_in_out() const { return false; }

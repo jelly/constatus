@@ -136,6 +136,8 @@ void motion_trigger::operator()()
 				triggered = cnt > (percentage_pixels_changed / 100) * w * h;
 			}
 
+			getMeta() -> setDouble("pixels-changed", std::pair<uint64_t, double>(prev_ts, cnt * 100.0 / (w * h)));
+
 			if (mute) {
 				log(LL_DEBUG, "mute");
 				mute--;

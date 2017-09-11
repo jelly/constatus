@@ -1,6 +1,13 @@
 #include "interface.h"
 #include "error.h"
 
+meta * interface::getMeta()
+{
+	static meta m;
+
+	return &m;
+}
+
 interface::interface(const std::string & id) : id(id)
 {
 	th = NULL;

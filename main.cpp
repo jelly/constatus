@@ -34,6 +34,7 @@
 #include "filter_mirror_v.h"
 #include "filter_mirror_h.h"
 #include "filter_noise_neighavg.h"
+#include "filter_apply_mask.h"
 #include "filter_add_text.h"
 #include "filter_add_scaled_text.h"
 #include "filter_grayscale.h"
@@ -176,7 +177,7 @@ bool find_interval_or_fps(const json_t *const in, double *const interval, const 
 	return true;
 }
 
-std::vector<filter *> *load_filters(const json_t *const in)
+std::vector<filter *> *load_filters(const json_t *const in, source *const s)
 {
 	std::vector<filter *> *const filters = new std::vector<filter *>();
 
@@ -218,6 +219,12 @@ std::vector<filter *> *load_filters(const json_t *const in)
 			const uint8_t *sb = load_selection_bitmap(selection_bitmap);
 
 			filters -> push_back(new filter_marker_simple(sm, sb));
+		}
+		else if (strcasecmp(s_type, "apply-mask") == 0) {
+			const char *selection_bitmap = json_str(ae, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.");
+			const uint8_t *sb = load_selection_bitmap(selection_bitmap);
+
+			filters -> push_back(new filter_apply_mask(sb));
 		}
 		else if (strcasecmp(s_type, "motion-only") == 0) {
 			const char *selection_bitmap = json_str(ae, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.");
@@ -261,7 +268,7 @@ std::vector<filter *> *load_filters(const json_t *const in)
 			else
 				error_exit(false, "(text-)position %s is not understood", s_position);
 
-			filters -> push_back(new filter_add_text(s_text, tp));
+			filters -> push_back(new filter_add_text(s_text, tp, s -> getMeta()));
 		}
 		else if (strcasecmp(s_type, "scaled-text") == 0) {
 			const char *s_text = json_str(ae, "text", "what text to show");
@@ -335,7 +342,7 @@ target * load_target(const json_t *const j_in, source *const s)
 
 	double override_fps = json_float(j_in, "override-fps", "What FPS to use in the output file. That way you can let the resulting file be played faster (or slower) than how the stream is obtained from the camera. -1.0 to disable");
 
-	std::vector<filter *> *filters = load_filters(json_object_get(j_in, "filters"));
+	std::vector<filter *> *filters = load_filters(json_object_get(j_in, "filters"), s);
 
 	if (strcasecmp(format, "AVI") == 0)
 #ifdef WITH_GWAVI
@@ -583,7 +590,7 @@ int main(int argc, char *argv[])
 			bool archive_access = json_bool(hle, "archive-access", "when enabled, you can retrieve recorded video/images");
 			std::string snapshot_dir = json_str(hle, "snapshot-dir", "where to store snapshots (triggered by HTTP server). see \"allow-admin\".");
 
-			std::vector<filter *> *http_filters = load_filters(json_object_get(hle, "filters"));
+			std::vector<filter *> *http_filters = load_filters(json_object_get(hle, "filters"), s);
 
 			double fps = 0, interval = 0;
 			if (!find_interval_or_fps(hle, &interval, "fps", &fps))
@@ -611,7 +618,7 @@ int main(int argc, char *argv[])
 		if (!find_interval_or_fps(j_vl, &interval, "fps", &fps))
 			interval_fps_error("fps", "for sending frames to loopback", id.c_str());
 
-		std::vector<filter *> *loopback_filters = load_filters(json_object_get(j_vl, "filters"));
+		std::vector<filter *> *loopback_filters = load_filters(json_object_get(j_vl, "filters"), s);
 
 		interface *f = new v4l2_loopback(id, s, fps, dev, loopback_filters);
 		f -> start();
@@ -623,8 +630,6 @@ int main(int argc, char *argv[])
 
 	//***
 
-	// source, jpeg quality, noise factor, pixels changed % trigger, record min n frames, ignore n frames after record, path to store mjpeg files in, filename prefix, max file duration, camera-warm-up(ignore first x frames), pre-record-count(how many frames to store of just-before-the-motion-started)
-	//start_motion_trigger_thread(s, 75, 32, 0.6, 15, 5, "./", "motion-", 3600, 10, 15, &filters_before, &filters_after);
 	log(LL_INFO, "Configuring the motion trigger(s)...");
 	ext_trigger_t *et = NULL;
 	const char *const motion_trigger_name = "motion-trigger";
@@ -652,7 +657,7 @@ int main(int argc, char *argv[])
 
 			const char *selection_bitmap = json_str(mte, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.");
 
-			std::vector<filter *> *filters_detection = load_filters(json_object_get(mte, "filters-detection"));
+			std::vector<filter *> *filters_detection = load_filters(json_object_get(mte, "filters-detection"), s);
 
 /////////////
 			json_t *j_targets = json_object_get(mte, "targets");
