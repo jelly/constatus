@@ -30,6 +30,7 @@
 #include "error.h"
 #include "log.h"
 #include "source.h"
+#include "utils.h"
 
 void set_no_delay(int fd)
 {
@@ -338,9 +339,9 @@ std::string search_replace(const std::string & in, const std::string & search, c
 	return work;
 }
 
-std::vector<std::pair<std::string, time_t> > * load_filelist(const std::string & dir, const std::string & prefix)
+std::vector<file_t> * load_filelist(const std::string & dir, const std::string & prefix)
 {
-	auto *out = new std::vector<std::pair<std::string, time_t> >;
+	auto *out = new std::vector<file_t>;
 
 	DIR *d = opendir(dir.c_str());
 	if (!d)
@@ -360,13 +361,14 @@ std::vector<std::pair<std::string, time_t> > * load_filelist(const std::string &
 		if (!S_ISREG(st.st_mode))
 			continue;
 
-		if (strncmp(de -> d_name, prefix.c_str(), prefix.size()) == 0)
-			out -> push_back(std::pair<std::string, time_t>(de -> d_name, st.st_mtim.tv_sec));
+		if (strncmp(de -> d_name, prefix.c_str(), prefix.size()) == 0) {
+			file_t f = { de -> d_name, st.st_mtim.tv_sec, st.st_size };
+
+			out -> push_back(f);
+		}
 	}
 
 	closedir(d);
-
-	std::sort(out -> begin(), out -> end(), [](const std::pair<std::string, time_t> &left, const std::pair<std::string, time_t> &right) { if (left.second == right.second) { return left.first < right.first; } return left.second < right.second; });
 
 	return out;
 }

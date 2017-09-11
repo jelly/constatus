@@ -613,7 +613,7 @@ bool validate_file(const std::string & snapshot_dir, const std::string & filenam
 	auto *files = load_filelist(snapshot_dir, "");
 
 	for(auto cur : *files) {
-		if (cur.first == filename) {
+		if (cur.name == filename) {
 			rc = true;
 			break;
 		}
@@ -695,8 +695,9 @@ std::string run_rest(configuration_t *const cfg, const std::string & path, const
 		for(auto file : *files) {
 			json_t *record = json_object();
 
-			json_object_set(record, "file", json_string(file.first.c_str()));
-			json_object_set(record, "mtime", json_integer(file.second));
+			json_object_set(record, "file", json_string(file.name.c_str()));
+			json_object_set(record, "mtime", json_integer(file.last_change));
+			json_object_set(record, "size", json_integer(file.size));
 
 			json_array_append_new(out_arr, record);
 		}
@@ -843,6 +844,14 @@ void send_file(const int cfd, const std::string & path, const char *const name)
 	}
 
 	fclose(fh);
+}
+
+bool sort_files(const file_t &left, const file_t & right)
+{
+	if (left.last_change == right.last_change)
+		return left.last_change < right.last_change;
+
+	return left.last_change < right.last_change;
 }
 
 void handle_http_client(int cfd, source *s, double fps, int quality, int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, resize *const r, const int resize_w, const int resize_h, const bool motion_compatible, configuration_t *const cfg, const std::string & snapshot_dir, const bool allow_admin, const bool archive_acces)
@@ -1035,12 +1044,14 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 		free(file);
 	}
 	else if (strcmp(path, "/view-snapshots/") == 0 && (archive_acces || allow_admin)) {
-		std::string reply = http_200_header + html_header + "<h1>list of files of " + snapshot_dir + "</h1><table border=1>";
+		std::string reply = http_200_header + html_header + "<h1>list of files in " + snapshot_dir + "</h1><table border=1>";
 
 		auto *files = load_filelist(snapshot_dir, "");
 
+		std::sort(files -> begin(), files -> end(), sort_files);
+
 		for(auto file : *files)
-			reply += std::string("<tr><td><a href=\"/send-file?") + file.first + "\">" + file.first + "</a></td><td>" + myctime(file.second) + "</td>";
+			reply += std::string("<tr><td><a href=\"/send-file?") + file.name + "\">" + file.name + "</a></td><td>" + myctime(file.last_change) + "</td><td>" + myformat("%zu", file.size) + "</td>";
 
 		delete files;
 
