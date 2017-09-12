@@ -18,7 +18,7 @@ extern "C" {
 
 static bool v = false;
 
-source_rtsp::source_rtsp(const std::string & id, const std::string & url, const double max_fps, resize *const r, const int resize_w, const int resize_h, const int loglevel) : source(id, max_fps, r, resize_w, resize_h, loglevel), url(url)
+source_rtsp::source_rtsp(const std::string & id, const std::string & url, const bool tcp, const double max_fps, resize *const r, const int resize_w, const int resize_h, const int loglevel) : source(id, max_fps, r, resize_w, resize_h, loglevel), url(url), tcp(tcp)
 {
 	v = loglevel >= LL_DEBUG;
 	d = url;
@@ -96,7 +96,8 @@ void source_rtsp::operator()()
 		if (!format_ctx)
 			goto fail;
 
-//		av_dict_set(&opts, "rtsp_transport", "udp", 0);
+		if (tcp)
+			av_dict_set(&opts, "rtsp_transport", "tcp", 0);
 		av_dict_set(&opts, "max_delay", "100000", 0);  //100000 is the default
 		av_dict_set(&opts, "analyzeduration", "5000000", 0);
 		av_dict_set(&opts, "probesize", "32000000", 0);

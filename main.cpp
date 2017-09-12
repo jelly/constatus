@@ -544,8 +544,9 @@ int main(int argc, char *argv[])
 		}
 		else if (strcasecmp(s_type, "rtsp") == 0) {
 			const char *url = json_str(j_source, "url", "address of JPEG stream");
+			bool tcp = json_bool(j_source, "tcp", "use TCP for RTSP transport (instead of default UDP)");
 
-			s = new source_rtsp(id, url, max_fps, r, resize_w, resize_h, loglevel);
+			s = new source_rtsp(id, url, tcp, max_fps, r, resize_w, resize_h, loglevel);
 		}
 		else if (strcasecmp(s_type, "plugin") == 0) {
 			std::string plugin_bin = json_str(j_source, "source-plugin-file", "filename of video data source plugin");

@@ -29,7 +29,7 @@ clean:
 
 package: clean
 	mkdir constatus-$(VERSION)
-	cp -a *.cpp *.h README constatus*conf Makefile constatus-$(VERSION)
+	cp -a man/ *.cpp *.h README constatus*conf Makefile constatus-$(VERSION)
 	tar czf constatus-$(VERSION).tgz constatus-$(VERSION)
 	rm -rf constatus-$(VERSION)
 
