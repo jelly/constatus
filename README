@@ -36,13 +36,13 @@ Supports:
 
 
 Required:
-- libcurl
-- libjansson
-- libjpeg
-- libpng
+- libcurl-dev e.g. libcurl4-openssl-dev
+- libjansson-dev
+- libjpeg-dev
+- libpng-dev
 - libgwavi - from https://github.com/Rolinh/libgwavi.git
-- libavformat / libswscale / libavcodec / libavutil
-- libcairo
+- libavformat-dev / libswscale-dev / libavcodec-dev / libavutil-dev / libswresample-dev / libavresample-dev
+- libcairo2-dev
 - libnetpbm10-dev
 
 
