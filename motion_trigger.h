@@ -19,7 +19,7 @@ typedef struct
 	detect_motion_t detect_motion;
 	uninit_motion_trigger_t uninit_motion_trigger;
 
-	const char *par;
+	std::string par;
 
 	void *arg;
 } ext_trigger_t;

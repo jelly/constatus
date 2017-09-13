@@ -38,6 +38,7 @@ Supports:
 Required:
 - libcurl-dev e.g. libcurl4-openssl-dev
 - libjansson-dev
+- libconfig++-dev
 - libjpeg-dev
 - libpng-dev
 - libgwavi - from https://github.com/Rolinh/libgwavi.git

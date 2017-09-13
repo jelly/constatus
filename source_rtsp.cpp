@@ -1,6 +1,7 @@
 // with code from https://stackoverflow.com/questions/39536746/ffmpeg-leak-while-reading-image-files
 #include <atomic>
 #include <string>
+#include <unistd.h>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -261,6 +262,8 @@ void source_rtsp::operator()()
 
 		if (local_stop_flag)
 			break;
+
+		usleep(101000);
 	}
 
 	log(LL_INFO, "source rtsp thread terminating");

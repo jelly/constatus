@@ -15,7 +15,7 @@ extern "C" {
 #include "picio.h"
 #include "utils.h"
 
-target_ffmpeg::target_ffmpeg(const std::string & id, const char *const parameters, source *const s, const std::string & store_path, const std::string & prefix, const int max_time, const double interval, const std::string & type, const int bitrate, const std::vector<filter *> *const filters, const char *const exec_start, const char *const exec_cycle, const char *const exec_end, const int override_fps) : target(id, s, store_path, prefix, max_time, interval, filters, exec_start, exec_cycle, exec_end, override_fps), parameters(parameters), type(type), bitrate(bitrate)
+target_ffmpeg::target_ffmpeg(const std::string & id, const std::string & parameters, source *const s, const std::string & store_path, const std::string & prefix, const int max_time, const double interval, const std::string & type, const int bitrate, const std::vector<filter *> *const filters, const std::string & exec_start, const std::string & exec_cycle, const std::string & exec_end, const int override_fps) : target(id, s, store_path, prefix, max_time, interval, filters, exec_start, exec_cycle, exec_end, override_fps), parameters(parameters), type(type), bitrate(bitrate)
 {
 	avcodec_register_all();
 }
@@ -607,11 +607,11 @@ void target_ffmpeg::operator()()
 		/* Initialize libavcodec, and register all codecs and formats. */
 		name = gen_filename(store_path, prefix, type.c_str(), get_us(), f_nr++);
 
-		if (exec_start && is_start) {
+		if (!exec_start.empty() && is_start) {
 			exec(exec_start, name);
 			is_start = false;
 		}
-		else if (exec_cycle) {
+		else if (!exec_cycle.empty()) {
 			exec(exec_cycle, name);
 		}
 
@@ -622,7 +622,7 @@ void target_ffmpeg::operator()()
 			avformat_alloc_output_context2(&oc, NULL, "mpeg", name.c_str());
 		}
 
-		if ((ret = av_set_options_string(opt, parameters, "=", ":")) < 0)
+		if ((ret = av_set_options_string(opt, parameters.c_str(), "=", ":")) < 0)
 			error_exit(false, "ffmpeg parameters are incorrect");
 
 		fmt = oc->oformat;
@@ -714,7 +714,7 @@ void target_ffmpeg::operator()()
 		////////////////////////////////////////////////////////////////////////////
 	}
 
-	if (exec_end)
+	if (!exec_end.c_str())
 		exec(exec_end, name);
 
 	free(prev_frame);

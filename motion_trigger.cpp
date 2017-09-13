@@ -23,7 +23,7 @@
 motion_trigger::motion_trigger(const std::string & id, source *const s, const int noise_level, const double percentage_pixels_changed, const int keep_recording_n_frames, const int ignore_n_frames_after_recording, const int camera_warm_up, const int pre_record_count, const std::vector<filter *> *const filters, std::vector<target *> *const targets, const uint8_t *pixel_select_bitmap, ext_trigger_t *const et, const double max_fps) : interface(id), s(s), noise_level(noise_level), percentage_pixels_changed(percentage_pixels_changed), keep_recording_n_frames(keep_recording_n_frames), ignore_n_frames_after_recording(ignore_n_frames_after_recording), camera_warm_up(camera_warm_up), pre_record_count(pre_record_count), filters(filters), targets(targets), pixel_select_bitmap(pixel_select_bitmap), et(et), max_fps(max_fps)
 {
 	if (et)
-		et -> arg = et -> init_motion_trigger(et -> par);
+		et -> arg = et -> init_motion_trigger(et -> par.c_str());
 
 	local_stop_flag = false;
 	th = NULL;
