@@ -223,5 +223,8 @@ def process(f, cfg):
 	for i in includes:
 		process(i, cfg)
 
+print 'Hi, this script is currently broken; it produces the format of the previous constatus configuration format.'
+sys.exit(1)
+
 cfg = dict()
 process(sys.argv[1], cfg)
