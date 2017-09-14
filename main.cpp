@@ -32,6 +32,7 @@ using namespace libconfig;
 #include "target_jpeg.h"
 #include "target_plugin.h"
 #include "target_extpipe.h"
+#include "target_vnc.h"
 #include "filter.h"
 #include "filter_mirror_v.h"
 #include "filter_mirror_h.h"
@@ -341,9 +342,9 @@ target * load_target(const Setting & in, source *const s)
 	int restart_interval = cfg_int(in, "restart-interval", "after how many seconds should the stream-file be restarted", true, -1);
 
 #ifdef WITH_GWAVI
-	std::string format = cfg_str(in, "format", "AVI, EXTPIPE, FFMPEG (for mp4, flv, etc), JPEG or PLUGIN", false, "");
+	std::string format = cfg_str(in, "format", "avi, extpipe, ffmpeg (for mp4, flv, etc), jpeg, vnc or plugin", false, "");
 #else
-	std::string format = cfg_str(in, "format", "EXTPIPE, FFMPEG (for mp4, flv, etc), JPEG or PLUGIN", false, "");
+	std::string format = cfg_str(in, "format", "extpipe, ffmpeg (for mp4, flv, etc), jpeg, vnc or plugin", false, "");
 #endif
 	int jpeg_quality = cfg_int(in, "quality", "JPEG quality, this influences the size", true, 75);
 
@@ -385,6 +386,12 @@ target * load_target(const Setting & in, source *const s)
 		stream_plugin_t *sp = load_stream_plugin(in);
 
 		t = new target_plugin(id, s, path, prefix, jpeg_quality, restart_interval, interval, filters, exec_start, exec_cycle, exec_end, sp, override_fps);
+	}
+	else if (format == "vnc") {
+		std::string listen_adapter = cfg_str(in, "listen-adapter", "network interface to listen on or 0.0.0.0 for all", false, "");
+		int listen_port = cfg_int(in, "listen-port", "port to listen on", false, 5901);
+
+		t = new target_vnc(id, s, listen_adapter, listen_port, restart_interval, interval, filters, exec_start, exec_end);
 	}
 	else {
 		error_exit(false, "Format %s is unknown (stream to disk backends)", format.c_str());
@@ -451,6 +458,7 @@ int main(int argc, char *argv[])
 	}
 
 	signal(SIGCHLD, SIG_IGN);
+	signal(SIGPIPE, SIG_IGN);
 
 	log(LL_INFO, "Loading %s...", cfg_file);
 
