@@ -208,25 +208,34 @@ uint32_t hash_block(unsigned char *img, int i_W, int i_H, int block_x, int block
 {
 	uint32_t val = 0;
 
-	for(int y=block_y; y<block_y + block_H; y++)
-	{
-		for(int x=block_x; x<block_x + block_W; x++)
-		{
-			int offset = y * i_W * 3 + x * 3;
+	if (fuzzy) {
+		for(int y=block_y; y<block_y + block_H; y++) {
+			int y_offset = y * i_W * 3;
 
-			uint32_t pixel = 0;
+			for(int x=block_x; x<block_x + block_W; x++) {
+				int offset = y_offset + x * 3;
 
-			if (fuzzy)
-				pixel = ((img[offset + 0] + img[offset + 1] + img[offset + 2]) / (3 * fuzzy)) * fuzzy;
-			else
-				pixel = (img[offset + 0] << 16) | (img[offset + 1] << 8) | img[offset + 2];
+				uint32_t pixel = ((img[offset + 0] + img[offset + 1] + img[offset + 2]) / (3 * fuzzy)) * fuzzy;
 
-			/* val = (val << 1) | (val >> 31);
-			val ^= pixel; */
+				val += pixel;
+				val += val << 10;
+				val ^= val >> 6;
+			}
+		}
+	}
+	else {
+		for(int y=block_y; y<block_y + block_H; y++) {
+			int y_offset = y * i_W * 3;
 
-			val += pixel;
-			val += val << 10;
-			val ^= val >> 6;
+			for(int x=block_x; x<block_x + block_W; x++) {
+				int offset = y_offset + x * 3;
+
+				uint32_t pixel = (img[offset + 0] << 16) | (img[offset + 1] << 8) | img[offset + 2];
+
+				val += pixel;
+				val += val << 10;
+				val ^= val >> 6;
+			}
 		}
 	}
 
@@ -839,6 +848,8 @@ void * vnc_main_loop(void *p)
 {
 	vnc_thread_t *vt = (vnc_thread_t *)p;
 
+	vt -> s -> register_user();
+
 	int fd = vt -> fd;
 	source *s = vt -> s;
 
@@ -1094,6 +1105,8 @@ void * vnc_main_loop(void *p)
 
 	delete [] client_view;
 	delete [] work;
+
+	vt -> s -> unregister_user();
 
 	delete vt;
 
