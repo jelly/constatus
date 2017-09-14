@@ -57,7 +57,7 @@ LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libv4lconvert.so ./constatus -c constatus-v
 
 The program is configured via a text-file. It is processed by libconfig and thus uses that format.
 Take a look at the example: constatus.cfg.
-Use motion-to-constatus.py to convert a motion configuration file to a constatus configuration file.
+Use motion-to-constatus.py to convert a motion configuration file to a constatus configuration file - this requires the libconf package, see https://pypi.python.org/pypi/libconf
 
 Each configuration has 1 source. So if you want to monitor multiple cameras, then you need to start multiple instances of constatus. The idea is that if anything crashes, you won't loose all cameras.
 
