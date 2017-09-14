@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <map>
 #include <math.h>
+#include <poll.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -872,8 +873,7 @@ void * vnc_main_loop(void *p)
 	double fuzzy = 1;
 	double pts = get_ts(), pfull = 0;
 
-	for(;!abort;)
-	{
+	for(;!abort && !*vt -> local_stop_flag;) {
 		char cmd[1] = { (char)-1 };
 
 		if (READ(fd, cmd, 1) != 1)
@@ -882,8 +882,7 @@ void * vnc_main_loop(void *p)
 		if (cmd[0] != 3)
 			printf("cmd: %d\n", cmd[0]);
 
-		switch(cmd[0])
-		{
+		switch(cmd[0]) {
 			case 0:		// set pixel format [ignored]
 			{
 				char spf[20] = { 0 };
@@ -1112,8 +1111,27 @@ target_vnc::~target_vnc()
 
 void target_vnc::operator()()
 {
+	set_thread_name("vnc_server");
+
+	struct pollfd fds[] = { { fd, POLLIN, 0 } };
+
+	std::vector<pthread_t> handles;
+
 	for(;!local_stop_flag;) {
-		// FIXME keep vector of pthread_t's, poll and clean list
+		for(size_t i=0; i<handles.size();) {
+			if (pthread_tryjoin_np(handles.at(i), NULL) == 0)
+				handles.erase(handles.begin() + i);
+			else
+				i++;
+		}
+
+		getMeta() -> setInt("vnc-viewers", std::pair<uint64_t, int>(get_us(), handles.size()));
+
+		pauseCheck();
+
+		if (poll(fds, 1, 500) == 0)
+			continue;
+
 		int cfd = accept(fd, NULL, 0);
 		if (cfd == -1)
 			continue;
@@ -1134,5 +1152,12 @@ void target_vnc::operator()()
 			errno = rc;
 			error_exit(true, "pthread_create failed (vnc client thread)");
 		}
+
+		handles.push_back(th);
 	}
+
+	for(size_t i=0; i<handles.size(); i++)
+		pthread_join(handles.at(i), NULL);
+
+	log(LL_INFO, "VNC server thread terminating");
 }
