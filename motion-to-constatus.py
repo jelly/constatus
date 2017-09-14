@@ -1,6 +1,7 @@
 #! /usr/bin/python
 
-import json
+import libconf
+import os
 import sys
 
 def load_file(f, d):
@@ -52,10 +53,9 @@ def process(f, cfg):
 	includes = load_file(f, cfg)
 
 	j = dict()
-	j['general'] = {	'logfile' : lu(cfg, 'logfile', 'constatus.log'),
-                	"log-level" : "debug",
-			"resize-type" : "regular"
-			}
+	j['logfile'] = lu(cfg, 'logfile', 'constatus.log')
+        j["log-level"] = "debug"
+	j["resize-type"] = "regular"
 
 	dev = lu(cfg, 'videodevice')
 	url = lu(cfg, 'netcam_url')
@@ -74,8 +74,6 @@ def process(f, cfg):
 	height = lui(cfg, 'height', 240)
 
 	if dev and url == None: # v4l
-		print 'v4l'
-
 		j['source'] = {
 			"type" : "v4l",
 			"device" : dev,
@@ -90,8 +88,6 @@ def process(f, cfg):
 			}
 
 	else: # most likely a netcam
-		print 'netcam'
-
 		if url[0:4] == 'rtsp':
 			t = 'rtsp'
 		else:
@@ -131,7 +127,7 @@ def process(f, cfg):
 		s_adapter = '0.0.0.0'
 
 	h = []
-	h.append( {
+	h.append({
                         "listen-adapter" : s_adapter,
                         "listen-port" : lui(cfg, 'stream_port'),
                         "fps" : luf(cfg, 'stream_maxrate', 1.0),
@@ -143,14 +139,14 @@ def process(f, cfg):
                         "allow-admin" : False,
 			"archive-access" : False,
                         "snapshot-dir" : td,
-		} )
+		})
 
 	if lui(cfg, 'webcontrol_port', 0) != 0:
 		wc_adapter = '::FFFF:127.0.0.1'
 		if lu(cfg, 'webcontrol_localhost') != 'on':
 			wc_adapter = '0.0.0.0'
 
-		h.append( {
+		h.append({
 				"listen-adapter" : wc_adapter,
 				"listen-port" : lui(cfg, 'webcontrol_port'),
 				"fps" : luf(cfg, 'stream_maxrate', 1.0),
@@ -162,14 +158,13 @@ def process(f, cfg):
 				"allow-admin" : True,
 				"archive-access" : True,
 				"snapshot-dir" : td,
-				"filters" : filters
-			}	 )
+				"filters" : tuple(filters)
+			})
 
-	j['http-server'] = h
+	j['http-server'] = tuple(h)
 
 	threshold = luf(cfg, "threshold", 1500.0)
 	pcp = threshold * 100.0 / (width * height)
-
 
 	target = {
 			"id" : "motion output",
@@ -184,7 +179,7 @@ def process(f, cfg):
 			"exec-start" : lu(cfg, "on_movie_start", ""),
 			"exec-cycle" : "",
 			"exec-end" : lu(cfg, "on_movie_end", ""),
-			"filters" : filters
+			"filters" : tuple(filters)
 		}
 
 	ep = lu(cfg, "extpipe", None)
@@ -210,21 +205,28 @@ def process(f, cfg):
                         "selection-bitmap" : "",
                         "pre-motion-record-duration" : lui(cfg, "pre_capture", 0),
                         "max-fps" : fps,
-                        "filters-detection" : [ ],
-                        "targets" : [ target ]
+                        "filters-detection" : tuple(),
+                        "targets" : tuple([ target ])
 
 		} )
-	j['motion-trigger'] = m
+	j['motion-trigger'] = tuple(m)
 
-	fh = open(f + '.c.conf', 'w')
-	fh.write(json.dumps(j, sort_keys=True, indent=4, separators=(',', ': ')))
+	filename, file_extension = os.path.splitext(f)
+
+	new_filename = filename + '-constatus.cfg'
+	print 'Writing to %s' % new_filename
+
+	fh = open(new_filename, 'w')
+	fh.write(libconf.dumps(j))
 	fh.close()
 
 	for i in includes:
 		process(i, cfg)
 
-print 'Hi, this script is currently broken; it produces the format of the previous constatus configuration format.'
-sys.exit(1)
-
 cfg = dict()
+
+if len(sys.argv) != 2:
+	print 'Filename of motion configuration file missing'
+	sys.exit(1)
+
 process(sys.argv[1], cfg)
