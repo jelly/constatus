@@ -263,22 +263,19 @@ void encode_color(pixel_setup_t *ps, int r, int g, int b, char *to, int *Bpp)
 	{
 		if (ps -> big_endian)
 		{
-			*p = r; p++;
-			*p = g; p++;
-			*p = b; p++;
+			*p++ = r;
+			*p++ = g;
+			*p++ = b;
 		}
 		else
 		{
-			*p = b; p++;
-			*p = g; p++;
-			*p = r; p++;
+			*p++ = b;
+			*p++ = g;
+			*p++ = r;
 		}
 
 		if (ps -> bpp == 32)
-		{
-			*p = -1;
-			p++;
-		}
+			*p++ = -1;
 	}
 	else if (ps -> bpp == 16 || ps -> bpp == 15 || ps -> bpp == 8)
 	{
@@ -330,66 +327,60 @@ void create_block_raw(int fd, unsigned char *img, int i_W, int i_H, int block_x,
 	{
 		for(int y=block_y; y<block_y + block_h; y++)
 		{
+			const uint8_t *o = &img[y * i_W * 3 + block_x * 3];
+
 			for(int x=block_x; x<block_x + block_w; x++)
 			{
-				int offset = y * i_W * 3 + x * 3;
-				int r = img[offset + 0];
-				int g = img[offset + 1];
-				int b = img[offset + 2];
+				int r = *o++;
+				int g = *o++;
+				int b = *o++;
 
-				if (ps -> big_endian)
-				{
-					*p = r; p++;
-					*p = g; p++;
-					*p = b; p++;
-					*p = -1; p++;
+				if (ps -> big_endian) {
+					*p++ = r;
+					*p++ = g;
+					*p++ = b;
+					*p++ = -1;
 				}
-				else
-				{
-					*p = b; p++;
-					*p = g; p++;
-					*p = r; p++;
-					*p = -1; p++;
+				else {
+					*p++ = b;
+					*p++ = g;
+					*p++ = r;
+					*p++ = -1;
 				}
 			}
 		}
 	}
-	else if (ps -> bpp == 24)
-	{
-		for(int y=block_y; y<block_y + block_h; y++)
-		{
-			for(int x=block_x; x<block_x + block_w; x++)
-			{
-				int offset = y * i_W * 3 + x * 3;
-				int r = img[offset + 0];
-				int g = img[offset + 1];
-				int b = img[offset + 2];
+	else if (ps -> bpp == 24) {
+		for(int y=block_y; y<block_y + block_h; y++) {
+			const uint8_t *o = &img[y * i_W * 3 + block_x * 3];
 
-				if (ps -> big_endian)
-				{
-					*p = r; p++;
-					*p = g; p++;
-					*p = b; p++;
+			for(int x=block_x; x<block_x + block_w; x++) {
+				int r = *o++;
+				int g = *o++;
+				int b = *o++;
+
+				if (ps -> big_endian) {
+					*p++ = r;
+					*p++ = g;
+					*p++ = b;
 				}
-				else
-				{
-					*p = b; p++;
-					*p = g; p++;
-					*p = r; p++;
+				else {
+					*p++ = b;
+					*p++ = g;
+					*p++ = r;
 				}
 			}
 		}
 	}
-	else if (ps -> bpp == 16 || ps -> bpp == 15 || ps -> bpp == 8)
-	{
-		for(int y=block_y; y<block_y + block_h; y++)
-		{
-			for(int x=block_x; x<block_x + block_w; x++)
-			{
-				int offset = y * i_W * 3 + x * 3;
-				int r = img[offset + 0];
-				int g = img[offset + 1];
-				int b = img[offset + 2];
+	else if (ps -> bpp == 16 || ps -> bpp == 15 || ps -> bpp == 8) {
+		for(int y=block_y; y<block_y + block_h; y++) {
+			const uint8_t *o = &img[y * i_W * 3 + block_x * 3];
+
+			for(int x=block_x; x<block_x + block_w; x++) {
+				int r = *o++;
+				int g = *o++;
+				int b = *o++;
+
 				int dummy = 0;
 
 				dummy = ((r >> (8 - ps -> red_bits)) << ps -> red_shift) |
@@ -398,22 +389,17 @@ void create_block_raw(int fd, unsigned char *img, int i_W, int i_H, int block_x,
 
 				if (ps -> bpp == 8)	// 8 bit
 				{
-					*p = dummy;
-					p++;
+					*p++ = dummy;
 				}
 				else if (ps -> big_endian) // 16/15 bit
 				{
-					*p = dummy >> 8;
-					p++;
-					*p = dummy & 255;
-					p++;
+					*p++ = dummy >> 8;
+					*p++ = dummy & 255;
 				}
 				else // 16/15 bit
 				{
-					*p = dummy & 255;
-					p++;
-					*p = dummy >> 8;
-					p++;
+					*p++ = dummy & 255;
+					*p++ = dummy >> 8;
 				}
 			}
 		}
@@ -566,7 +552,7 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 
 			uint32_t cur_val = hash_block(cur, src_w, src_h, x, y, cur_bw, cur_bh, fuzzy);
 
-			std::map<uint32_t, block_t>::iterator loc = cv_blocks.find(cur_val);
+			auto loc = cv_blocks.find(cur_val);
 
 			// did it change it all?
 			do_block_t b = { ENC_NONE, x, y, cur_bw, cur_bh, loc -> second.x, loc -> second.y };
@@ -582,7 +568,7 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 				put = true;
 			}
 			// block found on a different location
-			else if (loc -> second.x != x && loc -> second.y != y && loc -> second.w != cur_bw && loc -> second.h != cur_bh)
+			else if (loc -> second.x != x && loc -> second.y != y && loc -> second.w == cur_bw && loc -> second.h == cur_bh)
 			{
 				b.method = ENC_COPY;
 				put = true;
@@ -677,7 +663,8 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 	if (WRITE(fd, msg_hdr, sizeof msg_hdr) == -1)
 		return false;
 
-	int solid_n = 0, copy_n = 0, raw_n = 0, raw_w = 0, raw_h = 0;
+	int solid_n = 0, copy_n = 0, raw_n = 0;
+	int solid_np = 0, copy_np = 0, raw_np = 0;
 	for(int index=0; index<n_blocks; index++)
 	{
 		do_block_t *b = &do_blocks.at(index);
@@ -698,6 +685,8 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 
 			if (WRITE(fd, msg, sizeof msg) == -1)
 				return false;
+
+			copy_np += b -> w * b -> h;
 		}
 		else if (b -> method == ENC_RAW)
 		{
@@ -715,8 +704,7 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 			if (WRITE(fd, msg, sizeof msg) == -1)
 				return false;
 
-			raw_w += b -> w;
-			raw_h += b -> h;
+			raw_np += b -> w * b -> h;
 
 			char *out = NULL;
 			int len = 0;
@@ -753,6 +741,8 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 
 			if (WRITE(fd, buffer, Bpp) == -1)
 				return false;
+
+			solid_np += b -> w * b -> h;
 		}
 		else
 		{
@@ -764,7 +754,7 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 
 	*bw = double(n_blocks * 100) / double(max_n_blocks);
 
-	printf("fuzz: %f, blocks: %.2f%%, copy: %d, solid: %d, raw: %d, avg raw width: %.2f, avg raw height: %.2f\n", fuzzy, *bw, copy_n, solid_n, raw_n, double(raw_w) / double(raw_n), double(raw_h) / double(raw_n));
+	printf("fuzz: %f, blocks: %.2f%%, copy: %d (%d), solid: %d (%d), raw: %d (%d)\n", fuzzy, *bw, copy_n, copy_np, solid_n, solid_np, raw_n, raw_np);
 
 	return true;
 }
@@ -785,7 +775,7 @@ bool send_screen(int fd, source *s, bool incremental, int xpos, int ypos, int w,
 	memcpy(work, work_temp, work_len);
 	free(work_temp);
 
-	if (0) //(!incremental)
+	if (!incremental)
 	{
 		*bw = 100;
 
@@ -960,8 +950,8 @@ void * vnc_main_loop(void *p)
 				bool enc_supported = false;
 				for(int loop=0; loop<n_enc; loop++)
 				{
-					uint32_t enc = read_card32(fd);
-					// printf("enc: %d\n", enc);
+					int32_t enc = read_card32(fd);
+					//printf("enc: %d\n", enc);
 
 					if (enc == 0)
 						enc_supported = ea.raw = true;
@@ -970,7 +960,6 @@ void * vnc_main_loop(void *p)
 					else if (enc == 5)
 						enc_supported = ea.hextile = true;
 				}
-
 				if (!enc_supported)
 					printf("No supported encoding methods\n");
 
