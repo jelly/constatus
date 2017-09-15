@@ -903,7 +903,7 @@ void * vnc_main_loop(void *p)
 					break;
 				}
 
-				bpp = spf[4];
+				ps.bpp = bpp = spf[4];
 				printf("set bpp %d\n", bpp);
 				printf("depth: %d\n", spf[5]);
 				big_endian = spf[6];
