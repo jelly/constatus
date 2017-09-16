@@ -560,9 +560,9 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 			bool put = false;
 			if (loc == cv_blocks.end())	// block not found
 			{
-				if (ea -> hextile && solid_color(cur, src_w, src_h, x, y, cur_bw, cur_bh, fuzzy, &b.r, &b.g, &b.b))
-					b.method = ENC_SOLID_COLOR;
-				else
+				//if (ea -> hextile && solid_color(cur, src_w, src_h, x, y, cur_bw, cur_bh, fuzzy, &b.r, &b.g, &b.b))
+				//	b.method = ENC_SOLID_COLOR;
+				//else
 					b.method = ENC_RAW;
 
 				put = true;
@@ -638,10 +638,11 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 		do_block_t *p = &do_blocks.at(index);
 		do_block_t *c = &do_blocks.at(index + 1);
 
-		if (p -> method == ENC_RAW && c -> method == ENC_RAW &&
+		if (((p -> method == ENC_RAW && c -> method == ENC_RAW) &&
+		(p -> method == ENC_COPY && c -> method == ENC_COPY)) &&
 			p -> x == c -> x && c -> y == p -> y + p -> h && p -> w == c -> w)
 		{
-			do_block_t n = { ENC_RAW, p -> x, p -> y, p -> w, p -> h + c -> h, -1, -1 };
+			do_block_t n = { p -> method, p -> x, p -> y, p -> w, p -> h + c -> h, -1, -1 };
 
 			do_blocks.erase(do_blocks.begin() + index); // p
 			do_blocks.erase(do_blocks.begin() + index); // c
@@ -759,16 +760,14 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 	return true;
 }
 
-bool send_screen(int fd, source *s, bool incremental, int xpos, int ypos, int w, int h, unsigned char *client_view, unsigned char *work, pixel_setup_t *ps, double *bw, double fuzzy, enc_allowed_t *ea)
+bool send_screen(int fd, source *s, bool incremental, int xpos, int ypos, int w, int h, unsigned char *client_view, unsigned char *work, pixel_setup_t *ps, double *bw, double fuzzy, enc_allowed_t *ea, uint64_t *prev_ts)
 {
-	uint64_t prev_ts = 0;
-
 	uint8_t *work_temp = NULL;
 	size_t work_len = 0;
 
 	for(;;) {
 		int wt, ht;
-		if (s -> get_frame(E_RGB, -1, &prev_ts, &wt, &ht, &work_temp, &work_len))
+		if (s -> get_frame(E_RGB, -1, prev_ts, &wt, &ht, &work_temp, &work_len))
 			break;
 	}
 
@@ -873,6 +872,8 @@ void * vnc_main_loop(void *p)
 
 	double fuzzy = 1;
 	double pts = get_ts(), pfull = 0;
+
+	uint64_t ts = get_us();
 
 	for(;!abort && !*vt -> local_stop_flag;) {
 		char cmd[1] = { (char)-1 };
@@ -991,7 +992,7 @@ void * vnc_main_loop(void *p)
 				}
 
 				double bw = 0.0;
-				if (send_screen(fd, s, incremental[0], xpos, ypos, w, h, client_view, work, &ps, &bw, fuzzy, &ea) == false)
+				if (send_screen(fd, s, incremental[0], xpos, ypos, w, h, client_view, work, &ps, &bw, fuzzy, &ea, &ts) == false)
 				{
 					abort = true;
 					break;
