@@ -106,7 +106,7 @@ int read_card16(int fd)
 
 bool handshake(int fd, source *s, pixel_setup_t *ps, int *const w, int *const h)
 {
-	const char *pv = "RFB 003.003\n";
+	const char *pv = "RFB 003.007\n";
 
 	if (WRITE(fd, pv, strlen(pv)) == -1)
 		return false;
@@ -116,9 +116,15 @@ bool handshake(int fd, source *s, pixel_setup_t *ps, int *const w, int *const h)
 	if (READ(fd, pv_reply, 12) == -1)
 		return false;
 
-	// no auth
-	char auth[4] = { 0, 0, 0, 1 };
-	if (WRITE(fd, auth, 4) == -1)
+	char sec[2] = { 1, 1 };
+	if (WRITE(fd, sec, sizeof sec) == -1)
+		return false;
+
+	char secres[1];
+	if (READ(fd, secres, 1) == -1)
+		return false;
+
+	if (secres[0] != 1)
 		return false;
 
 	// wether the server should allow sharing
