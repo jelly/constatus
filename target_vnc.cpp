@@ -897,9 +897,9 @@ void * vnc_main_loop(void *p)
 				ps.bpp = bpp = spf[4];
 				printf("set bpp %d\n", bpp);
 				printf("depth: %d\n", spf[5]);
-				big_endian = spf[6];
+				ps.big_endian = big_endian = spf[6];
 				printf("big endian %d\n", big_endian);
-
+				ps.true_color = spf[7];
 				ps.red_max = get_card16(&spf[8]);
 				printf("red max: %d\n", ps.red_max);
 				ps.green_max = get_card16(&spf[10]);
