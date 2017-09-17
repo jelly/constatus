@@ -478,7 +478,7 @@ bool solid_color(unsigned char *cur, int src_w, int src_h, int sx, int sy, int c
 
 			double lum = double(cur[offset + 0] + cur[offset + 1] + cur[offset + 2]) / 3.0;
 			gray_t += lum;
-			gray_sd += pow(lum, 2.0);
+			gray_sd += lum * lum; //pow(lum, 2.0);
 		}
 	}
 
@@ -487,7 +487,7 @@ bool solid_color(unsigned char *cur, int src_w, int src_h, int sx, int sy, int c
 	double avg = gray_t / n;
 	double sd = sqrt(gray_sd / n - pow(avg, 2.0));
 
-	if (sd <= fuzzy)
+	if (sd < 1.0)
 	{
 		*r = (int)(rt / n);
 		*g = (int)(gt / n);
@@ -560,9 +560,9 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 			bool put = false;
 			if (loc == cv_blocks.end())	// block not found
 			{
-				//if (ea -> hextile && solid_color(cur, src_w, src_h, x, y, cur_bw, cur_bh, fuzzy, &b.r, &b.g, &b.b))
-				//	b.method = ENC_SOLID_COLOR;
-				//else
+				if (ea -> hextile && solid_color(cur, src_w, src_h, x, y, cur_bw, cur_bh, fuzzy, &b.r, &b.g, &b.b))
+					b.method = ENC_SOLID_COLOR;
+				else
 					b.method = ENC_RAW;
 
 				put = true;
