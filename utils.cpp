@@ -32,9 +32,9 @@
 #include "source.h"
 #include "utils.h"
 
-void set_no_delay(int fd)
+void set_no_delay(int fd, bool use_no_delay)
 {
-        int flag = 1;
+        int flag = use_no_delay;
 
         if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, (char *)&flag, sizeof(int)) < 0)
                 error_exit(true, "could not set TCP_NODELAY on socket");

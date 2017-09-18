@@ -214,7 +214,7 @@ uint32_t hash_block(unsigned char *img, int i_W, int i_H, int block_x, int block
 {
 	uint32_t val = 0;
 
-	if (fuzzy) {
+	if (0) { //(fuzzy) {
 		for(int y=block_y; y<block_y + block_H; y++) {
 			int y_offset = y * i_W * 3;
 
@@ -869,6 +869,8 @@ void * vnc_main_loop(void *p)
 		if (READ(fd, cmd, 1) != 1)
 			break;
 
+		set_no_delay(fd, false);
+
 		if (cmd[0] != 3)
 			printf("cmd: %d\n", cmd[0]);
 
@@ -1077,6 +1079,8 @@ void * vnc_main_loop(void *p)
 				// dolog("Don't know how to handle %d\n", cmd[0]);
 				break;
 		}
+
+		set_no_delay(fd, true); // flush tcp socket(!)
 	}
 
 	close(fd);
@@ -1128,8 +1132,6 @@ void target_vnc::operator()()
 			continue;
 
 		printf("VNC connected with: %s\n", get_endpoint_name(cfd).c_str());
-
-		set_no_delay(cfd);
 
 		vnc_thread_t *ct = new vnc_thread_t;
 

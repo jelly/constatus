@@ -249,7 +249,7 @@ void load_PBM_file(FILE *const fh, int *const w, int *const h, uint8_t **out)
 {
 	bit **pbm = pbm_readpbm(fh, w, h);
 
-	*out = (uint8_t *)malloc(*w * *h * sizeof(uint8_t));
+	*out = (uint8_t *)valloc(*w * *h * sizeof(uint8_t));
 
 	for(int y=0; y<*h; y++) {
 		for(int x=0; x<*w; x++)

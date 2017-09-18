@@ -5,7 +5,7 @@
 
 #include "source.h"
 
-void set_no_delay(int fd);
+void set_no_delay(int fd, bool use_no_delay);
 int start_listen(const char *adapter, int portnr, int listen_queue_size);
 std::string get_endpoint_name(int fd);
 ssize_t READ(int fd, char *whereto, size_t len);

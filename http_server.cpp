@@ -328,7 +328,7 @@ void send_png_frame(int cfd, source *s, bool get, const std::vector<filter *> *c
 		return;
 	}
 
-	set_no_delay(cfd);
+	set_no_delay(cfd, true);
 
 	uint64_t prev_ts = 0;
 	int w = -1, h = -1;
@@ -399,7 +399,7 @@ void send_jpg_frame(int cfd, source *s, bool get, int quality, const std::vector
 		return;
 	}
 
-	set_no_delay(cfd);
+	set_no_delay(cfd, true);
 
 	bool sc = resize_h != -1 || resize_w != -1;
 
