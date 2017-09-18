@@ -851,7 +851,9 @@ void * vnc_main_loop(void *p)
 	pixel_setup_t ps;
 	ps.red_max = ps.green_max = ps.blue_max = 255;
 	ps.red_bits = ps.green_bits = ps.blue_bits = 8;
-	ps.red_shift = ps.green_shift = ps.blue_shift = 0;
+	ps.red_shift = 16;
+	ps.green_shift = 8;
+	ps.blue_shift = 0;
 	ps.big_endian = false;
 	ps.true_color = true;
 	ps.bpp = 32;
