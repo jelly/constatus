@@ -38,7 +38,7 @@ typedef struct {
 	int w, h;
 } block_t;
 
-typedef enum { ENC_NONE, ENC_COPY, ENC_RAW, ENC_SOLID_COLOR } enc_t;
+typedef enum { ENC_NONE = 0, ENC_COPY, ENC_RAW, ENC_SOLID_COLOR } enc_t;
 
 typedef struct {
 	enc_t method;
@@ -549,9 +549,6 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 	{
 		int cur_bh = std::min(block_max_h, src_h - y);
 
-		int start_x = -1;
-
-		int end_x = copy_x + copy_w;
 		for(int x=copy_x; x<copy_x + copy_w; x+= block_max_w)
 		{
 			int cur_bw = std::min(block_max_w, src_w - x);
@@ -585,40 +582,15 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 			}
 
 			// cluster rows of raw encoded blocks
-			if (b.method != ENC_RAW || put == false)
+			if (put == true)
 			{
-				if (put)
-				{
-					if (start_x != -1)
-					{
-						do_block_t b = { ENC_RAW, start_x, y, x - start_x, cur_bh, start_x, y };
+				do_blocks.push_back(b);
 
-						do_blocks.push_back(b);
-
-						copy_block(client_view, cur, src_w, src_h, &b);
-					}
-
-					do_blocks.push_back(b);
-
-					if (b.method == ENC_SOLID_COLOR)
-						fill_block(client_view, src_w, src_h, &b);
-					else if (b.method == ENC_COPY)
-						copy_block(client_view, cur, src_w, src_h, &b);
-				}
+				if (b.method == ENC_SOLID_COLOR)
+					fill_block(client_view, src_w, src_h, &b);
+				else if (b.method == ENC_COPY || b.method == ENC_RAW)
+					copy_block(client_view, cur, src_w, src_h, &b);
 			}
-			else if (start_x == -1 && put == true)
-			{
-				start_x = x;
-			}
-		}
-
-		if (start_x != -1)
-		{
-			do_block_t b = { ENC_RAW, start_x, y, end_x - start_x, cur_bh, start_x, y };
-
-			do_blocks.push_back(b);
-
-			copy_block(client_view, cur, src_w, src_h, &b);
 		}
 	}
 
@@ -631,29 +603,23 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 		do_blocks.push_back(b);
 	}
 
-	if (do_blocks.size() > 1)
-	{
-		// sort on x-position, this helps the merge
-		std::sort(do_blocks.begin(), do_blocks.end(), compare_do_block);
-	}
-
 	// merge
-	int index = 0;
+	int index = 0, merged = 0;
 	while(index < int(do_blocks.size()) - 1)
 	{
 		do_block_t *p = &do_blocks.at(index);
 		do_block_t *c = &do_blocks.at(index + 1);
 
-		if (((p -> method == ENC_RAW && c -> method == ENC_RAW) &&
-		(p -> method == ENC_COPY && c -> method == ENC_COPY)) &&
-			p -> x == c -> x && c -> y == p -> y + p -> h && p -> w == c -> w)
+		if (p -> method == ENC_RAW && c -> method == ENC_RAW && p -> x + p -> w == c -> x && p -> y == c -> y && p -> h == c -> h)
 		{
-			do_block_t n = { p -> method, p -> x, p -> y, p -> w, p -> h + c -> h, -1, -1 };
+			do_block_t n = { p -> method, p -> x, p -> y, p -> w + c -> w, p -> h, p -> src_x, p -> src_y };
 
 			do_blocks.erase(do_blocks.begin() + index); // p
 			do_blocks.erase(do_blocks.begin() + index); // c
 
 			do_blocks.insert(do_blocks.begin() + index, n);
+
+			merged++;
 		}
 		else
 		{
@@ -670,14 +636,14 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 	if (WRITE(fd, msg_hdr, sizeof msg_hdr) == -1)
 		return false;
 
-printf("%d,%d %dx%d\n", copy_x, copy_y, copy_w, copy_h);
+	// printf("%d,%d %dx%d / %d\n", copy_x, copy_y, copy_w, copy_h, merged);
 
 	int solid_n = 0, copy_n = 0, raw_n = 0;
 	int solid_np = 0, copy_np = 0, raw_np = 0;
 	for(int index=0; index<n_blocks; index++)
 	{
 		do_block_t *b = &do_blocks.at(index);
-printf("\t%d,%d %dx%d\n", b -> x, b -> y, b -> w, b -> h);
+		// printf("\t%d,%d %dx%d: %d\n", b -> x, b -> y, b -> w, b -> h, b -> method);
 
 		if (b -> method == ENC_COPY)
 		{
