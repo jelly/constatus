@@ -509,8 +509,8 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 {
 	std::map<uint32_t, block_t> cv_blocks; // client_view blocks
 
-	const int block_max_w = 16;
-	const int block_max_h = 16;
+	constexpr int block_max_w = 16;
+	constexpr int block_max_h = 16;
 
 	// hash client_view
 	for(int y=0; y<src_h; y += block_max_h)
@@ -670,11 +670,14 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 	if (WRITE(fd, msg_hdr, sizeof msg_hdr) == -1)
 		return false;
 
+//printf("%d,%d %dx%d\n", copy_x, copy_y, copy_w, copy_h);
+
 	int solid_n = 0, copy_n = 0, raw_n = 0;
 	int solid_np = 0, copy_np = 0, raw_np = 0;
 	for(int index=0; index<n_blocks; index++)
 	{
 		do_block_t *b = &do_blocks.at(index);
+//printf("\t%d,%d %dx%d\n", b -> x, b -> y, b -> w, b -> h);
 
 		if (b -> method == ENC_COPY)
 		{
@@ -700,6 +703,7 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 			do_block_t *b = &do_blocks.at(index);
 
 			raw_n++;
+			raw_np += b -> w * b -> h;
 
 			char msg[12] = { 0 };
 			put_card16(&msg[0], b -> x);	// x
@@ -710,8 +714,6 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 
 			if (WRITE(fd, msg, sizeof msg) == -1)
 				return false;
-
-			raw_np += b -> w * b -> h;
 
 			char *out = NULL;
 			int len = 0;
@@ -757,11 +759,11 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 		}
 	}
 
-	int max_n_blocks = (src_w / block_max_w) * (src_h / block_max_h);
+	int n_pixels = copy_np + solid_np + raw_np;
 
-	*bw = double(n_blocks * 100) / double(max_n_blocks);
+	*bw = double(n_pixels * 100) / double(copy_w * copy_h);
 
-	printf("fuzz: %f, blocks: %.2f%%, copy: %d (%d), solid: %d (%d), raw: %d (%d)\n", fuzzy, *bw, copy_n, copy_np, solid_n, solid_np, raw_n, raw_np);
+	printf("fuzz: %f, pixels: %.2f%%, copy: %d (%d), solid: %d (%d), raw: %d (%d)\n", fuzzy, *bw, copy_n, copy_np, solid_n, solid_np, raw_n, raw_np);
 
 	return true;
 }
