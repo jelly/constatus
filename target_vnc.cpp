@@ -640,6 +640,7 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 
 	int solid_n = 0, copy_n = 0, raw_n = 0;
 	int solid_np = 0, copy_np = 0, raw_np = 0;
+	int bytes = 0;
 	for(int index=0; index<n_blocks; index++)
 	{
 		do_block_t *b = &do_blocks.at(index);
@@ -662,6 +663,8 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 			if (WRITE(fd, msg, sizeof msg) == -1)
 				return false;
 
+			bytes += sizeof msg;
+
 			copy_np += b -> w * b -> h;
 		}
 		else if (b -> method == ENC_RAW)
@@ -681,6 +684,8 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 			if (WRITE(fd, msg, sizeof msg) == -1)
 				return false;
 
+			bytes += sizeof msg;
+
 			char *out = NULL;
 			int len = 0;
 
@@ -691,6 +696,8 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 				delete [] out;
 				return false;
 			}
+
+			bytes += len;
 
 			delete [] out;
 		}
@@ -710,6 +717,8 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 			if (WRITE(fd, msg, sizeof msg) == -1)
 				return false;
 
+			bytes += sizeof msg;
+
 			int Bpp = 0;
 			char buffer[4] = { 0 };
 			encode_color(ps, b -> r, b -> g, b -> b, buffer, &Bpp);
@@ -718,6 +727,8 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 				return false;
 
 			solid_np += b -> w * b -> h;
+
+			bytes += sizeof Bpp;
 		}
 		else
 		{
@@ -725,11 +736,12 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 		}
 	}
 
-	int n_pixels = copy_np + solid_np + raw_np;
+	//int n_pixels = copy_np + solid_np + raw_np;
 
-	*bw = double(n_pixels * 100) / double(copy_w * copy_h);
+	//*bw = double(n_pixels * 100) / double(copy_w * copy_h);
+	*bw = double(bytes * 100) / double(copy_w * copy_h * ps -> bpp / 8.0);
 
-	printf("fuzz: %f, pixels: %.2f%%, copy: %d (%d), solid: %d (%d), raw: %d (%d)\n", fuzzy, *bw, copy_n, copy_np, solid_n, solid_np, raw_n, raw_np);
+	printf("fuzz: %f, bytes: %.2f%%, copy: %d (%d), solid: %d (%d), raw: %d (%d)\n", fuzzy, *bw, copy_n, copy_np, solid_n, solid_np, raw_n, raw_np);
 
 	return true;
 }
@@ -750,7 +762,7 @@ bool send_screen(int fd, source *s, bool incremental, int xpos, int ypos, int w,
 
 	if (!incremental)
 	{
-		*bw = 100;
+		//*bw = 100;
 
 		if (send_full_screen(fd, s, client_view, work, xpos, ypos, w, h, ps, ea) == false)
 			return false;
