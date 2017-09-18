@@ -587,17 +587,17 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 			// cluster rows of raw encoded blocks
 			if (b.method != ENC_RAW || put == false)
 			{
-				if (start_x != -1)
-				{
-					do_block_t b = { ENC_RAW, start_x, y, x - start_x, cur_bh, start_x, y };
-
-					do_blocks.push_back(b);
-
-					copy_block(client_view, cur, src_w, src_h, &b);
-				}
-
 				if (put)
 				{
+					if (start_x != -1)
+					{
+						do_block_t b = { ENC_RAW, start_x, y, x - start_x, cur_bh, start_x, y };
+
+						do_blocks.push_back(b);
+
+						copy_block(client_view, cur, src_w, src_h, &b);
+					}
+
 					do_blocks.push_back(b);
 
 					if (b.method == ENC_SOLID_COLOR)
@@ -670,14 +670,14 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 	if (WRITE(fd, msg_hdr, sizeof msg_hdr) == -1)
 		return false;
 
-//printf("%d,%d %dx%d\n", copy_x, copy_y, copy_w, copy_h);
+printf("%d,%d %dx%d\n", copy_x, copy_y, copy_w, copy_h);
 
 	int solid_n = 0, copy_n = 0, raw_n = 0;
 	int solid_np = 0, copy_np = 0, raw_np = 0;
 	for(int index=0; index<n_blocks; index++)
 	{
 		do_block_t *b = &do_blocks.at(index);
-//printf("\t%d,%d %dx%d\n", b -> x, b -> y, b -> w, b -> h);
+printf("\t%d,%d %dx%d\n", b -> x, b -> y, b -> w, b -> h);
 
 		if (b -> method == ENC_COPY)
 		{
