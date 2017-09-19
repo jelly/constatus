@@ -40,13 +40,60 @@ typedef struct {
 
 typedef enum { ENC_NONE = 0, ENC_COPY, ENC_RAW, ENC_SOLID_COLOR } enc_t;
 
-typedef struct {
-	enc_t method;
-	int x, y;
-	int w, h;
-	int src_x, src_y;
-	int r, g, b;
-} do_block_t;
+class do_block_raw
+{
+protected:
+	const int x, y, w, h;
+	enc_t e;
+
+public:
+	do_block_raw(const int x, const int y, const int w, const int h) : x(x), y(y), w(w), h(h), e(ENC_RAW)
+	{
+	}
+
+	enc_t get_method() const { return e; }
+	int getx() const { return x; }
+	int gety() const { return y; }
+	int getw() const { return w; }
+	int geth() const { return h; }
+};
+
+class do_block_copy : public do_block_raw
+{
+protected:
+	const int src_x, src_y;
+
+public:
+	do_block_copy(const int x, const int y, const int w, const int h, const int src_x, const int src_y) : do_block_raw(x, y, w, h), src_x(src_x), src_y(src_y)
+	{
+		e = ENC_COPY;
+	}
+
+	int getsrcx() const { return x; }
+	int getsrcy() const { return y; }
+};
+
+class do_block_sc : public do_block_raw
+{
+protected:
+	const uint8_t r, g, b;
+
+public:
+	do_block_sc(const int x, const int y, const int w, const int h, const int c) : do_block_raw(x, y, w, h), r(c >> 16), g(c >> 8), b(c)
+	{
+		e = ENC_SOLID_COLOR;
+	}
+
+	do_block_sc(const int x, const int y, const int w, const int h, const uint8_t r, const uint8_t g, const uint8_t b) : do_block_raw(x, y, w, h), r(r), g(g), b(b)
+	{
+		e = ENC_SOLID_COLOR;
+	}
+
+	int getr() const { return r; }
+	int getg() const { return g; }
+	int getb() const { return b; }
+	int getc() const { return (r << 16) | (g << 8) | b; }
+};
 
 typedef struct {
 	int red_max, green_max, blue_max;
@@ -170,36 +217,36 @@ bool handshake(int fd, source *s, pixel_setup_t *ps, int *const w, int *const h)
 	return true;
 }
 
-void fill_block(unsigned char *dest, int i_W, int i_H, do_block_t *b)
+void fill_block(unsigned char *dest, int i_W, int i_H, const do_block_sc *b)
 {
-	int W = std::min(b -> w, std::min(i_W - b -> x, i_W - b -> src_x));
-	int H = std::min(b -> h, std::min(i_H - b -> y, i_H - b -> src_y));
+	int W = std::min(b -> getw(), i_W - b -> getx());
+	int H = std::min(b -> geth(), i_H - b -> gety());
 
 	for(int y=0; y<H; y++)
 	{
 		for(int x=0; x<W; x++)
 		{
-			int dx = x + b -> x, dy = y + b -> y;
+			int dx = x + b -> getx(), dy = y + b -> gety();
 			int offset_dest = dy * i_W * 3 + dx * 3;
 
-			dest[offset_dest + 0] = b -> r;
-			dest[offset_dest + 1] = b -> g;
-			dest[offset_dest + 2] = b -> b;
+			dest[offset_dest + 0] = b -> getr();
+			dest[offset_dest + 1] = b -> getg();
+			dest[offset_dest + 2] = b -> getb();
 		}
 	}
 }
 
-void copy_block(unsigned char *dest, unsigned char *src, int i_W, int i_H, do_block_t *b)
+void copy_block(unsigned char *dest, unsigned char *src, int i_W, int i_H, const do_block_copy *b)
 {
-	int W = std::min(b -> w, std::min(i_W - b -> x, i_W - b -> src_x));
-	int H = std::min(b -> h, std::min(i_H - b -> y, i_H - b -> src_y));
+	int W = std::min(b -> getw(), std::min(i_W - b -> getx(), i_W - b -> getsrcx()));
+	int H = std::min(b -> geth(), std::min(i_H - b -> gety(), i_H - b -> getsrcy()));
 
 	for(int y=0; y<H; y++)
 	{
 		for(int x=0; x<W; x++)
 		{
-			int dx = x + b -> x, dy = y + b -> y;
-			int sx = x + b -> src_x, sy = y + b -> src_y;
+			int dx = x + b -> getx(), dy = y + b -> gety();
+			int sx = x + b -> getsrcx(), sy = y + b -> getsrcy();
 			int offset_dest = dy * i_W * 3 + dx * 3;
 			int offset_src  = sy * i_W * 3 + sx * 3;
 
@@ -442,12 +489,6 @@ bool send_full_screen(int fd, source *s, unsigned char *client_view, unsigned ch
 	return rc;
 }
 
-bool compare_do_block(const do_block_t b1, const do_block_t b2)
-{
-	// return b1.method < b2.method && b1.x < b2.x && b1.y < b2.y && b1.w < b2.w;
-	return b1.method < b2.method || (b1.method == b2.method && (b1.x < b2.x || (b1.x == b2.x && (b1.y < b2.y || (b1.y == b2.y && b1.w < b2.w)))));
-}
-
 // check if solid color (std-dev luminance < 255 / (100 - fuzzy))
 // dan: hextile, 1e byte: bit 2 set, dan bytes voor de kleur
 bool solid_color(unsigned char *cur, int src_w, int src_h, int sx, int sy, int cur_bw, int cur_bh, double fuzzy, int *r, int *g, int *b)
@@ -514,7 +555,7 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 	}
 
 	// see if any blocks in the new image match with the client_view
-	std::vector<do_block_t> do_blocks; // blocks to send
+	std::vector<do_block_raw *> do_blocks; // blocks to send
 
 	int xa = copy_x % block_max_w;
 	int ya = copy_y % block_max_h;
@@ -543,23 +584,22 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 			auto loc = cv_blocks.find(cur_val);
 
 			// did it change it all?
-			do_block_t b = { ENC_NONE, x, y, cur_bw, cur_bh, loc -> second.x, loc -> second.y };
+			//do_block_t b = { ENC_NONE, x, y, cur_bw, cur_bh, loc -> second.x, loc -> second.y };
+			do_block_raw *b = NULL;
 
-			bool put = false;
 			if (loc == cv_blocks.end())	// block not found
 			{
-				if (ea -> hextile && solid_color(cur, src_w, src_h, x, y, cur_bw, cur_bh, fuzzy, &b.r, &b.g, &b.b))
-					b.method = ENC_SOLID_COLOR;
-				else
-					b.method = ENC_RAW;
+				int R, G, B;
 
-				put = true;
+				if (ea -> hextile && solid_color(cur, src_w, src_h, x, y, cur_bw, cur_bh, fuzzy, &R, &G, &B))
+					b = new do_block_sc(x, y, cur_bw, cur_bh, R, G, B);
+				else
+					b = new do_block_raw(x, y, cur_bw, cur_bh);
 			}
 			// block found on a different location
 			else if (loc -> second.x != x && loc -> second.y != y && loc -> second.w == cur_bw && loc -> second.h == cur_bh)
 			{
-				b.method = ENC_COPY;
-				put = true;
+				b = new do_block_copy(x, y, cur_bw, cur_bh, loc -> second.x, loc -> second.y);
 			}
 			else
 			{
@@ -567,24 +607,20 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 			}
 
 			// cluster rows of raw encoded blocks
-			if (put == true)
+			if (b)
 			{
 				do_blocks.push_back(b);
 
-				if (b.method == ENC_SOLID_COLOR)
-					fill_block(client_view, src_w, src_h, &b);
-				else if (b.method == ENC_COPY || b.method == ENC_RAW)
-					copy_block(client_view, cur, src_w, src_h, &b);
+				if (b -> get_method() == ENC_SOLID_COLOR)
+					fill_block(client_view, src_w, src_h, (const do_block_sc *)b);
+				else if (b -> get_method() == ENC_COPY || b -> get_method() == ENC_RAW)
+					copy_block(client_view, cur, src_w, src_h, (const do_block_copy *)b);
 			}
 		}
 	}
 
-	if (do_blocks.empty())
-	{
-		const int rbd = 8; // random block dimensions
-
-		do_block_t b = { ENC_RAW, rand() % (src_w - rbd), rand() % (src_h - rbd), rbd, rbd, 0, 0 };
-
+	if (do_blocks.empty()) {
+		do_block_raw *b = new do_block_raw(rand() % (src_w - 1), rand() % (src_h - 1), 1, 1);
 		do_blocks.push_back(b);
 	}
 
@@ -592,17 +628,20 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 	int index = 0, merged = 0;
 	while(index < int(do_blocks.size()) - 1)
 	{
-		do_block_t *p = &do_blocks.at(index);
-		do_block_t *c = &do_blocks.at(index + 1);
+		do_block_raw *p = do_blocks.at(index);
+		do_block_raw *c = do_blocks.at(index + 1);
 
-		if (p -> method == ENC_RAW && c -> method == ENC_RAW && p -> x + p -> w == c -> x && p -> y == c -> y && p -> h == c -> h)
+		if (p -> get_method() == ENC_RAW && c -> get_method() == ENC_RAW && p -> getx() + p -> getw() == c -> getx() && p -> gety() == c -> gety() && p -> geth() == c -> geth())
 		{
-			do_block_t n = { p -> method, p -> x, p -> y, p -> w + c -> w, p -> h, p -> src_x, p -> src_y };
+			do_block_raw *b = new do_block_raw(p -> getx(), p -> gety(), p -> getw() + c -> getw(), p -> geth());
+
+			delete do_blocks.at(index);
+			delete do_blocks.at(index + 1);
 
 			do_blocks.erase(do_blocks.begin() + index); // p
 			do_blocks.erase(do_blocks.begin() + index); // c
 
-			do_blocks.insert(do_blocks.begin() + index, n);
+			do_blocks.insert(do_blocks.begin() + index, b);
 
 			merged++;
 		}
@@ -628,42 +667,41 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 	int bytes = 0;
 	for(int index=0; index<n_blocks; index++)
 	{
-		do_block_t *b = &do_blocks.at(index);
-		// printf("\t%d,%d %dx%d: %d\n", b -> x, b -> y, b -> w, b -> h, b -> method);
+		do_block_raw *b = do_blocks.at(index);
+		// printf("\t%d,%d %dx%d: %d\n", b -> getx(), b -> gety(), b -> getw(), b -> geth(), b -> method);
 
-		if (b -> method == ENC_COPY)
+		if (b -> get_method() == ENC_COPY)
 		{
 			copy_n++;
 
 			char msg[12 + 4] = { 0 };
 
-			put_card16(&msg[0], b -> x);	// x
-			put_card16(&msg[2], b -> y);	// y
-			put_card16(&msg[4], b -> w);	// w
-			put_card16(&msg[6], b -> h);	// h
+			put_card16(&msg[0], b -> getx());	// x
+			put_card16(&msg[2], b -> gety());	// y
+			put_card16(&msg[4], b -> getw());	// w
+			put_card16(&msg[6], b -> geth());	// h
 			put_card32(&msg[8], 1);	// copy rect
-			put_card16(&msg[12], b -> src_x);	// x
-			put_card16(&msg[14], b -> src_y);	// y
+			do_block_copy *B = (do_block_copy *)b;
+			put_card16(&msg[12], B -> getsrcx());	// x
+			put_card16(&msg[14], B -> getsrcy());	// y
 
 			if (WRITE(fd, msg, sizeof msg) == -1)
 				return false;
 
 			bytes += sizeof msg;
 
-			copy_np += b -> w * b -> h;
+			copy_np += b -> getw() * b -> geth();
 		}
-		else if (b -> method == ENC_RAW)
+		else if (b -> get_method() == ENC_RAW)
 		{
-			do_block_t *b = &do_blocks.at(index);
-
 			raw_n++;
-			raw_np += b -> w * b -> h;
+			raw_np += b -> getw() * b -> geth();
 
 			char msg[12] = { 0 };
-			put_card16(&msg[0], b -> x);	// x
-			put_card16(&msg[2], b -> y);	// y
-			put_card16(&msg[4], b -> w);	// w
-			put_card16(&msg[6], b -> h);	// h
+			put_card16(&msg[0], b -> getx());	// x
+			put_card16(&msg[2], b -> gety());	// y
+			put_card16(&msg[4], b -> getw());	// w
+			put_card16(&msg[6], b -> geth());	// h
 			put_card32(&msg[8], 0);	// raw
 
 			if (WRITE(fd, msg, sizeof msg) == -1)
@@ -674,7 +712,7 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 			char *out = NULL;
 			int len = 0;
 
-			create_block_raw(fd, cur, src_w, src_h, b -> x, b -> y, b -> w, b -> h, &out, &len, ps);
+			create_block_raw(fd, cur, src_w, src_h, b -> getx(), b -> gety(), b -> getw(), b -> geth(), &out, &len, ps);
 
 			if (WRITE(fd, out, len) == -1)
 			{
@@ -686,15 +724,15 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 
 			free(out);
 		}
-		else if (b -> method == ENC_SOLID_COLOR)
+		else if (b -> get_method() == ENC_SOLID_COLOR)
 		{
 			solid_n++;
 
 			char msg[12 + 1] = { 0 };
-			put_card16(&msg[0], b -> x);	// x
-			put_card16(&msg[2], b -> y);	// y
-			put_card16(&msg[4], b -> w);	// w
-			put_card16(&msg[6], b -> h);	// h
+			put_card16(&msg[0], b -> getx());	// x
+			put_card16(&msg[2], b -> gety());	// y
+			put_card16(&msg[4], b -> getw());	// w
+			put_card16(&msg[6], b -> geth());	// h
 			put_card32(&msg[8], 5);	// hextile
 			// bg color specified, AnySubrects is NOT set so whole rectangle is filled with bg color
 			msg[12] = 2;
@@ -706,19 +744,22 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 
 			int Bpp = 0;
 			char buffer[4] = { 0 };
-			encode_color(ps, b -> r, b -> g, b -> b, buffer, &Bpp);
+			do_block_sc *B = (do_block_sc *)b;
+			encode_color(ps, B -> getr(), B -> getg(), B -> getb(), buffer, &Bpp);
 
 			if (WRITE(fd, buffer, Bpp) == -1)
 				return false;
 
-			solid_np += b -> w * b -> h;
+			solid_np += b -> getw() * b -> geth();
 
 			bytes += sizeof Bpp;
 		}
 		else
 		{
-			error_exit(false, "Invalid (internal) enc mode %d", (int)b -> method);
+			error_exit(false, "Invalid (internal) enc mode %d", (int)b -> get_method());
 		}
+
+		delete do_blocks.at(index);
 	}
 
 	//int n_pixels = copy_np + solid_np + raw_np;
