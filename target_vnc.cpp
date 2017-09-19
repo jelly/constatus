@@ -65,43 +65,43 @@ typedef struct
 
 void put_card32(char *p, int v)
 {
-	p[0] = v >> 24;
-	p[1] = (v >> 16) & 255;
-	p[2] = (v >> 8) & 255;
-	p[3] = v & 255;
+	uint32_t *P = (uint32_t *)p;
+
+	*P = htonl(v);
 }
 
 void put_card16(char *p, int v)
 {
-	p[0] = v >> 8;
-	p[1] = v & 255;
+	uint16_t *P = (uint16_t *)p;
+
+	*P = htons(v);
 }
 
 int get_card16(char *p)
 {
-	unsigned char *pu = (unsigned char *)p;
+	uint16_t *P = (uint16_t *)p;
 
-	return (pu[0] << 8) | pu[1];
+	return ntohs(*P);
 }
 
 int read_card32(int fd)
 {
-	unsigned char bytes[4] = { 0 };
+	uint32_t bytes = -1;
 
-	if (READ(fd, (char *)bytes, sizeof bytes) != sizeof bytes)
+	if (READ(fd, (char *)&bytes, sizeof bytes) != sizeof bytes)
 		return -1;
 
-	return (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3];
+	return ntohl(bytes);
 }
 
 int read_card16(int fd)
 {
-	unsigned char bytes[2] = { 0 };
+	uint16_t bytes = 0;
 
-	if (READ(fd, (char *)bytes, sizeof bytes) != sizeof bytes)
+	if (READ(fd, (char *)&bytes, sizeof bytes) != sizeof bytes)
 		return -1;
 
-	return (bytes[0] << 8) | bytes[1];
+	return ntohs(bytes);
 }
 
 bool handshake(int fd, source *s, pixel_setup_t *ps, int *const w, int *const h)
