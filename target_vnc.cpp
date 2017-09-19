@@ -214,7 +214,7 @@ uint32_t hash_block(unsigned char *img, int i_W, int i_H, int block_x, int block
 {
 	uint32_t val = 0;
 
-	if (fuzzy) {
+	if (0) { //(fuzzy) {
 		for(int y=block_y; y<block_y + block_H; y++) {
 			int y_offset = y * i_W * 3;
 
@@ -291,22 +291,17 @@ void encode_color(pixel_setup_t *ps, int r, int g, int b, char *to, int *Bpp)
 
 		if (ps -> bpp == 8)	// 8 bit
 		{
-			*p = dummy;
-			p++;
+			*p++ = dummy;
 		}
 		else if (ps -> big_endian) // 16/15 bit
 		{
-			*p = dummy >> 8;
-			p++;
-			*p = dummy & 255;
-			p++;
+			*p++ = dummy >> 8;
+			*p++ = dummy & 255;
 		}
 		else // 16/15 bit
 		{
-			*p = dummy & 255;
-			p++;
-			*p = dummy >> 8;
-			p++;
+			*p++ = dummy & 255;
+			*p++ = dummy >> 8;
 		}
 	}
 }
@@ -325,7 +320,7 @@ void create_block_raw(int fd, unsigned char *img, int i_W, int i_H, int block_x,
 		Bpp = 1;
 
 	*len = Bpp * block_w * block_h;
-	*out = new char[*len];
+	*out = (char *)malloc(*len);
 
 	char *p = *out;
 
@@ -431,19 +426,19 @@ bool send_block_raw(int fd, unsigned char *img, int i_W, int i_H, int block_x, i
 
 	if (WRITE(fd, header, sizeof header) == -1)
 	{
-		delete [] out;
+		free(out);
 
 		return false;
 	}
 
 	if (WRITE(fd, out, len) == -1)
 	{
-		delete [] out;
+		free(out);
 
 		return false;
 	}
 
-	delete [] out;
+	free(out);
 
 	return true;
 }
@@ -699,7 +694,7 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 
 			bytes += len;
 
-			delete [] out;
+			free(out);
 		}
 		else if (b -> method == ENC_SOLID_COLOR)
 		{
@@ -786,20 +781,14 @@ bool SetColourMapEntries(int fd)
 	put_card16((char *)&buffer[4], 256);	// # colors;
 
 	unsigned char *p = &buffer[6];
-	for(int index=0; index<256; index++)
-	{
-		*p = index;
-		p++;
-		*p = index;
-		p++;
-		*p = index;
-		p++;
-		*p = index;
-		p++;
-		*p = index;
-		p++;
-		*p = index;
-		p++;
+
+	for(int index=0; index<256; index++) {
+		*p++ = index;
+		*p++ = index;
+		*p++ = index;
+		*p++ = index;
+		*p++ = index;
+		*p++ = index;
 	}
 
 	return WRITE(fd, (char *)buffer, sizeof buffer) == sizeof buffer;
@@ -849,9 +838,9 @@ void * vnc_main_loop(void *p)
 
 	int bytes = w * h * 3;
 
-	unsigned char *work = new unsigned char[bytes];
+	unsigned char *work = (unsigned char *)valloc(bytes);
 
-	unsigned char *client_view = new unsigned char[bytes];
+	unsigned char *client_view = (unsigned char *)valloc(bytes);
 	memset(client_view, 0x00, bytes);
 
 	bool abort = false;
@@ -868,6 +857,8 @@ void * vnc_main_loop(void *p)
 
 		if (READ(fd, cmd, 1) != 1)
 			break;
+
+		set_no_delay(fd, false);
 
 		if (cmd[0] != 3)
 			printf("cmd: %d\n", cmd[0]);
@@ -1077,12 +1068,14 @@ void * vnc_main_loop(void *p)
 				// dolog("Don't know how to handle %d\n", cmd[0]);
 				break;
 		}
+
+		set_no_delay(fd, true); // flush tcp socket(!)
 	}
 
 	close(fd);
 
-	delete [] client_view;
-	delete [] work;
+	free(client_view);
+	free(work);
 
 	vt -> s -> unregister_user();
 
@@ -1128,8 +1121,6 @@ void target_vnc::operator()()
 			continue;
 
 		printf("VNC connected with: %s\n", get_endpoint_name(cfd).c_str());
-
-		set_no_delay(cfd);
 
 		vnc_thread_t *ct = new vnc_thread_t;
 

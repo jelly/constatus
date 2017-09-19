@@ -14,7 +14,7 @@ resize::~resize()
 
 void resize::do_resize(const int win, const int hin, const uint8_t *const in, const int wout, const int hout, uint8_t **out)
 {
-	*out = (uint8_t *)malloc(wout * hout * 3);
+	*out = (uint8_t *)valloc(wout * hout * 3);
 
 	const int max_offset = wout * hout * 3 - 3;
 

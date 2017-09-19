@@ -23,6 +23,6 @@ void resize_cairo::do_resize(const int win, const int hin, const uint8_t *const 
 	cairo_paint(cr);
 	cairo_destroy(cr);
 
-	*out = (uint8_t *)malloc(wout * hout * 3);
+	*out = (uint8_t *)valloc(wout * hout * 3);
 	cairo_to_rgb(result, wout, hout, *out);
 }
