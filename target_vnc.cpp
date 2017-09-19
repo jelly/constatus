@@ -254,14 +254,10 @@ uint32_t hash_block(unsigned char *img, int i_W, int i_H, int block_x, int block
 
 void encode_color(pixel_setup_t *ps, int r, int g, int b, char *to, int *Bpp)
 {
-	if (ps -> bpp == 32)
-		*Bpp = 4;
-	else if (ps -> bpp == 24)
-		*Bpp = 3;
-	else if (ps -> bpp == 16 || ps -> bpp == 15)
+	*Bpp = ps -> bpp / 8;
+
+	if (ps -> bpp == 15)
 		*Bpp = 2;
-	else if (ps -> bpp == 8)
-		*Bpp = 1;
 
 	char *p = to;
 
@@ -308,16 +304,10 @@ void encode_color(pixel_setup_t *ps, int r, int g, int b, char *to, int *Bpp)
 
 void create_block_raw(int fd, unsigned char *img, int i_W, int i_H, int block_x, int block_y, int block_w, int block_h, char **out, int *len, pixel_setup_t *ps)
 {
-	int Bpp = 0;
+	int Bpp = ps -> bpp / 8;
 
-	if (ps -> bpp == 32)
-		Bpp = 4;
-	else if (ps -> bpp == 24)
-		Bpp = 3;
-	else if (ps -> bpp == 16 || ps -> bpp == 15)
+	if (ps -> bpp == 15)
 		Bpp = 2;
-	else if (ps -> bpp == 8)
-		Bpp = 1;
 
 	*len = Bpp * block_w * block_h;
 	*out = (char *)malloc(*len);
