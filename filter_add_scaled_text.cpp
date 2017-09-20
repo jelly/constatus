@@ -44,13 +44,15 @@ void filter_add_scaled_text::apply_io(const uint64_t ts, const int w, const int 
 
 	std::vector<std::string> *parts = split(text_out, "\\n");
 
+	double R = r / 255.0, G = g / 255.0, B = b / 255.0;
+
 	int work_y = y;
 	for(std::string cl : *parts) {
-		cairo_set_source_rgb(cr, 0.1, 0.1, 0.1); 
+		cairo_set_source_rgb(cr, 1.0 - R, 1.0 - G, 1.0 - B); 
 		cairo_move_to(cr, x, work_y);
 		cairo_show_text(cr, cl.c_str());
 
-		cairo_set_source_rgb(cr, r / 255.0, g / 255.0, b / 255.0);
+		cairo_set_source_rgb(cr, R, G, B);
 		cairo_move_to(cr, x + 1, work_y + 1);
 
 		cairo_show_text(cr, cl.c_str());
