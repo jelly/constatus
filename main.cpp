@@ -795,6 +795,11 @@ int main(int argc, char *argv[])
 	if (pid_file && !do_fork)
 		log(LL_WARNING, "Will not write a PID file when not forking");
 
+	if (s)
+		cfg.interfaces.push_back(s);
+
+	cfg.lock.unlock();
+
 	if (do_fork) {
 		if (daemon(0, 0) == -1)
 			error_exit(true, "daemon() failed");
@@ -812,11 +817,6 @@ int main(int argc, char *argv[])
 		for(;;)
 			sleep(86400);
 	}
-
-	if (s)
-		cfg.interfaces.push_back(s);
-
-	cfg.lock.unlock();
 
 	log(LL_INFO, "Starting threads");
 	for(interface *t : cfg.interfaces)
