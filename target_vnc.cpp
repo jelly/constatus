@@ -210,11 +210,10 @@ bool handshake(int fd, source *s, pixel_setup_t *ps, int *const w, int *const h)
 	server_init[19] = 0;	// padding
 	put_card32(&server_init[20], name_len);	// name length
 	memcpy(&server_init[24], name, name_len);
-	if (WRITE(fd, server_init, si_len) != si_len)
-		return false;
+	bool rc = WRITE(fd, server_init, si_len) == si_len;
 	delete [] server_init;
 
-	return true;
+	return rc;
 }
 
 void fill_block(unsigned char *dest, int i_W, int i_H, const do_block_sc *b)
@@ -620,13 +619,13 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 	}
 
 	if (do_blocks.empty()) {
-		do_block_raw *b = new do_block_raw(rand() % (src_w - 1), rand() % (src_h - 1), 1, 1);
+		do_block_raw *b = new do_block_raw(rand() % src_w, rand() % src_h, 1, 1);
 		do_blocks.push_back(b);
 	}
 
 	// merge
-	int index = 0, merged = 0;
-	while(index < int(do_blocks.size()) - 1)
+	size_t index = 0, merged = 0;
+	while(index < do_blocks.size() - 1)
 	{
 		do_block_raw *p = do_blocks.at(index);
 		do_block_raw *c = do_blocks.at(index + 1);
@@ -651,7 +650,7 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 		}
 	}
 
-	int n_blocks = do_blocks.size();
+	size_t n_blocks = do_blocks.size();
 	char msg_hdr[4] = { 0 };
 	msg_hdr[0] = 0;	// msg type
 	msg_hdr[1] = 0;	// padding
@@ -1122,6 +1121,7 @@ target_vnc::target_vnc(const std::string & id, source *const s, const std::strin
 
 target_vnc::~target_vnc()
 {
+	close(fd);
 }
 
 void target_vnc::operator()()
