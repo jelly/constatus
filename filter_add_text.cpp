@@ -1458,6 +1458,8 @@ std::string unescape(const std::string & in, const uint64_t ts, source *const s)
 	work = search_replace(work, "$pixels-changed$", myformat("%.2f%%", m -> getDouble("pixels-changed").second));
 	work = search_replace(work, "$width$", myformat("%d", s -> get_width()));
 	work = search_replace(work, "$height$", myformat("%d", s -> get_height()));
+	work = search_replace(work, "$name$", NAME);
+	work = search_replace(work, "$version$", VERSION);
 
 	return work;
 }

@@ -7,7 +7,7 @@
 #include "filter_marker_simple.h"
 #include "log.h"
 
-filter_marker_simple::filter_marker_simple(const sm_mode_t modeIn, const uint8_t *const pixel_select_bitmap, meta *const m) : mode(modeIn), psb(pixel_select_bitmap), m(m)
+filter_marker_simple::filter_marker_simple(const sm_mode_t modeIn, const uint8_t *const pixel_select_bitmap, meta *const m, const int noise_level) : mode(modeIn), psb(pixel_select_bitmap), m(m), noise_level(noise_level)
 {
 }
 
@@ -54,7 +54,7 @@ void filter_marker_simple::apply(const uint64_t ts, const int w, const int h, co
 			int lc = (in_out[i3 + 0] + in_out[i3 + 1] + in_out[i3 + 2]) / 3;
 			int lp = (prev[i3 + 0] + prev[i3 + 1] + prev[i3 + 2]) / 3;
 
-			diffs[i / 3] = abs(lc - lp) >= 32; // FIXME
+			diffs[i] = abs(lc - lp) >= noise_level;
 		}
 	}
 	else {
@@ -62,7 +62,7 @@ void filter_marker_simple::apply(const uint64_t ts, const int w, const int h, co
 			int lc = (in_out[i + 0] + in_out[i + 1] + in_out[i + 2]) / 3;
 			int lp = (prev[i + 0] + prev[i + 1] + prev[i + 2]) / 3;
 
-			diffs[i / 3] = abs(lc - lp) >= 32; // FIXME
+			diffs[i / 3] = abs(lc - lp) >= noise_level;
 		}
 	}
 

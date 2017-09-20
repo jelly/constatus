@@ -26,15 +26,15 @@ void filter_boost_contrast::apply(const uint64_t ts, const int w, const int h, c
 			highest_br = g;
 	}
 
+	if (highest_br == lowest_br || (highest_br == 255 && lowest_br == 0))
+		return;
+
 	double mul = 255.0 / (highest_br - lowest_br);
+	// printf("%f\n", mul);
 
-	if ((highest_br < 255 || lowest_br > 0) && !isnan(mul) && !isinf(mul)){
-		// printf("%f\n", mul);
+	uint8_t *p = in_out;
+	uint8_t *const pend = p + w * h * 3;
 
-		for(int i=0; i<w*h*3; i+=3) {
-			in_out[i + 0] = (in_out[i + 0] - lowest_br) * mul;
-			in_out[i + 1] = (in_out[i + 1] - lowest_br) * mul;
-			in_out[i + 2] = (in_out[i + 2] - lowest_br) * mul;
-		}
-	}
+	for(;p < pend; p++)
+		*p = (*p - lowest_br) * mul;
 }

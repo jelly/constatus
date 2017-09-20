@@ -11,9 +11,10 @@ class filter_motion_only : public filter
 private:
 	const uint8_t *const psb;
 	uint8_t *prev1, *prev2;
+	const int noise_level;
 
 public:
-	filter_motion_only(const uint8_t *pixel_select_bitmap);
+	filter_motion_only(const uint8_t *pixel_select_bitmap, const int noise_level);
 	virtual ~filter_motion_only();
 
 	bool uses_in_out() const { return false; }

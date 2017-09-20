@@ -7,7 +7,7 @@
 #include "filter_motion_only.h"
 #include "log.h"
 
-filter_motion_only::filter_motion_only(const uint8_t *pixel_select_bitmap) : psb(pixel_select_bitmap)
+filter_motion_only::filter_motion_only(const uint8_t *pixel_select_bitmap, const int noise_level) : psb(pixel_select_bitmap), noise_level(noise_level)
 {
 	prev1 = prev2 = NULL;
 }
@@ -43,7 +43,7 @@ void filter_motion_only::apply(const uint64_t ts, const int w, const int h, cons
 			int lc = (in_out[i3 + 0] + in_out[i3 + 1] + in_out[i3 + 2]) / 3;
 			int lp = (prev2[i3 + 0] + prev2[i3 + 1] + prev2[i3 + 2]) / 3;
 
-			if (abs(lc - lp) < 32) // FIXME
+			if (abs(lc - lp) < noise_level)
 				in_out[i3 + 0] = in_out[i3 + 1] = in_out[i3 + 2] = 0;
 		}
 	}
@@ -52,7 +52,7 @@ void filter_motion_only::apply(const uint64_t ts, const int w, const int h, cons
 			int lc = (in_out[i + 0] + in_out[i + 1] + in_out[i + 2]) / 3;
 			int lp = (prev2[i + 0] + prev2[i + 1] + prev2[i + 2]) / 3;
 
-			if (abs(lc - lp) < 32) // FIXME
+			if (abs(lc - lp) < noise_level)
 				in_out[i + 0] = in_out[i + 1] = in_out[i + 2] = 0;
 		}
 	}

@@ -15,11 +15,12 @@ private:
 	const sm_mode_t mode;
 	const uint8_t *const psb;
 	meta *const m;
+	const int noise_level;
 
 	void updatePixel(uint8_t *const out, const int x, const int y, const int w);
 
 public:
-	filter_marker_simple(const sm_mode_t modeIn, const uint8_t *const pixel_select_bitmap, meta *const m);
+	filter_marker_simple(const sm_mode_t modeIn, const uint8_t *const pixel_select_bitmap, meta *const m, const int noise_level);
 	virtual ~filter_marker_simple();
 
 	bool uses_in_out() const { return false; }
