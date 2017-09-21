@@ -1486,19 +1486,21 @@ void add_text(unsigned char *const img, const int width, const int height, const
 			continue;
 		}
 
-		for(int y=0; y<8; y++)
-		{
-			for(int x=0; x<8; x++)
-			{
-				int cur_char = text[loop];
-				int realx = xpos + x + 8 * cx, realy = ypos + y + cy * 9;
-				int offset = (realy * width * 3) + (realx * 3);
+		const int cur_char = text[loop] & 127;
 
-				if (realx >= width || realx < 0 || realy >= height || realy < 0)
+		for(int y=0; y<8; y++) {
+			const int realy = ypos + y + cy * 9;
+			if (realy >= height || realy < 0)
+				break;
+
+			const int y_offset = realy * width * 3;
+
+			for(int x=0; x<8; x++) {
+				int realx = xpos + x + 8 * cx;
+				if (realx >= width || realx < 0)
 					break;
 
-				if (cur_char < 0)
-					cur_char = 32;
+				int offset = y_offset + realx * 3;
 
 				img[offset + 0] = font[cur_char][y][x];
 				img[offset + 1] = font[cur_char][y][x];
