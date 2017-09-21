@@ -165,7 +165,9 @@ void write_JPEG_file(FILE *fh, int ncols, int nrows, int quality, const unsigned
 
 	jpeg_start_compress(&cinfo, TRUE);
 
-	jpeg_write_marker(&cinfo, JPEG_COM, (const JOCTET *)NAME, strlen(NAME));
+	const char comment[] = NAME " " VERSION;
+
+	jpeg_write_marker(&cinfo, JPEG_COM, (const JOCTET *)comment, sizeof comment);
 
 	int row_stride = ncols * 3;
 	while(cinfo.next_scanline < cinfo.image_height)
