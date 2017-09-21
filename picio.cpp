@@ -30,15 +30,20 @@ extern "C" {
 #include "error.h"
 #include "log.h"
 
-static void writepng_error_handler(png_structp png, png_const_charp msg)
+static void libpng_error_handler(png_structp png, png_const_charp msg)
 {
-	error_exit(false, "writepng libpng error: %s", msg);
+	error_exit(false, "libpng error: %s", msg);
+}
+
+static void libpng_warning_handler(png_structp png, png_const_charp msg)
+{
+	log(LL_WARNING, "libpng warning: %s", msg);
 }
 
 // rgbA (!)
 void read_PNG_file_rgba(FILE *fh, int *w, int *h, uint8_t **pixels)
 {
-	png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+	png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, libpng_error_handler, libpng_warning_handler);
 	if (!png)
 		error_exit(false, "png_create_read_struct(PNG_LIBPNG_VER_STRING) failed");
 
@@ -105,7 +110,7 @@ void write_PNG_file(FILE *fh, int ncols, int nrows, unsigned char *pixels)
 	for(int y=0; y<nrows; y++)
 		row_pointers[y] = &pixels[y*ncols*3];
 
-	png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, writepng_error_handler, NULL);
+	png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, libpng_error_handler, libpng_warning_handler);
 	if (!png)
 		error_exit(false, "png_create_write_struct failed");
 
