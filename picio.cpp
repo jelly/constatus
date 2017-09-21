@@ -200,8 +200,8 @@ bool read_JPEG_memory(unsigned char *in, int n_bytes_in, int *w, int *h, unsigne
 	struct jpeg_decompress_struct info;
 
 	struct jpeg_error_mgr err;
-	err.error_exit = jpegErrorExit;
 	info.err = jpeg_std_error(&err);
+	err.error_exit = jpegErrorExit;
 
 	try {
 		jpeg_create_decompress(&info);
