@@ -192,6 +192,14 @@ void jpegErrorExit(j_common_ptr cinfo)
 	throw std::runtime_error(err);
 }
 
+void jpegOutputMessage(j_common_ptr cinfo)
+{
+	char buffer[JMSG_LENGTH_MAX];
+	(*cinfo->err->format_message)(cinfo, buffer);
+
+	log(LL_WARNING, "JPEG: %s", buffer);
+}
+
 bool read_JPEG_memory(unsigned char *in, int n_bytes_in, int *w, int *h, unsigned char **pixels)
 {
 	bool ok = true;
@@ -202,6 +210,7 @@ bool read_JPEG_memory(unsigned char *in, int n_bytes_in, int *w, int *h, unsigne
 	struct jpeg_error_mgr err;
 	info.err = jpeg_std_error(&err);
 	err.error_exit = jpegErrorExit;
+	err.output_message = jpegOutputMessage;
 
 	try {
 		jpeg_create_decompress(&info);
