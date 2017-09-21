@@ -19,7 +19,7 @@ void error_exit(const bool se, const char *format, ...)
 	fprintf(stderr, "%s\n", temp);
 	syslog(LOG_ERR, "%s", temp);
 
-	if (se) {
+	if (se && e) {
 		fprintf(stderr, "errno: %d (%s)\n", e, strerror(e));
 		syslog(LOG_ERR, "errno: %d (%s)", e, strerror(e));
 	}
