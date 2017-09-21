@@ -32,19 +32,17 @@ void filter_overlay::apply(const uint64_t ts, const int w, const int h, const ui
 	if (cw <= 0 || ch <= 0)
 		return;
 
-	for(int y=0; y<ch; y++) {
-		int ty = y + this -> y;
+	int ex = std::min(w - this -> x, cw);
+	int ey = std::min(h - this -> y, ch);
 
-		if (ty >= h)
-			break;
+	for(int y=0; y<ey; y++) {
+		const int ty = y + this -> y;
 
-		for(int x=0; x<cw; x++) {
-			int tx = x + this -> x;
-			if (tx >= w)
-				break;
+		for(int x=0; x<ex; x++) {
+			const int tx = x + this -> x;
 
-			int out_offset = ty * w * 3 + tx * 3;
-			int pic_offset = y * this -> w * 4 + x * 4;
+			const int out_offset = ty * w * 3 + tx * 3;
+			const int pic_offset = y * this -> w * 4 + x * 4;
 
 			uint8_t alpha = pixels[pic_offset + 3], ialpha = 255 - alpha;
 			in_out[out_offset + 0] = (int(pixels[pic_offset + 0]) * alpha + (in_out[out_offset + 0] * ialpha)) / 256;
