@@ -202,8 +202,12 @@ source_v4l::source_v4l(const std::string & id, const std::string & dev, const bo
 		}
 	}
 
-	if (!ok)
-		error_exit(true, "Selected pixel format not available (e.g. JPEG)\n");
+	if (!ok) {
+		if (prefer_jpeg)
+			error_exit(true, "Selected pixel format not available (try setting prefer-jpeg to false)");
+
+		error_exit(true, "Selected pixel format not available");
+	}
 
 	if (pixelformat == V4L2_PIX_FMT_JPEG) {
 #ifdef V4L2_CID_JPEG_COMPRESSION_QUALITY
