@@ -846,12 +846,19 @@ void send_file(const int cfd, const std::string & path, const char *const name)
 	fclose(fh);
 }
 
-bool sort_files(const file_t &left, const file_t & right)
+bool sort_files_last_change(const file_t &left, const file_t & right)
 {
-	if (left.last_change == right.last_change)
-		return left.last_change < right.last_change;
-
 	return left.last_change < right.last_change;
+}
+
+bool sort_files_size(const file_t &left, const file_t & right)
+{
+	return left.size < right.size;
+}
+
+bool sort_files_name(const file_t &left, const file_t & right)
+{
+	return left.name.compare(right.name) < 0;
 }
 
 void handle_http_client(int cfd, source *s, double fps, int quality, int time_limit, const std::vector<filter *> *const filters, std::atomic_bool *const global_stopflag, resize *const r, const int resize_w, const int resize_h, const bool motion_compatible, configuration_t *const cfg, const std::string & snapshot_dir, const bool allow_admin, const bool archive_acces)
@@ -1048,7 +1055,16 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 
 		auto *files = load_filelist(snapshot_dir, "");
 
-		std::sort(files -> begin(), files -> end(), sort_files);
+		if (!pars || strcmp(pars, "last-change") == 0)
+			std::sort(files -> begin(), files -> end(), sort_files_last_change);
+		else if (strcmp(pars, "name") == 0)
+			std::sort(files -> begin(), files -> end(), sort_files_name);
+		else if (strcmp(pars, "size") == 0)
+			std::sort(files -> begin(), files -> end(), sort_files_size);
+		else
+			reply += myformat("Ignoring unknown sort method %s", pars);
+
+		reply += "<tr><th><a href=\"?name\">name</a></th><th><a href=\"?last-change\">last change</a></th><th><a href=\"?size\">size</a></th></tr>";
 
 		for(auto file : *files)
 			reply += std::string("<tr><td><a href=\"/send-file?") + file.name + "\">" + file.name + "</a></td><td>" + myctime(file.last_change) + "</td><td>" + myformat("%zu", file.size) + "</td>";
