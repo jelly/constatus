@@ -33,6 +33,8 @@ void filter_motion_only::apply(const uint64_t ts, const int w, const int h, cons
 
 	memcpy(prev1, in_out, n);
 
+	const int nl3 = noise_level * 3;
+
 	if (psb) {
 		for(int i=0; i<w*h; i++) {
 			if (!psb[i])
@@ -40,19 +42,19 @@ void filter_motion_only::apply(const uint64_t ts, const int w, const int h, cons
 
 			int i3 = i * 3;
 
-			int lc = (in_out[i3 + 0] + in_out[i3 + 1] + in_out[i3 + 2]) / 3;
-			int lp = (prev2[i3 + 0] + prev2[i3 + 1] + prev2[i3 + 2]) / 3;
+			int lc = in_out[i3 + 0] + in_out[i3 + 1] + in_out[i3 + 2];
+			int lp = prev2[i3 + 0] + prev2[i3 + 1] + prev2[i3 + 2];
 
-			if (abs(lc - lp) < noise_level)
+			if (abs(lc - lp) < nl3)
 				in_out[i3 + 0] = in_out[i3 + 1] = in_out[i3 + 2] = 0;
 		}
 	}
 	else {
 		for(int i=0; i<w*h*3; i += 3) {
-			int lc = (in_out[i + 0] + in_out[i + 1] + in_out[i + 2]) / 3;
-			int lp = (prev2[i + 0] + prev2[i + 1] + prev2[i + 2]) / 3;
+			int lc = in_out[i + 0] + in_out[i + 1] + in_out[i + 2];
+			int lp = prev2[i + 0] + prev2[i + 1] + prev2[i + 2];
 
-			if (abs(lc - lp) < noise_level)
+			if (abs(lc - lp) < nl3)
 				in_out[i + 0] = in_out[i + 1] = in_out[i + 2] = 0;
 		}
 	}

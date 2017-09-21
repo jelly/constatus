@@ -44,6 +44,8 @@ void filter_marker_simple::apply(const uint64_t ts, const int w, const int h, co
 
 	bool *diffs = new bool[w * h];
 
+	const int nl3 = noise_level * 3;
+
 	if (psb) {
 		for(int i=0; i<w*h; i++) {
 			if (!psb[i])
@@ -51,18 +53,18 @@ void filter_marker_simple::apply(const uint64_t ts, const int w, const int h, co
 
 			int i3 = i * 3;
 
-			int lc = (in_out[i3 + 0] + in_out[i3 + 1] + in_out[i3 + 2]) / 3;
-			int lp = (prev[i3 + 0] + prev[i3 + 1] + prev[i3 + 2]) / 3;
+			int lc = in_out[i3 + 0] + in_out[i3 + 1] + in_out[i3 + 2];
+			int lp = prev[i3 + 0] + prev[i3 + 1] + prev[i3 + 2];
 
-			diffs[i] = abs(lc - lp) >= noise_level;
+			diffs[i] = abs(lc - lp) >= nl3;
 		}
 	}
 	else {
 		for(int i=0; i<w*h*3; i += 3) {
-			int lc = (in_out[i + 0] + in_out[i + 1] + in_out[i + 2]) / 3;
-			int lp = (prev[i + 0] + prev[i + 1] + prev[i + 2]) / 3;
+			int lc = in_out[i + 0] + in_out[i + 1] + in_out[i + 2];
+			int lp = prev[i + 0] + prev[i + 1] + prev[i + 2];
 
-			diffs[i / 3] = abs(lc - lp) >= noise_level;
+			diffs[i / 3] = abs(lc - lp) >= nl3;
 		}
 	}
 
@@ -113,7 +115,7 @@ void filter_marker_simple::apply(const uint64_t ts, const int w, const int h, co
 	int xmin = std::max(0, cx - xdist), xmax = std::min(w - 1, cx + xdist);
 	int ymin = std::max(0, cy - ydist), ymax = std::min(h - 1, cy + ydist);
 
-	log(LL_DEBUG, "%d,%d - %d,%d", xmin, ymin, xmax, ymax);
+	log(LL_DEBUG_VERBOSE, "%d,%d - %d,%d", xmin, ymin, xmax, ymax);
 
 	for(int y=ymin; y<ymax; y++) {
 		updatePixel(in_out, xmin, y, w);

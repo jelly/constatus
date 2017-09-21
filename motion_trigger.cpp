@@ -77,6 +77,8 @@ void motion_trigger::operator()()
 
 	log(LL_INFO, "Go!");
 
+	const int nl3 = noise_level * 3;
+
 	for(;!local_stop_flag;) {
 		pauseCheck();
 
@@ -105,14 +107,12 @@ void motion_trigger::operator()()
 					int lc = *pw++;
 					lc += *pw++;
 					lc += *pw++;
-					lc /= 3;
 
 					int lp = *pp++;
 					lp += *pp++;
 					lp += *pp++;
-					lp /= 3;
 
-					cnt += abs(lc - lp) >= noise_level;
+					cnt += abs(lc - lp) >= nl3;
 				}
 
 				triggered = cnt > (percentage_pixels_changed / 100) * w * h;
@@ -123,14 +123,12 @@ void motion_trigger::operator()()
 					int lc = *pw++;
 					lc += *pw++;
 					lc += *pw++;
-					lc /= 3;
 
 					int lp = *pp++;
 					lp += *pp++;
 					lp += *pp++;
-					lp /= 3;
 
-					cnt += abs(lc - lp) >= noise_level;
+					cnt += abs(lc - lp) >= nl3;
 				}
 
 				triggered = cnt > (percentage_pixels_changed / 100) * w * h;
