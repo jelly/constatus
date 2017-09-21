@@ -6,7 +6,7 @@
 cairo_surface_t * rgb_to_cairo(const uint8_t *const in, const int w, const int h)
 {
 	size_t n = w * h;
-	uint32_t *temp = (uint32_t *)malloc(n * 4);
+	uint32_t *temp = (uint32_t *)valloc(n * 4);
 
 	const uint8_t *win = in;
 	uint32_t *wout = temp;
