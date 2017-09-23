@@ -715,7 +715,7 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 
 			if (WRITE(fd, out, len) == -1)
 			{
-				delete [] out;
+				free(out);
 				return false;
 			}
 
