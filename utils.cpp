@@ -276,7 +276,7 @@ void *find_symbol(void *library, const char *const symbol, const char *const wha
 	void *ret = dlsym(library, symbol);
 
 	if (!ret)
-		error_exit(true, "Failed finding %s \"%s\" in %s", what, symbol, library_name);
+		error_exit(true, "Failed finding %s \"%s\" in %s: %s", what, symbol, library_name, dlerror());
 
 	return ret;
 }

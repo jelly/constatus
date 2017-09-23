@@ -5,15 +5,13 @@
 
 #include "source.h"
 
-typedef void *(* init_plugin_t)(const char *const argument);
-typedef void (* get_frame_t)(void *arg, uint64_t *const ts, int *const w, int *const h, uint8_t **frame_data);
+typedef void *(* init_plugin_t)(source *const s, const char *const argument);
 typedef void (* uninit_plugin_t)(void *arg);
 
 class source_plugin : public source
 {
 private:
 	init_plugin_t init_plugin;
-	get_frame_t get_frame;
 	uninit_plugin_t uninit_plugin;
 	void *arg, *library;
 
