@@ -312,7 +312,7 @@ stream_plugin_t * load_stream_plugin(const Setting & in)
 
 	void *library = dlopen(file.c_str(), RTLD_NOW);
 	if (!library)
-		error_exit(true, "Failed opening motion detection plugin library %s", file.c_str());
+		error_exit(true, "Failed opening stream writer library %s", file.c_str());
 
 	sp -> init_plugin = (init_plugin_t)find_symbol(library, "init_plugin", "stream writer plugin", file.c_str());
 	sp -> open_file = (open_file_t)find_symbol(library, "open_file", "stream writer plugin", file.c_str());
