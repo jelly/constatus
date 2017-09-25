@@ -605,7 +605,7 @@ void target_ffmpeg::operator()()
 		AVDictionary *opt = NULL;
 
 		/* Initialize libavcodec, and register all codecs and formats. */
-		name = gen_filename(store_path, prefix, type.c_str(), get_us(), f_nr++);
+		name = gen_filename(store_path, prefix, type, get_us(), f_nr++);
 
 		if (!exec_start.empty() && is_start) {
 			exec(exec_start, name);

@@ -52,7 +52,7 @@ using namespace libconfig;
 #include "resize_cairo.h"
 #include "filter_motion_only.h"
 
-std::string cfg_str(const Config & cfg, const char *const key, const char *descr, const bool optional, const std::string def)
+std::string cfg_str(const Config & cfg, const char *const key, const char *descr, const bool optional, const std::string & def)
 {
 	try {
 		return cfg.lookup(key);
