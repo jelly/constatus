@@ -1452,14 +1452,46 @@ std::string unescape(const std::string & in, const uint64_t ts, source *const s)
 	std::string work = text_out;
 	free(text_out);
 
-	meta *m = s -> getMeta();
+	meta *m = s -> get_meta();
 
-	work = search_replace(work, "$http-viewers$", myformat("%u", m -> getInt("http-viewers").second));
-	work = search_replace(work, "$pixels-changed$", myformat("%.2f%%", m -> getDouble("pixels-changed").second));
+	work = search_replace(work, "$http-viewers$", myformat("%u", m -> getInt("$http-viewers$").second));
+	work = search_replace(work, "$vnc-viewers$", myformat("%u", m -> getInt("$vnc-viewers$").second));
+	work = search_replace(work, "$pixels-changed$", myformat("%.2f%%", m -> getDouble("$pixels-changed$").second));
 	work = search_replace(work, "$width$", myformat("%d", s -> get_width()));
 	work = search_replace(work, "$height$", myformat("%d", s -> get_height()));
 	work = search_replace(work, "$name$", NAME);
 	work = search_replace(work, "$version$", VERSION);
+
+	// find all other $...$ and search in meta
+	for(;;) {
+		size_t dollar1 = work.find('$');
+		if (dollar1 == std::string::npos)
+			break;
+
+		size_t dollar2 = work.find('$', dollar1 + 1);
+		if (dollar2 == std::string::npos)
+			break;
+
+		std::string name = work.substr(dollar1, dollar2 - dollar1 + 1);
+
+		// printf("[%s] %zu %zu %s\n", work.c_str(), dollar1, dollar2, name.c_str());
+
+		if (m -> hasInt(name)) {
+			auto res = m -> getInt(name);
+			work = search_replace(work, name, myformat("%d", res.second));
+		}
+		else if (m -> hasDouble(name)) {
+			auto res = m -> getDouble(name);
+			work = search_replace(work, name, myformat("%f", res.second));
+		}
+		else if (m -> hasString(name)) {
+			auto res = m -> getString(name);
+			work = search_replace(work, name, res.second);
+		}
+		else {
+			work = search_replace(work, name, "???");
+		}
+	}
 
 	return work;
 }

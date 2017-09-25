@@ -1,7 +1,7 @@
 #include "interface.h"
 #include "error.h"
 
-meta * interface::getMeta()
+meta * interface::get_meta()
 {
 	static meta m;
 

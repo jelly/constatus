@@ -227,7 +227,7 @@ std::vector<filter *> *load_filters(const Setting & in, source *const s)
 			const uint8_t *sb = load_selection_bitmap(selection_bitmap);
 			int noise_level = cfg_int(ae, "noise-factor", "at what difference levell is the pixel considered to be changed", true, 32);
 
-			filters -> push_back(new filter_marker_simple(sm, sb, s -> getMeta(), noise_level));
+			filters -> push_back(new filter_marker_simple(sm, sb, s -> get_meta(), noise_level));
 		}
 		else if (s_type == "apply-mask") {
 			std::string selection_bitmap = cfg_str(ae, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.", false, "");
@@ -314,11 +314,11 @@ stream_plugin_t * load_stream_plugin(const Setting & in)
 	if (!library)
 		error_exit(true, "Failed opening stream writer library %s", file.c_str());
 
-	sp -> init_plugin = (init_plugin_t)find_symbol(library, "init_plugin", "stream writer plugin", file.c_str());
+	sp -> init_plugin = (tp_init_plugin_t)find_symbol(library, "init_plugin", "stream writer plugin", file.c_str());
 	sp -> open_file = (open_file_t)find_symbol(library, "open_file", "stream writer plugin", file.c_str());
 	sp -> write_frame = (write_frame_t)find_symbol(library, "write_frame", "stream writer plugin", file.c_str());
 	sp -> close_file = (close_file_t)find_symbol(library, "close_file", "stream writer plugin", file.c_str());
-	sp -> uninit_plugin = (uninit_plugin_t)find_symbol(library, "uninit_plugin", "stream writer plugin", file.c_str());
+	sp -> uninit_plugin = (tp_uninit_plugin_t)find_symbol(library, "uninit_plugin", "stream writer plugin", file.c_str());
 
 	return sp;
 }
@@ -598,6 +598,29 @@ int main(int argc, char *argv[])
 	}
 
 	//***
+	log(LL_INFO, "Configuring the meta sources...");
+
+	try {
+		const Setting &ms = root["meta-plugin"];
+		size_t n_ms = ms.getLength();
+
+		log(LL_DEBUG, " %zu meta plugin(s)", n_ms);
+
+		if (n_ms == 0)
+			log(LL_WARNING, " 0 plugins, is that correct?");
+
+		for(size_t i=0; i<n_ms; i++) {
+			const Setting &server = ms[i];
+
+			std::string file = cfg_str(server, "plugin-file", "filename of the meta plugin", false, "");
+			std::string par = cfg_str(server, "plugin-parameter", "parameter of the meta plugin", true, "");
+
+			s -> get_meta() -> add_plugin(file, par.c_str());
+		}
+	}
+	catch(const SettingNotFoundException &nfex) {
+		log(LL_INFO, " no meta source");
+	}
 
 	// listen adapter, listen port, source, fps, jpeg quality, time limit (in seconds)
 	log(LL_INFO, "Configuring the HTTP server(s)...");
@@ -614,7 +637,7 @@ int main(int argc, char *argv[])
 		for(size_t i=0; i<n_hl; i++) {
 			const Setting &server = hs[i];
 
-			const std::string id = cfg_str(o_source, "id", "some identifier; visible in e.g. the http server", true, "");
+			const std::string id = cfg_str(server, "id", "some identifier; visible in e.g. the http server", true, "");
 
 			std::string listen_adapter = cfg_str(server, "listen-adapter", "network interface to listen on or 0.0.0.0 for all", false, "");
 			int listen_port = cfg_int(server, "listen-port", "port to listen on", false, 8080);

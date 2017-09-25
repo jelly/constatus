@@ -5,14 +5,14 @@
 
 #include "source.h"
 
-typedef void *(* init_plugin_t)(source *const s, const char *const argument);
-typedef void (* uninit_plugin_t)(void *arg);
+typedef void *(* sp_init_plugin_t)(source *const s, const char *const argument);
+typedef void (* sp_uninit_plugin_t)(void *arg);
 
 class source_plugin : public source
 {
 private:
-	init_plugin_t init_plugin;
-	uninit_plugin_t uninit_plugin;
+	sp_init_plugin_t init_plugin;
+	sp_uninit_plugin_t uninit_plugin;
 	void *arg, *library;
 
 public:

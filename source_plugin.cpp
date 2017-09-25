@@ -18,8 +18,8 @@ source_plugin::source_plugin(const std::string & id, const std::string & plugin_
 	if (!library)
 		error_exit(true, "Failed opening source plugin library %s: %s", plugin_filename.c_str(), dlerror());
 
-	init_plugin = (init_plugin_t)find_symbol(library, "init_plugin", "video source plugin", plugin_filename.c_str());
-	uninit_plugin = (uninit_plugin_t)find_symbol(library, "uninit_plugin", "video source plugin", plugin_filename.c_str());
+	init_plugin = (sp_init_plugin_t)find_symbol(library, "init_plugin", "video source plugin", plugin_filename.c_str());
+	uninit_plugin = (sp_uninit_plugin_t)find_symbol(library, "uninit_plugin", "video source plugin", plugin_filename.c_str());
 
 	arg = init_plugin(this, plugin_arg.c_str());
 

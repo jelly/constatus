@@ -27,7 +27,7 @@ public:
 	interface(const std::string & id);
 	virtual ~interface();
 
-	static meta * getMeta();
+	static meta * get_meta();
 
 	std::string get_id() const;
 	std::string get_description() const { return d; }

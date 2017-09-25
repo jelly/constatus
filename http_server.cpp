@@ -1230,7 +1230,7 @@ void http_server::operator()()
 				i++;
 		}
 
-		getMeta() -> setInt("http-viewers", std::pair<uint64_t, int>(get_us(), handles.size()));
+		get_meta() -> setInt("$http-viewers$", std::pair<uint64_t, int>(0, handles.size()));
 
 		pauseCheck();
 
