@@ -32,7 +32,7 @@ void meta::add_plugin(const std::string & plugin_filename, const std::string & p
 	plugins.push_back(mp);
 }
 
-std::pair<uint64_t, int> meta::getInt(const std::string & key)
+bool meta::get_int(const std::string & key, std::pair<uint64_t, int> *const val)
 {
 	std::pair<uint64_t, int> res;
 
@@ -40,26 +40,15 @@ std::pair<uint64_t, int> meta::getInt(const std::string & key)
 
 	auto it = m_int.find(key);
 
+	bool rc = true;
 	if (it == m_int.end() || (it -> second.first < get_us() && it -> second.first != 0))
-		res.first = res.second = 0;
+		rc = false;
 	else
-		res = it -> second;
+		*val = it -> second;
 
 	m_int_lock.unlock();
 
-	return res;
-}
-
-bool meta::hasInt(const std::string & key)
-{
-	m_int_lock.lock();
-
-	auto it = m_int.find(key);
-	bool has_it = it != m_int.end();
-
-	m_int_lock.unlock();
-
-	return has_it;
+	return rc;
 }
 
 void meta::setInt(const std::string & key, const std::pair<uint64_t, int> & v)
@@ -70,7 +59,7 @@ void meta::setInt(const std::string & key, const std::pair<uint64_t, int> & v)
 	m_int_lock.unlock();
 }
 
-std::pair<uint64_t, double> meta::getDouble(const std::string & key)
+bool meta::get_double(const std::string & key, std::pair<uint64_t, double> *const val)
 {
 	std::pair<uint64_t, double> res;
 
@@ -78,29 +67,15 @@ std::pair<uint64_t, double> meta::getDouble(const std::string & key)
 
 	auto it = m_double.find(key);
 
-	if (it == m_double.end() || (it -> second.first < get_us() && it -> second.first != 0)) {
-		res.first = 0;
-		res.second = 0.0;
-	}
-	else {
-		res = it -> second;
-	}
+	bool rc = true;
+	if (it == m_double.end() || (it -> second.first < get_us() && it -> second.first != 0))
+		rc = false;
+	else
+		*val = it -> second;
 
 	m_double_lock.unlock();
 
-	return res;
-}
-
-bool meta::hasDouble(const std::string & key)
-{
-	m_double_lock.lock();
-
-	auto it = m_double.find(key);
-	bool has_it = it != m_double.end();
-
-	m_double_lock.unlock();
-
-	return has_it;
+	return rc;
 }
 
 void meta::setDouble(const std::string & key, const std::pair<uint64_t, double> & v)
@@ -111,7 +86,7 @@ void meta::setDouble(const std::string & key, const std::pair<uint64_t, double> 
 	m_double_lock.unlock();
 }
 
-std::pair<uint64_t, std::string> meta::getString(const std::string & key)
+bool meta::get_string(const std::string & key, std::pair<uint64_t, std::string> *const val)
 {
 	std::pair<uint64_t, std::string> res;
 
@@ -119,26 +94,15 @@ std::pair<uint64_t, std::string> meta::getString(const std::string & key)
 
 	auto it = m_string.find(key);
 
+	bool rc = true;
 	if (it == m_string.end() || (it -> second.first < get_us() && it -> second.first != 0))
-		res.first = 0;
+		rc = false;
 	else
-		res = it -> second;
+		*val = it -> second;
 
 	m_string_lock.unlock();
 
-	return res;
-}
-
-bool meta::hasString(const std::string & key)
-{
-	m_string_lock.lock();
-
-	auto it = m_string.find(key);
-	bool has_it = it != m_string.end();
-
-	m_string_lock.unlock();
-
-	return has_it;
+	return rc;
 }
 
 void meta::setString(const std::string & key, const std::pair<uint64_t, std::string> & v)

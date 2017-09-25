@@ -1434,6 +1434,26 @@ void find_text_dim(const char *const in, int *const n_lines, int *const n_cols)
 		*n_cols = cur_ll;
 }
 
+void replace_int(meta *const m, std::string *const work, const std::string & key)
+{
+	std::pair<uint64_t, int> val;
+
+	if (!m -> get_int(key, &val))
+		return;
+
+	work -> assign(search_replace(*work, key, myformat("%d", val.second)));
+}
+
+void replace_double(meta *const m, std::string *const work, const std::string & key)
+{
+	std::pair<uint64_t, double> val;
+
+	if (!m -> get_double(key, &val))
+		return;
+
+	work -> assign(search_replace(*work, key, myformat("%f", val.second)));
+}
+
 std::string unescape(const std::string & in, const uint64_t ts, source *const s)
 {
 	time_t now = (time_t)(ts / 1000 / 1000);
@@ -1454,9 +1474,9 @@ std::string unescape(const std::string & in, const uint64_t ts, source *const s)
 
 	meta *m = s -> get_meta();
 
-	work = search_replace(work, "$http-viewers$", myformat("%u", m -> getInt("$http-viewers$").second));
-	work = search_replace(work, "$vnc-viewers$", myformat("%u", m -> getInt("$vnc-viewers$").second));
-	work = search_replace(work, "$pixels-changed$", myformat("%.2f%%", m -> getDouble("$pixels-changed$").second));
+	replace_int(m, &work, "$http-viewers$");
+	replace_int(m, &work, "$vnc-viewers$");
+	replace_double(m, &work, "$pixels-changed$");
 	work = search_replace(work, "$width$", myformat("%d", s -> get_width()));
 	work = search_replace(work, "$height$", myformat("%d", s -> get_height()));
 	work = search_replace(work, "$name$", NAME);
@@ -1476,20 +1496,21 @@ std::string unescape(const std::string & in, const uint64_t ts, source *const s)
 
 		// printf("[%s] %zu %zu %s\n", work.c_str(), dollar1, dollar2, name.c_str());
 
-		if (m -> hasInt(name)) {
-			auto res = m -> getInt(name);
-			work = search_replace(work, name, myformat("%d", res.second));
+		std::pair<uint64_t, int> val_int;
+		std::pair<uint64_t, double> val_double;
+		std::pair<uint64_t, std::string> val_string;
+
+		if (m -> get_int(name, &val_int)) {
+			work = search_replace(work, name, myformat("%d", val_int.second));
 		}
-		else if (m -> hasDouble(name)) {
-			auto res = m -> getDouble(name);
-			work = search_replace(work, name, myformat("%f", res.second));
+		else if (m -> get_double(name, &val_double)) {
+			work = search_replace(work, name, myformat("%f", val_double.second));
 		}
-		else if (m -> hasString(name)) {
-			auto res = m -> getString(name);
-			work = search_replace(work, name, res.second);
+		else if (m -> get_string(name, &val_string)) {
+			work = search_replace(work, name, val_string.second);
 		}
 		else {
-			work = search_replace(work, name, "???");
+			work = search_replace(work, name, "?");
 		}
 	}
 

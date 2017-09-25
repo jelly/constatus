@@ -21,14 +21,14 @@ typedef struct
 
 void * thread(void *arg)
 {
-	printf("meta plugin thread started\n");
+	log(LL_INFO, "GPS meta plugin thread started");
 
 	my_data_t *md = (my_data_t *)arg;
 
-	const char *interface = "localhost", *port = "2947";
+	const char *address = "localhost", *port = "2947";
 
 	if (md -> par) {
-		interface = md -> par;
+		address = md -> par;
 
 		char *sp = strchr(md -> par, ' ');
 		if (sp) {
@@ -38,10 +38,12 @@ void * thread(void *arg)
 		}
 	}
 
+	log(LL_DEBUG, "GPS meta plugin connecting to %s:%s", address, port);
+
 	int rc = 0;
 	struct gps_data_t gps_data;
-	if ((rc = gps_open(interface, port, &gps_data)) == -1) {
-		printf("libgps open failed, code: %d, reason: %s\n", rc, gps_errstr(rc));
+	if ((rc = gps_open(address, port, &gps_data)) == -1) {
+		log(LL_ERR, "libgps open failed, code: %d, reason: %s", rc, gps_errstr(rc));
 		return NULL;
 	}
 
@@ -50,7 +52,7 @@ void * thread(void *arg)
 	while(!md -> stop_flag) {
 		if (gps_waiting(&gps_data, 1000000)) {
 			if ((rc = gps_read(&gps_data)) == -1)
-				printf("error occured reading gps data. code: %d, reason: %s\n", rc, gps_errstr(rc));
+				log(LL_ERR, "error occured reading gps data. code: %d, reason: %s", rc, gps_errstr(rc));
 			else if (gps_data.status == STATUS_FIX && (gps_data.fix.mode == MODE_2D || gps_data.fix.mode == MODE_3D) && !isnan(gps_data.fix.latitude) && !isnan(gps_data.fix.longitude)) {
 				log(LL_DEBUG, "latitude: %f, longitude: %f, speed: %f, timestamp: %f", gps_data.fix.latitude, gps_data.fix.longitude, gps_data.fix.speed, gps_data.fix.time);
 
@@ -65,7 +67,7 @@ void * thread(void *arg)
 		usleep(10000);
 	}
 
-	printf("meta plugin thread ending\n");
+	log(LL_INFO, "GPS meta plugin thread ending");
 
 	return NULL;
 }

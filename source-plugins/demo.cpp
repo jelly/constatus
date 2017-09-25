@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #include "../source.h"
+#include "../log.h"
 
 typedef struct
 {
@@ -17,7 +18,7 @@ typedef struct
 
 void * thread(void *arg)
 {
-	printf("source plugin thread started\n");
+	log(LL_INFO, "source plugin thread started");
 
 	my_data_t *md = (my_data_t *)arg;
 
@@ -55,7 +56,7 @@ void * thread(void *arg)
 
 	free(pic);
 
-	printf("source plugin thread ending\n");
+	log(LL_INFO, "source plugin thread ending");
 
 	return NULL;
 }

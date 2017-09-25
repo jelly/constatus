@@ -641,7 +641,7 @@ int main(int argc, char *argv[])
 
 			std::string listen_adapter = cfg_str(server, "listen-adapter", "network interface to listen on or 0.0.0.0 for all", false, "");
 			int listen_port = cfg_int(server, "listen-port", "port to listen on", false, 8080);
-			printf(" HTTP server listening on %s:%d\n", listen_adapter.c_str(), listen_port);
+			log(LL_INFO, " HTTP server listening on %s:%d", listen_adapter.c_str(), listen_port);
 
 			int jpeg_quality = cfg_int(server, "quality", "JPEG quality, this influences the size", true, 75);
 			int time_limit = cfg_int(server, "time-limit", "how long (in seconds) to stream before the connection is closed", true, -1);
