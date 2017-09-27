@@ -30,3 +30,5 @@ typedef struct
 	off_t size;
 } file_t;
 std::vector<file_t> * load_filelist(const std::string & dir, const std::string & prefix);
+
+int connect_to(std::string hostname, int port, std::atomic_bool *abort);

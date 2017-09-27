@@ -383,3 +383,96 @@ std::string myctime(const time_t t)
 
 	return buffer;
 }
+
+int connect_to(std::string hostname, int port, std::atomic_bool *abort)
+{
+	std::string portstr = myformat("%d", port);
+	int fd = -1;
+
+        struct addrinfo hints;
+        struct addrinfo* result = NULL;
+        memset(&hints, 0x00, sizeof(struct addrinfo));
+        hints.ai_family = AF_UNSPEC;
+        hints.ai_socktype = SOCK_STREAM;
+        hints.ai_flags = 0;
+        hints.ai_protocol = 0;
+        int rc = getaddrinfo(hostname.c_str(), portstr.c_str(), &hints, &result);
+        if (rc) {
+                log(LL_ERR, "Cannot resolve host name %s: %s", hostname.c_str(), gai_strerror(rc));
+		freeaddrinfo(result);
+		return -1;
+        }
+
+	for (struct addrinfo *rp = result; rp != NULL; rp = rp -> ai_next) {
+		fd = socket(rp -> ai_family, rp -> ai_socktype, rp -> ai_protocol);
+		if (fd == -1)
+			continue;
+
+		int old_flags = fcntl(fd, F_GETFL, 0);
+		fcntl(fd, F_SETFL, O_NONBLOCK);
+
+		/* wait for connection */
+		/* connect to peer */
+		if (connect(fd, rp -> ai_addr, rp -> ai_addrlen) == 0) {
+			/* connection made, return */
+			fcntl(fd, F_SETFL, old_flags);
+			freeaddrinfo(result);
+			return fd;
+		}
+
+		for(;;) {
+			fd_set wfds;
+			FD_ZERO(&wfds);
+			FD_SET(fd, &wfds);
+
+			struct timeval tv;
+			tv.tv_sec  = 0;
+			tv.tv_usec = 100 * 1000;
+
+			/* wait for connection */
+			rc = select(fd + 1, NULL, &wfds, NULL, &tv);
+			if (rc == 0)	// time out
+			{
+			}
+			else if (rc == -1)	// error
+			{
+				if (errno == EINTR || errno == EAGAIN || errno == EINPROGRESS)
+					continue;
+
+				log(LL_ERR, "Select failed during connect to %s: %s", hostname.c_str(), strerror(errno));
+				break;
+			}
+			else if (FD_ISSET(fd, &wfds))
+			{
+				int optval=0;
+				socklen_t optvallen = sizeof(optval);
+
+				/* see if the connect succeeded or failed */
+				getsockopt(fd, SOL_SOCKET, SO_ERROR, &optval, &optvallen);
+
+				/* no error? */
+				if (optval == 0)
+				{
+					fcntl(fd, F_SETFL, old_flags);
+					freeaddrinfo(result);
+					return fd;
+				}
+			}
+
+			if (abort -> exchange(false))
+			{
+				abort -> store(true);
+				close(fd);
+				freeaddrinfo(result);
+				return -1;
+			}
+		}
+
+		close(fd);
+		fd = -1;
+	}
+
+	freeaddrinfo(result);
+
+	return fd;
+}
