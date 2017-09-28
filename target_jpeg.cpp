@@ -44,7 +44,7 @@ void target_jpeg::operator()()
 			else {
 				char *data = NULL;
 				size_t data_size = 0;
-				write_JPEG_memory(pair.w, pair.h, quality, pair.data, &data, &data_size);
+				write_JPEG_memory(s -> get_meta(), pair.w, pair.h, quality, pair.data, &data, &data_size);
 
 				fwrite(data, data_size, 1, fh);
 
@@ -92,7 +92,7 @@ void target_jpeg::operator()()
 
 			char *data = NULL;
 			size_t data_size = 0;
-			write_JPEG_memory(w, h, quality, work, &data, &data_size);
+			write_JPEG_memory(s -> get_meta(), w, h, quality, work, &data, &data_size);
 			fwrite(data, data_size, 1, fh);
 			free(data);
 		}

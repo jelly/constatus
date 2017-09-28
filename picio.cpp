@@ -3,11 +3,13 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <math.h>
 #include <netdb.h>
 #include <png.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
+#include <jpeglib.h>
 #include <stdlib.h>
 #include <string>
 #include <string.h>
@@ -21,14 +23,19 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <jpeglib.h>
-extern "C" {
-#include <pbm.h>
-}
+#include "config.h"
+#ifdef WITH_EXIV2
+#include <exiv2/exiv2.hpp>
+#endif
 #include <stdexcept>
 
 #include "error.h"
+#include "meta.h"
 #include "log.h"
+
+extern "C" {
+#include <pbm.h>
+}
 
 static void libpng_error_handler(png_structp png, png_const_charp msg)
 {
@@ -144,8 +151,15 @@ void write_PNG_file(FILE *fh, int ncols, int nrows, unsigned char *pixels)
 	free(row_pointers);
 }
 
-void write_JPEG_file(FILE *fh, int ncols, int nrows, int quality, const unsigned char *pixels_out)
+void write_JPEG_memory(meta *const m, const int ncols, const int nrows, const int quality, const unsigned char *const pixels, char **out, size_t *out_len)
 {
+	uint8_t *temp = NULL;
+	size_t temp_len = 0;
+
+	//// GENERATE JPEG ////
+
+	FILE *fh = open_memstream((char **)&temp, &temp_len);
+
 	struct jpeg_compress_struct cinfo;
 	memset(&cinfo, 0x00, sizeof cinfo);
 
@@ -166,28 +180,82 @@ void write_JPEG_file(FILE *fh, int ncols, int nrows, int quality, const unsigned
 	jpeg_start_compress(&cinfo, TRUE);
 
 	const char comment[] = NAME " " VERSION;
-
 	jpeg_write_marker(&cinfo, JPEG_COM, (const JOCTET *)comment, sizeof comment);
 
 	int row_stride = ncols * 3;
 	while(cinfo.next_scanline < cinfo.image_height)
 	{
-		JSAMPROW row_pointer[1] = { (unsigned char *)&pixels_out[cinfo.next_scanline * row_stride] };
+		JSAMPROW row_pointer[1] = { (unsigned char *)&pixels[cinfo.next_scanline * row_stride] };
 
 		(void)jpeg_write_scanlines(&cinfo, row_pointer, 1);
 	}
 
 	jpeg_finish_compress(&cinfo);
 	jpeg_destroy_compress(&cinfo);
-}
-
-void write_JPEG_memory(const int ncols, const int nrows, const int quality, const unsigned char *const pixels, char **out, size_t *out_len)
-{
-	FILE *fh = open_memstream(out, out_len);
-
-	write_JPEG_file(fh, ncols, nrows, quality, pixels);
 
 	fclose(fh);
+
+	//// add EXIF ////
+
+	std::pair<uint64_t, double> longitude, latitude;
+
+	if (m && m -> get_double("$longitude$", &longitude) && m -> get_double("$latitude$", &latitude)) {
+		Exiv2::Image::AutoPtr image = Exiv2::ImageFactory::open((const Exiv2::byte *)temp, temp_len);
+		Exiv2::ExifData exifData;
+
+		if (exifData.findKey(Exiv2::ExifKey("Exif.GPSInfo.GPSVersionID")) == exifData.end()) {
+			Exiv2::Value::AutoPtr value = Exiv2::Value::create(Exiv2::unsignedByte);
+			value->read("2 0 0 0");
+			exifData.add(Exiv2::ExifKey("Exif.GPSInfo.GPSVersionID"), value.get());
+
+			exifData["Exif.GPSInfo.GPSMapDatum"] = "WGS-84";
+		}
+
+		exifData["Exif.GPSInfo.GPSLatitudeRef"] = (latitude.second < 0 ) ? "S" : "N";
+
+		int degLatitude = fabs(latitude.second);
+		int minLatitude = (fabs(latitude.second) - degLatitude)*60;
+		int secLatitude = ((fabs(latitude.second) - degLatitude)*60 - minLatitude)*60;
+
+		char scratchBufLatitude[128];
+		snprintf(scratchBufLatitude, sizeof scratchBufLatitude, "%ld/1 %ld/1 %ld/1", degLatitude, minLatitude, secLatitude);
+		exifData["Exif.GPSInfo.GPSLatitude"] = scratchBufLatitude;
+
+		exifData["Exif.GPSInfo.GPSLongitudeRef"] = (longitude.second < 0 ) ? "W" : "E";
+
+		int degLongitude = fabs(longitude.second);
+		int minLongitude = (fabs(longitude.second) - degLongitude)*60;
+		int secLongitude = ((fabs(longitude.second) - degLongitude)*60 - minLongitude )*60;
+
+		char scratchBufLongitude[128];
+		snprintf(scratchBufLongitude, sizeof scratchBufLongitude, "%ld/1 %ld/1 %ld/1", degLongitude, minLongitude, secLongitude);
+		exifData["Exif.GPSInfo.GPSLongitude"] = scratchBufLongitude;
+
+		image->setExifData(exifData);
+		image->writeMetadata();
+
+		*out_len = image->io().size();
+
+		*out = (char *)malloc(*out_len);
+		memcpy(*out, image->io().mmap(), *out_len);
+
+		free(temp);
+	}
+	else {
+		*out = (char *)temp;
+		*out_len = temp_len;
+	}
+}
+
+void write_JPEG_file(meta *const m, FILE *const fh, const int ncols, const int nrows, const int quality, const unsigned char *pixels)
+{
+	char *out = NULL;
+	size_t out_len = 0;
+	write_JPEG_memory(m, ncols, nrows, quality, pixels, &out, &out_len);
+
+	fwrite(out, out_len, 1, fh);
+
+	free(out);
 }
 
 void jpegErrorExit(j_common_ptr cinfo)

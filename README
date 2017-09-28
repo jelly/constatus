@@ -46,6 +46,7 @@ Required:
 - libavformat-dev / libswscale-dev / libavcodec-dev / libavutil-dev / libswresample-dev / libavresample-dev
 - libcairo2-dev
 - libnetpbm10-dev
+- libexiv2-dev
 
 
 The program supports cameras that generate YUYV, JPEG, RGB or YUV420 output.

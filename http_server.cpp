@@ -143,11 +143,11 @@ void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, in
 				uint8_t *temp = NULL;
 				r -> do_resize(w, h, work, target_w, target_h, &temp);
 
-				write_JPEG_file(fh, target_w, target_h, quality, temp);
+				write_JPEG_file(s -> get_meta(), fh, target_w, target_h, quality, temp);
 				free(temp);
 			}
 			else {
-				write_JPEG_file(fh, w, h, quality, work);
+				write_JPEG_file(s -> get_meta(), fh, w, h, quality, work);
 			}
 
 			fclose(fh);
@@ -330,7 +330,7 @@ void send_png_frame(int cfd, source *s, bool get, const std::vector<filter *> *c
 
 	set_no_delay(cfd, true);
 
-	uint64_t prev_ts = 0;
+	uint64_t prev_ts = get_us();
 	int w = -1, h = -1;
 	uint8_t *work = NULL;
 	size_t work_len = 0;
@@ -403,7 +403,7 @@ void send_jpg_frame(int cfd, source *s, bool get, int quality, const std::vector
 
 	bool sc = resize_h != -1 || resize_w != -1;
 
-	uint64_t prev_ts = 0;
+	uint64_t prev_ts = get_us();
 	int w = -1, h = -1;
 	uint8_t *work = NULL;
 	size_t work_len = 0;
@@ -432,11 +432,11 @@ void send_jpg_frame(int cfd, source *s, bool get, int quality, const std::vector
 			uint8_t *temp = NULL;
 			r -> do_resize(w, h, work, target_w, target_h, &temp);
 
-			write_JPEG_file(fh, target_w, target_h, quality, temp);
+			write_JPEG_file(s -> get_meta(), fh, target_w, target_h, quality, temp);
 			free(temp);
 		}
 		else {
-			write_JPEG_file(fh, w, h, quality, work);
+			write_JPEG_file(s -> get_meta(), fh, w, h, quality, work);
 		}
 	}
 
@@ -559,7 +559,7 @@ bool start_stop(configuration_t *const cfg, const std::string & which, const boo
 
 bool take_a_picture(source *const s, const std::string & snapshot_dir, const int quality)
 {
-	uint64_t prev_ts = 0;
+	uint64_t prev_ts = get_us();
 	int w = -1, h = -1;
 	uint8_t *work = NULL;
 	size_t work_len = 0;
