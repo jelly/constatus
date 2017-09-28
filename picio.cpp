@@ -218,7 +218,7 @@ void write_JPEG_memory(meta *const m, const int ncols, const int nrows, const in
 		int secLatitude = ((fabs(latitude.second) - degLatitude)*60 - minLatitude)*60;
 
 		char scratchBufLatitude[128];
-		snprintf(scratchBufLatitude, sizeof scratchBufLatitude, "%ld/1 %ld/1 %ld/1", degLatitude, minLatitude, secLatitude);
+		snprintf(scratchBufLatitude, sizeof scratchBufLatitude, "%d/1 %d/1 %d/1", degLatitude, minLatitude, secLatitude);
 		exifData["Exif.GPSInfo.GPSLatitude"] = scratchBufLatitude;
 
 		exifData["Exif.GPSInfo.GPSLongitudeRef"] = (longitude.second < 0 ) ? "W" : "E";
@@ -228,7 +228,7 @@ void write_JPEG_memory(meta *const m, const int ncols, const int nrows, const in
 		int secLongitude = ((fabs(longitude.second) - degLongitude)*60 - minLongitude )*60;
 
 		char scratchBufLongitude[128];
-		snprintf(scratchBufLongitude, sizeof scratchBufLongitude, "%ld/1 %ld/1 %ld/1", degLongitude, minLongitude, secLongitude);
+		snprintf(scratchBufLongitude, sizeof scratchBufLongitude, "%d/1 %d/1 %d/1", degLongitude, minLongitude, secLongitude);
 		exifData["Exif.GPSInfo.GPSLongitude"] = scratchBufLongitude;
 
 		image->setExifData(exifData);
