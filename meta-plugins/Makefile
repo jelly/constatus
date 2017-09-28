@@ -2,7 +2,7 @@
 INSTALL_PREFIX=/usr/local
 
 LDFLAGS=`pkg-config --libs libgps`
-CXXFLAGS=-fPIC -Wall -pedantic -ggdb3 `pkg-config --cflags libgps`
+CXXFLAGS=-fPIC -Wall -pedantic -ggdb3 `pkg-config --cflags libgps` -std=c++11
 VERSION=0.1
 
 OBJS1=gps.o

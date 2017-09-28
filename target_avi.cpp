@@ -88,7 +88,7 @@ void target_avi::operator()()
 					else {
 						char *data = NULL;
 						size_t data_size = 0;
-						write_JPEG_memory(w, h, quality, pair.data, &data, &data_size);
+						write_JPEG_memory(s -> get_meta(), w, h, quality, pair.data, &data, &data_size);
 
 						gwavi_add_frame(gwavi, (unsigned char *)data, data_size);
 
@@ -111,7 +111,7 @@ void target_avi::operator()()
 
 			char *data = NULL;
 			size_t data_size = 0;
-			write_JPEG_memory(w, h, quality, work, &data, &data_size);
+			write_JPEG_memory(s -> get_meta(), w, h, quality, work, &data, &data_size);
 			gwavi_add_frame(gwavi, (unsigned char *)data, data_size);
 			free(data);
 		}

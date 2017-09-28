@@ -143,7 +143,7 @@ bool source::get_frame(const encoding_t pe, const int jpeg_quality, uint64_t *ts
 			fail = NULL;
 		}
 		else {
-			write_JPEG_memory(*width, *height, jpeg_quality, fail, (char **)frame, frame_len);
+			write_JPEG_memory(get_meta(), *width, *height, jpeg_quality, fail, (char **)frame, frame_len);
 		}
 
 		free(fail);
@@ -172,7 +172,7 @@ bool source::get_frame(const encoding_t pe, const int jpeg_quality, uint64_t *ts
 	}
 	else { // jpeg
 		if (!frame_jpeg)
-			write_JPEG_memory(*width, *height, jpeg_quality, frame_rgb, (char **)&frame_jpeg, &frame_jpeg_len);
+			write_JPEG_memory(get_meta(), *width, *height, jpeg_quality, frame_rgb, (char **)&frame_jpeg, &frame_jpeg_len);
 
 		*frame = (uint8_t *)valloc(frame_jpeg_len);
 		memcpy(*frame, frame_jpeg, frame_jpeg_len);

@@ -143,11 +143,11 @@ void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, in
 				uint8_t *temp = NULL;
 				r -> do_resize(w, h, work, target_w, target_h, &temp);
 
-				write_JPEG_file(fh, target_w, target_h, quality, temp);
+				write_JPEG_file(s -> get_meta(), fh, target_w, target_h, quality, temp);
 				free(temp);
 			}
 			else {
-				write_JPEG_file(fh, w, h, quality, work);
+				write_JPEG_file(s -> get_meta(), fh, w, h, quality, work);
 			}
 
 			fclose(fh);
@@ -432,11 +432,11 @@ void send_jpg_frame(int cfd, source *s, bool get, int quality, const std::vector
 			uint8_t *temp = NULL;
 			r -> do_resize(w, h, work, target_w, target_h, &temp);
 
-			write_JPEG_file(fh, target_w, target_h, quality, temp);
+			write_JPEG_file(s -> get_meta(), fh, target_w, target_h, quality, temp);
 			free(temp);
 		}
 		else {
-			write_JPEG_file(fh, w, h, quality, work);
+			write_JPEG_file(s -> get_meta(), fh, w, h, quality, work);
 		}
 	}
 
