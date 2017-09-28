@@ -330,7 +330,7 @@ void send_png_frame(int cfd, source *s, bool get, const std::vector<filter *> *c
 
 	set_no_delay(cfd, true);
 
-	uint64_t prev_ts = 0;
+	uint64_t prev_ts = get_us();
 	int w = -1, h = -1;
 	uint8_t *work = NULL;
 	size_t work_len = 0;
@@ -403,7 +403,7 @@ void send_jpg_frame(int cfd, source *s, bool get, int quality, const std::vector
 
 	bool sc = resize_h != -1 || resize_w != -1;
 
-	uint64_t prev_ts = 0;
+	uint64_t prev_ts = get_us();
 	int w = -1, h = -1;
 	uint8_t *work = NULL;
 	size_t work_len = 0;
@@ -559,7 +559,7 @@ bool start_stop(configuration_t *const cfg, const std::string & which, const boo
 
 bool take_a_picture(source *const s, const std::string & snapshot_dir, const int quality)
 {
-	uint64_t prev_ts = 0;
+	uint64_t prev_ts = get_us();
 	int w = -1, h = -1;
 	uint8_t *work = NULL;
 	size_t work_len = 0;
