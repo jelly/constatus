@@ -1,6 +1,7 @@
 // (C) 2017 by folkert van heusden, released under AGPL v3.0
 #include <stdint.h>
 #include <stdio.h>
+#include "meta.h"
 
 void read_PNG_file_rgba(FILE *fh, int *w, int *h, uint8_t **pixels);
 void write_PNG_file(FILE *fh, int ncols, int nrows, unsigned char *pixels);
