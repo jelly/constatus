@@ -58,8 +58,4 @@ executable(
     install: true)
 
 # Install configuration files
-install_data('constatus-v4l.conf', install_dir: '/usr/share/doc/constatus')
-install_data('constatus-v4l-loopback.conf', install_dir: '/usr/share/doc/constatus')
-install_data('constatus-rtsp.conf', install_dir: '/usr/share/doc/constatus')
-install_data('constatus-jpeg.conf', install_dir: '/usr/share/doc/constatus')
-install_data('constatus-mjpeg.conf', install_dir: '/usr/share/doc/constatus')
+install_data('constatus.conf', install_dir: '/usr/share/doc/constatus')
