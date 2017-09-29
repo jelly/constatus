@@ -58,4 +58,6 @@ executable(
     install: true)
 
 # Install configuration files
-install_data('constatus.conf', install_dir: '/usr/share/doc/constatus')
+install_data('constatus.cfg', install_dir: '/usr/share/doc/constatus')
+
+install_man('man/constatus.1')
