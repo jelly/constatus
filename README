@@ -48,6 +48,8 @@ Required:
 - libnetpbm10-dev
 - libexiv2-dev
 
+If you don't want to use libexiv2 or ligwavi, then remove them from the Makefile and config.h.
+
 
 The program supports cameras that generate YUYV, JPEG, RGB or YUV420 output.
 If your camera emits something different, e.g. P207 (PAC207) then you can use libv4l (by Hans de Goede).

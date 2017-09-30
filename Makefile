@@ -15,7 +15,7 @@ install: constatus
 	install -Dm755 constatus ${DESTDIR}${PREFIX}/bin/constatus
 	install -Dm755 motion-to-constatus.py ${DESTDIR}${PREFIX}/bin/motion-to-constatus.py
 	mkdir -p ${DESTDIR}${PREFIX}/share/doc/constatus
-	install -Dm644 example.cfg ${DESTDIR}${PREFIX}/share/doc/constatus/example.cfg
+	install -Dm644 constatus.cfg ${DESTDIR}${PREFIX}/share/doc/constatus/example.cfg
 	install -Dm644 man/constatus.1 ${DESTDIR}${PREFIX}/share/man/man1/constatus.1
 
 uninstall:
