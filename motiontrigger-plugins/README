@@ -1,5 +1,7 @@
 - demo is a template motion trigger in C++, always return false. 
-- demoocv is a filter using OpenCV
+- demoocv is a filter using OpenCV; detecting areas
+- demoocv2 is a filter using OpenCV; detecting human bodies
+
 
 constatus configuration example:
 ...
