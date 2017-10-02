@@ -73,6 +73,8 @@ As said, constatus can have multiple streamers, filters, etc.; the only drawback
 
 Each item has an id. You can leave it empty if you like. It is used in the configuration web-interface as a hint to which item you're working on.
 
+If it is unclear what the "selection-bitmap" masks, then try adding it to an "apply-mask" stream-writer or http-server filter. That way you can see which part of the image is masked off.
+
 
 (C) 2017 by Folkert van Heusden, released under AGPL v3.0
 mail@vanheusden.com
