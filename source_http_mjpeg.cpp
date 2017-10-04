@@ -163,32 +163,41 @@ void source_http_mjpeg::operator()()
 	{
 		log(LL_INFO, "(re-)connect to MJPEG source %s", url.c_str());
 
-		CURL *curl_handle = curl_easy_init();
+		CURL *ch = curl_easy_init();
 
 		char error[CURL_ERROR_SIZE] = "?";
-		if (curl_easy_setopt(curl_handle, CURLOPT_ERRORBUFFER, error))
+		if (curl_easy_setopt(ch, CURLOPT_ERRORBUFFER, error))
 			error_exit(false, "curl_easy_setopt(CURLOPT_ERRORBUFFER) failed: %s", error);
 
-		curl_easy_setopt(curl_handle, CURLOPT_DEBUGFUNCTION, curl_log);
+		curl_easy_setopt(ch, CURLOPT_DEBUGFUNCTION, curl_log);
 
-		curl_easy_setopt(curl_handle, CURLOPT_URL, url.c_str());
+		curl_easy_setopt(ch, CURLOPT_URL, url.c_str());
+
+		if (curl_easy_setopt(ch, CURLOPT_TCP_KEEPALIVE, 1L))
+			error_exit(false, "curl_easy_setopt(CURLOPT_TCP_KEEPALIVE) failed: %s", error);
+	 
+		if (curl_easy_setopt(ch, CURLOPT_TCP_KEEPIDLE, 120L))
+			error_exit(false, "curl_easy_setopt(CURLOPT_TCP_KEEPIDLE) failed: %s", error);
+	 
+		if (curl_easy_setopt(ch, CURLOPT_TCP_KEEPINTVL, 60L))
+			error_exit(false, "curl_easy_setopt(CURLOPT_TCP_KEEPINTVL) failed: %s", error);
 
 		std::string useragent = NAME " " VERSION;
 
-		if (curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, useragent.c_str()))
+		if (curl_easy_setopt(ch, CURLOPT_USERAGENT, useragent.c_str()))
 			error_exit(false, "curl_easy_setopt(CURLOPT_USERAGENT) failed: %s", error);
 
 		if (ignore_cert) {
-			if (curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYPEER, 0))
+			if (curl_easy_setopt(ch, CURLOPT_SSL_VERIFYPEER, 0))
 				error_exit(false, "curl_easy_setopt(CURLOPT_SSL_VERIFYPEER) failed: %s", error);
 
-			if (curl_easy_setopt(curl_handle, CURLOPT_SSL_VERIFYHOST, 0))
+			if (curl_easy_setopt(ch, CURLOPT_SSL_VERIFYHOST, 0))
 				error_exit(false, "curl_easy_setopt(CURLOPT_SSL_VERIFYHOST) failed: %s", error);
 		}
 
-		curl_easy_setopt(curl_handle, CURLOPT_VERBOSE, loglevel >= LL_DEBUG);
+		curl_easy_setopt(ch, CURLOPT_VERBOSE, loglevel >= LL_DEBUG);
 
-		curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_data);
+		curl_easy_setopt(ch, CURLOPT_WRITEFUNCTION, write_data);
 
 		work_data_t *w = new work_data_t;
 		w -> stop_flag = &local_stop_flag;
@@ -198,18 +207,18 @@ void source_http_mjpeg::operator()()
 		w -> n = 0;
 		w -> interval = max_fps > 0.0 ? 1.0 / max_fps * 1000.0 * 1000.0 : 0;
 		w -> next_frame_ts = get_us();
-		curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, w);
+		curl_easy_setopt(ch, CURLOPT_WRITEDATA, w);
 
-		curl_easy_setopt(curl_handle, CURLOPT_XFERINFODATA, w);
-		curl_easy_setopt(curl_handle, CURLOPT_XFERINFOFUNCTION, xfer_callback);
-		curl_easy_setopt(curl_handle, CURLOPT_NOPROGRESS, 0L);
+		curl_easy_setopt(ch, CURLOPT_XFERINFODATA, w);
+		curl_easy_setopt(ch, CURLOPT_XFERINFOFUNCTION, xfer_callback);
+		curl_easy_setopt(ch, CURLOPT_NOPROGRESS, 0L);
 
-		curl_easy_perform(curl_handle);
+		curl_easy_perform(ch);
 
 		free(w -> data);
 		delete w;
 
-		curl_easy_cleanup(curl_handle);
+		curl_easy_cleanup(ch);
 
 		usleep(101000);
 	}

@@ -109,6 +109,15 @@ bool http_get(const std::string & url, const bool ignore_cert, const char *const
 	if (curl_easy_setopt(ch, CURLOPT_NOPROGRESS, 0L))
 		error_exit(false, "curl_easy_setopt(CURLOPT_NOPROGRESS) failed: %s", error);
 
+	if (curl_easy_setopt(ch, CURLOPT_TCP_KEEPALIVE, 1L))
+		error_exit(false, "curl_easy_setopt(CURLOPT_TCP_KEEPALIVE) failed: %s", error);
+ 
+	if (curl_easy_setopt(ch, CURLOPT_TCP_KEEPIDLE, 120L))
+		error_exit(false, "curl_easy_setopt(CURLOPT_TCP_KEEPIDLE) failed: %s", error);
+ 
+	if (curl_easy_setopt(ch, CURLOPT_TCP_KEEPINTVL, 60L))
+		error_exit(false, "curl_easy_setopt(CURLOPT_TCP_KEEPINTVL) failed: %s", error);
+
 	bool ok = true;
 	if (curl_easy_perform(ch)) {
 		log(LL_ERR, "curl_easy_perform() failed: %s", error);
