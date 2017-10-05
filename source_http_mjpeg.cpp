@@ -15,7 +15,46 @@
 
 typedef struct
 {
+	uint8_t *data;
+	size_t len;
+	char *boundary;
+} work_header_t;
+
+static size_t write_headers(void *ptr, size_t size, size_t nmemb, void *mypt)
+{
+	work_header_t *pctx = (work_header_t *)mypt;
+
+	size_t n = size * nmemb;
+
+	size_t tl = pctx -> len + n;
+	pctx -> data = (uint8_t *)realloc(pctx -> data, tl + 1);
+	if (!pctx -> data)
+		error_exit(true, "HTTP headers: cannot allocate %zu bytes of memory", tl);
+
+	memcpy(&pctx -> data[pctx -> len], ptr, n);
+	pctx -> len += n;
+	pctx -> data[pctx -> len] = 0x00;
+
+	char *p = (char *)pctx -> data, *em = NULL;
+	char *ContentType = strstr(p, "Content-Type:");
+	if (ContentType && (em = strstr(ContentType, "\r\n")) != NULL) {
+		*em = 0x00;
+
+		char *bs = strchr(ContentType, '=');
+		if (bs) {
+			free(pctx -> boundary);
+			pctx -> boundary = strdup(bs + 1);
+			log(LL_DEBUG, "HTTP boundary header is %s\n", pctx -> boundary);
+		}
+	}
+
+	return n;
+}
+
+typedef struct
+{
 	std::atomic_bool *stop_flag;
+	work_header_t *headers;
 	source *s;
 	bool first;
 	bool header;
@@ -50,6 +89,7 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 
 	// printf("h:%d  n:%zu req:%zu\n", w -> header, w -> n, w -> req_len);
 
+process:
 	if (w -> header) {
 		bool proper_header = true;
 
@@ -65,12 +105,16 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 		*header_end = 0x0;
 
 		char *cl = strstr((char *)w -> data, "Content-Length:");
-		if (!cl) {
+		if (!cl && w -> headers -> boundary == NULL) {
 			log(LL_INFO, "Content-Length missing in header");
 			return 0;
 		}
 
-		w -> req_len = atoi(&cl[15]);
+		if (cl)
+			w -> req_len = atoi(&cl[15]);
+		else
+			w -> req_len = 0;
+
 		//printf("needed len: %zu\n", w -> req_len);
 
 		w -> header = false;
@@ -82,7 +126,7 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 		}
 		w -> n = left;
 	}
-	else if (w -> n >= w -> req_len) {
+	else if (w -> n >= w -> req_len && w -> req_len) {
 		// printf("frame! (%p %zu/%zu)\n", w -> data, w -> n, w -> req_len);
 
 		if (w -> first) {
@@ -132,6 +176,22 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 		w -> req_len = 0;
 
 		w -> header = true;
+	}
+	// for broken cameras that don't include a content-length in their headers
+	else {
+		ssize_t bl = strlen(w -> headers -> boundary);
+
+		for(ssize_t i=0; i<w -> n - bl; i++) {
+			if (memcmp(&w -> data[i], w -> headers -> boundary, bl) == 0) {
+				char *em = strstr((char *)&w -> data[i], "\r\n\r\n");
+
+				if (em) {
+					w -> req_len = i;
+					// printf("detected marker: %s\n", (char *)&w -> data[i]);
+					goto process;
+				}
+			}
+		}
 	}
 
 	if (w -> n > 16 * 1024 * 1024) { // sanity limit
@@ -195,6 +255,10 @@ void source_http_mjpeg::operator()()
 				error_exit(false, "curl_easy_setopt(CURLOPT_SSL_VERIFYHOST) failed: %s", error);
 		}
 
+		work_header_t wh = { NULL, 0, NULL };
+		curl_easy_setopt(ch, CURLOPT_HEADERDATA, &wh);
+		curl_easy_setopt(ch, CURLOPT_HEADERFUNCTION, write_headers);
+
 		curl_easy_setopt(ch, CURLOPT_VERBOSE, loglevel >= LL_DEBUG);
 
 		curl_easy_setopt(ch, CURLOPT_WRITEFUNCTION, write_data);
@@ -207,6 +271,7 @@ void source_http_mjpeg::operator()()
 		w -> n = 0;
 		w -> interval = max_fps > 0.0 ? 1.0 / max_fps * 1000.0 * 1000.0 : 0;
 		w -> next_frame_ts = get_us();
+		w -> headers = &wh;
 		curl_easy_setopt(ch, CURLOPT_WRITEDATA, w);
 
 		curl_easy_setopt(ch, CURLOPT_XFERINFODATA, w);
@@ -217,6 +282,9 @@ void source_http_mjpeg::operator()()
 
 		free(w -> data);
 		delete w;
+
+		free(wh.boundary);
+		free(wh.data);
 
 		curl_easy_cleanup(ch);
 
