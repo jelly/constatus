@@ -163,6 +163,11 @@ bool handshake(int fd, source *s, pixel_setup_t *ps, int *const w, int *const h)
 	if (READ(fd, pv_reply, 12) == -1)
 		return false;
 
+	char *lf = strchr(pv_reply, '\n');
+	if (lf)
+		*lf = 0x00;
+	log(LL_DEBUG, "Requested VNC protocol version: %s", pv_reply);
+
 	char sec[2] = { 1, 1 };
 	if (WRITE(fd, sec, sizeof sec) == -1)
 		return false;
@@ -659,7 +664,7 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 	if (WRITE(fd, msg_hdr, sizeof msg_hdr) == -1)
 		return false;
 
-	// printf("%d,%d %dx%d / %d\n", copy_x, copy_y, copy_w, copy_h, merged);
+	// log(LL_DEBUG, "%d,%d %dx%d / %d", copy_x, copy_y, copy_w, copy_h, merged);
 
 	int solid_n = 0, copy_n = 0, raw_n = 0;
 	int solid_np = 0, copy_np = 0, raw_np = 0;
@@ -667,7 +672,7 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 	for(int index=0; index<n_blocks; index++)
 	{
 		do_block_raw *b = do_blocks.at(index);
-		// printf("\t%d,%d %dx%d: %d\n", b -> getx(), b -> gety(), b -> getw(), b -> geth(), b -> method);
+		// log(LL_DEBUG, "\t%d,%d %dx%d: %d", b -> getx(), b -> gety(), b -> getw(), b -> geth(), b -> method);
 
 		if (b -> get_method() == ENC_COPY)
 		{
@@ -766,7 +771,7 @@ bool send_incremental_screen(int fd, source *s, unsigned char *client_view, unsi
 	//*bw = double(n_pixels * 100) / double(copy_w * copy_h);
 	*bw = double(bytes * 100) / double(copy_w * copy_h * ps -> bpp / 8.0);
 
-	printf("fuzz: %f, bytes: %.2f%%, copy: %d (%d), solid: %d (%d), raw: %d (%d)\n", fuzzy, *bw, copy_n, copy_np, solid_n, solid_np, raw_n, raw_np);
+	log(LL_DEBUG, "fuzz: %f, bytes: %.2f%%, copy: %d (%d), solid: %d (%d), raw: %d (%d)", fuzzy, *bw, copy_n, copy_np, solid_n, solid_np, raw_n, raw_np);
 
 	return true;
 }
@@ -842,6 +847,9 @@ void * vnc_main_loop(void *p)
 {
 	vnc_thread_t *vt = (vnc_thread_t *)p;
 
+	std::string connected_with = get_endpoint_name(vt -> fd);
+	log(LL_INFO, "VNC connected to: %s", connected_with.c_str());
+
 	vt -> s -> register_user();
 
 	int fd = vt -> fd;
@@ -891,7 +899,7 @@ void * vnc_main_loop(void *p)
 		set_no_delay(fd, false);
 
 		if (cmd[0] != 3)
-			printf("cmd: %d\n", cmd[0]);
+			log(LL_DEBUG, "cmd: %d", cmd[0]);
 
 		switch(cmd[0]) {
 			case 0:		// set pixel format [ignored]
@@ -904,29 +912,29 @@ void * vnc_main_loop(void *p)
 				}
 
 				ps.bpp = bpp = spf[4];
-				printf("set bpp %d\n", bpp);
-				printf("depth: %d\n", spf[5]);
+				log(LL_DEBUG, "set bpp %d", bpp);
+				log(LL_DEBUG, "depth: %d", spf[5]);
 				ps.big_endian = big_endian = spf[6];
-				printf("big endian %d\n", big_endian);
+				log(LL_DEBUG, "big endian %d", big_endian);
 				ps.true_color = spf[7];
 				ps.red_max = get_card16(&spf[8]);
-				printf("red max: %d\n", ps.red_max);
+				log(LL_DEBUG, "red max: %d", ps.red_max);
 				ps.green_max = get_card16(&spf[10]);
-				printf("green max: %d\n", ps.green_max);
+				log(LL_DEBUG, "green max: %d", ps.green_max);
 				ps.blue_max = get_card16(&spf[12]);
-				printf("blue max: %d\n", ps.blue_max);
+				log(LL_DEBUG, "blue max: %d", ps.blue_max);
 				ps.red_shift = spf[14];
-				printf("red shift: %d\n", ps.red_shift);
+				log(LL_DEBUG, "red shift: %d", ps.red_shift);
 				ps.green_shift = spf[15];
-				printf("green shift: %d\n", ps.green_shift);
+				log(LL_DEBUG, "green shift: %d", ps.green_shift);
 				ps.blue_shift = spf[16];
-				printf("blue shift: %d\n", ps.blue_shift);
+				log(LL_DEBUG, "blue shift: %d", ps.blue_shift);
 				ps.red_bits = count_bits(ps.red_max);
-				printf("red bits: %d\n", ps.red_bits);
+				log(LL_DEBUG, "red bits: %d", ps.red_bits);
 				ps.green_bits = count_bits(ps.green_max);
-				printf("green bits: %d\n", ps.green_bits);
+				log(LL_DEBUG, "green bits: %d", ps.green_bits);
 				ps.blue_bits = count_bits(ps.blue_max);
-				printf("blue bits: %d\n", ps.blue_bits);
+				log(LL_DEBUG, "blue bits: %d", ps.blue_bits);
 
 				if (spf[7] == 0)
 				{
@@ -961,7 +969,7 @@ void * vnc_main_loop(void *p)
 				for(int loop=0; loop<n_enc; loop++)
 				{
 					int32_t enc = read_card32(fd);
-					//printf("enc: %d\n", enc);
+					//log(LL_DEBUG, "enc: %d", enc);
 
 					if (enc == 0)
 						enc_supported = ea.raw = true;
@@ -971,7 +979,7 @@ void * vnc_main_loop(void *p)
 						enc_supported = ea.hextile = true;
 				}
 				if (!enc_supported)
-					printf("No supported encoding methods\n");
+					log(LL_WARNING, "No supported encoding methods");
 
 				break;
 			}
@@ -990,7 +998,7 @@ void * vnc_main_loop(void *p)
 				int w = read_card16(fd);
 				int h = read_card16(fd);
 
-				// printf("%d,%d %dx%d: %s\n", xpos, ypos, w, h, incremental[0] ? "incremental" : "full");
+				// log(LL_DEBUG, "%d,%d %dx%d: %s", xpos, ypos, w, h, incremental[0] ? "incremental" : "full");
 
 				double cfullts = get_ts();
 
@@ -1095,7 +1103,7 @@ void * vnc_main_loop(void *p)
 			}
 
 			default:
-				// dolog("Don't know how to handle %d\n", cmd[0]);
+				// dolog("Don't know how to handle %d", cmd[0]);
 				break;
 		}
 
@@ -1110,6 +1118,8 @@ void * vnc_main_loop(void *p)
 	vt -> s -> unregister_user();
 
 	delete vt;
+
+	log(LL_INFO, "VNC disconnected from: %s", connected_with.c_str());
 
 	return NULL;
 }
@@ -1150,8 +1160,6 @@ void target_vnc::operator()()
 		int cfd = accept(fd, NULL, 0);
 		if (cfd == -1)
 			continue;
-
-		printf("VNC connected with: %s\n", get_endpoint_name(cfd).c_str());
 
 		vnc_thread_t *ct = new vnc_thread_t;
 

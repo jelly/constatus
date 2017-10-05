@@ -247,7 +247,7 @@ void mysleep(double slp, std::atomic_bool *const stop_flag, source *const s)
 {
 	bool unreg = slp >= 1.0;
 
-	if (unreg)
+	if (unreg && s)
 		s -> unregister_user();
 
 	while(slp > 0 && !*stop_flag) {
@@ -267,7 +267,7 @@ void mysleep(double slp, std::atomic_bool *const stop_flag, source *const s)
 			usleep(us); // FIXME handle signals
 	}
 
-	if (unreg)
+	if (unreg && s)
 		s -> register_user();
 }
 

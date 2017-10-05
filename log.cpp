@@ -20,7 +20,7 @@ void setlogfile(const char *const file, const int ll)
 	loglevel = ll;
 }
 
-void log(const int ll, const char *const what, ...)
+void _log(const int ll, const char *const what, va_list args)
 {
 	if (!logfile)
 		return;
@@ -36,10 +36,7 @@ void log(const int ll, const char *const what, ...)
 	localtime_r(&tv_temp, &tm);
 
 	char *msg = NULL;
-	va_list ap;
-	va_start(ap, what);
-	(void)vasprintf(&msg, what, ap);
-	va_end(ap);
+	(void)vasprintf(&msg, what, args);
 
 	const char *lls = "???";
 	switch(ll) {
@@ -81,6 +78,26 @@ void log(const int ll, const char *const what, ...)
 
 	printf("%s\n", temp);
 	free(temp);
+}
+
+void log(const int ll, const std::string & what, ...)
+{
+	va_list ap;
+	va_start(ap, what);
+
+	_log(ll, what.c_str(), ap);
+
+	va_end(ap);
+}
+
+void log(const int ll, const char *const what, ...)
+{
+	va_list ap;
+	va_start(ap, what);
+
+	_log(ll, what, ap);
+
+	va_end(ap);
 }
 
 int curl_log(CURL *handle, curl_infotype type, char *data, size_t size, void *userp)

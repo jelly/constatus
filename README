@@ -7,7 +7,7 @@ Supports:
    - MJPEG cameras
    - RTSP cameras
    - JPEG cameras
-   - plugin interface
+   - plugin interface (included is a VNC client plugin)
 
   output:
    - AVI file(s)
