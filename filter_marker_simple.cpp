@@ -7,7 +7,7 @@
 #include "filter_marker_simple.h"
 #include "log.h"
 
-filter_marker_simple::filter_marker_simple(const sm_mode_t modeIn, const uint8_t *const pixel_select_bitmap, meta *const m, const int noise_level) : mode(modeIn), psb(pixel_select_bitmap), m(m), noise_level(noise_level)
+filter_marker_simple::filter_marker_simple(const sm_mode_t modeIn, const uint8_t *const pixel_select_bitmap, meta *const m, const int noise_level, const double percentage_pixels_changed) : mode(modeIn), psb(pixel_select_bitmap), m(m), noise_level(noise_level), percentage_pixels_changed(percentage_pixels_changed)
 {
 }
 
@@ -81,7 +81,7 @@ void filter_marker_simple::apply(const uint64_t ts, const int w, const int h, co
 		}
 	}
 
-	if (!cn) {
+	if (cn < (percentage_pixels_changed / 100) * w * h) {
 		delete [] diffs;
 		return;
 	}

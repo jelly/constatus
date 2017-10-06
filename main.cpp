@@ -226,8 +226,9 @@ std::vector<filter *> *load_filters(const Setting & in, source *const s)
 			std::string selection_bitmap = cfg_str(ae, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.", true, "");
 			const uint8_t *sb = load_selection_bitmap(selection_bitmap);
 			int noise_level = cfg_int(ae, "noise-factor", "at what difference levell is the pixel considered to be changed", true, 32);
+			double pixels_changed_perctange = cfg_float(ae, "pixels-changed-percentage", "what %% of pixels need to be changed before the marker is drawn", false, 1.0);
 
-			filters -> push_back(new filter_marker_simple(sm, sb, s -> get_meta(), noise_level));
+			filters -> push_back(new filter_marker_simple(sm, sb, s -> get_meta(), noise_level, pixels_changed_perctange));
 		}
 		else if (s_type == "apply-mask") {
 			std::string selection_bitmap = cfg_str(ae, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.", false, "");
