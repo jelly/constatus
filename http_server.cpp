@@ -929,7 +929,7 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 			break;
 	}
 
-	char *path = NULL;
+	char *Path = NULL;
 
 	bool get = true;
 	if (motion_compatible) {
@@ -937,18 +937,22 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 	else if (strncmp(request_headers, "GET ", 4) == 0)
 	{
 		get = true;
-		path = strdup(&request_headers[4]);
+		Path = strdup(&request_headers[4]);
 	}
 	else if (strncmp(request_headers, "HEAD ", 5) == 0)
 	{
 		get = false;
-		path = strdup(&request_headers[5]);
+		Path = strdup(&request_headers[5]);
 	}
 	else
 	{
 		close(cfd);
 		return;
 	}
+
+	char *path = Path;
+	while(*path == '/')
+		path++;
 
 	char *pars = NULL;
 
@@ -973,15 +977,15 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 		}
 	}
 
-	if (strcmp(path, "/stream.mjpeg") == 0 || motion_compatible)
+	if (strcmp(path, "stream.mjpeg") == 0 || motion_compatible)
 		send_mjpeg_stream(cfd, s, fps, quality, get, time_limit, filters, global_stopflag, r, resize_w, resize_h);
-	else if (strcmp(path, "/stream.mpng") == 0)
+	else if (strcmp(path, "stream.mpng") == 0)
 		send_mpng_stream(cfd, s, fps, get, time_limit, filters, global_stopflag, r, resize_w, resize_h);
-	else if (strcmp(path, "/image.png") == 0)
+	else if (strcmp(path, "image.png") == 0)
 		send_png_frame(cfd, s, get, filters, r, resize_w, resize_h);
-	else if (strcmp(path, "/image.jpg") == 0)
+	else if (strcmp(path, "image.jpg") == 0)
 		send_jpg_frame(cfd, s, get, quality, filters, r, resize_w, resize_h);
-	else if (strcmp(path, "/stylesheet.css") == 0) {
+	else if (strcmp(path, "stylesheet.css") == 0) {
 		struct stat st;
 		if (stat("stylesheet.css", &st) == 0)
 			send_file(cfd, "./", "stylesheet.css");
@@ -992,30 +996,30 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 				log(LL_DEBUG, "short write on response header");
 		}
 	}
-	else if (strcmp(path, "/stream.html") == 0)
+	else if (strcmp(path, "stream.html") == 0)
 	{
 		std::string reply = http_200_header + html_header + "<img src=\"stream.mjpeg\">" + html_tail;
 
 		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
 			log(LL_DEBUG, "short write on response header");
 	}
-	else if (strcmp(path, "/index.html") == 0 || strcmp(path, "/") == 0)
+	else if (strcmp(path, "index.html") == 0 || strcmp(path, "") == 0)
 	{
 		std::string reply = http_200_header + html_header + "<div id=\"main\"><h1>" NAME " " VERSION "</h1>"
 			"<ul>"
-			"<li><a href=\"/stream.mjpeg\">MJPEG stream</a>"
-			"<li><a href=\"/stream.html\">Same MJPEG stream but in a HTML wrapper</a>"
-			"<li><a href=\"/stream.mpng\">MPNG stream</a>"
-			"<li><a href=\"/image.jpg\">Show snapshot in JPG format</a>"
-			"<li><a href=\"/image.png\">Show snapshot in PNG format</a>";
+			"<li><a href=\"stream.mjpeg\">MJPEG stream</a>"
+			"<li><a href=\"stream.html\">Same MJPEG stream but in a HTML wrapper</a>"
+			"<li><a href=\"stream.mpng\">MPNG stream</a>"
+			"<li><a href=\"image.jpg\">Show snapshot in JPG format</a>"
+			"<li><a href=\"image.png\">Show snapshot in PNG format</a>";
 
 			if (allow_admin) {
-				reply += "<li><a href=\"/snapshot-img/\">Take a snapshot and store it on disk</a>"
-					"<li><a href=\"/snapshot-video/\">Start a video recording</a>";
+				reply += "<li><a href=\"snapshot-img/\">Take a snapshot and store it on disk</a>"
+					"<li><a href=\"snapshot-video/\">Start a video recording</a>";
 			}
 
 			if (archive_acces) {
-				reply += "<li><a href=\"/view-snapshots/\">View recordings</a>";
+				reply += "<li><a href=\"view-snapshots/\">View recordings</a>";
 			}
 
 			reply += "</ul></div>"
@@ -1033,7 +1037,7 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
 			log(LL_DEBUG, "short write on response header");
 	}
-	else if (strncmp(path, "/send-file", 10) == 0 && (archive_acces || allow_admin)) {
+	else if (strncmp(path, "send-file", 9) == 0 && (archive_acces || allow_admin)) {
 		char *file = un_url_escape(pars ? pars : "FAIL");
 
 		if (pars && validate_file(snapshot_dir, file)) {
@@ -1050,7 +1054,7 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 
 		free(file);
 	}
-	else if (strcmp(path, "/view-snapshots/") == 0 && (archive_acces || allow_admin)) {
+	else if (strcmp(path, "view-snapshots/") == 0 && (archive_acces || allow_admin)) {
 		std::string reply = http_200_header + html_header + "<h1>list of files in " + snapshot_dir + "</h1><table border=1>";
 
 		auto *files = load_filelist(snapshot_dir, "");
@@ -1067,7 +1071,7 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 		reply += "<tr><th><a href=\"?name\">name</a></th><th><a href=\"?last-change\">last change</a></th><th><a href=\"?size\">size</a></th></tr>";
 
 		for(auto file : *files)
-			reply += std::string("<tr><td><a href=\"/send-file?") + file.name + "\">" + file.name + "</a></td><td>" + myctime(file.last_change) + "</td><td>" + myformat("%zu", file.size) + "</td>";
+			reply += std::string("<tr><td><a href=\"send-file?") + file.name + "\">" + file.name + "</a></td><td>" + myctime(file.last_change) + "</td><td>" + myformat("%zu", file.size) + "</td>";
 
 		delete files;
 
@@ -1079,11 +1083,11 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 	else if (!allow_admin) {
 		goto do404;
 	}
-	else if (strcmp(path, "/pause") == 0 || strcmp(path, "/unpause") == 0) {
+	else if (strcmp(path, "pause") == 0 || strcmp(path, "unpause") == 0) {
 		std::string reply = http_200_header + "???";
 
 		cfg -> lock.lock();
-		if (pause(cfg, pars ? pars : "", strcmp(path, "/pause") == 0))
+		if (pause(cfg, pars ? pars : "", strcmp(path, "pause") == 0))
 			reply = http_200_header + html_header + myformat(action_succeeded.c_str(), "pause/unpause") + html_tail;
 		else
 			reply = http_200_header + html_header + myformat(action_failed.c_str(), "pause/unpause") + html_tail;
@@ -1092,11 +1096,11 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
 			log(LL_DEBUG, "short write on response header");
 	}
-	else if (strcmp(path, "/start") == 0 || strcmp(path, "/stop") == 0) {
+	else if (strcmp(path, "start") == 0 || strcmp(path, "stop") == 0) {
 		std::string reply = http_200_header + "???";
 
 		cfg -> lock.lock();
-		if (start_stop(cfg, pars ? pars : "", strcmp(path, "/start") == 0))
+		if (start_stop(cfg, pars ? pars : "", strcmp(path, "start") == 0))
 			reply = http_200_header + html_header + myformat(action_succeeded.c_str(), "start/stop") + html_tail;
 		else
 			reply = http_200_header + html_header + myformat(action_failed.c_str(), "start/stop") + html_tail;
@@ -1105,7 +1109,7 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
 			log(LL_DEBUG, "short write on response header");
 	}
-	else if (strcmp(path, "/restart") == 0) {
+	else if (strcmp(path, "restart") == 0) {
 		std::string reply = http_200_header + "???";
 
 		cfg -> lock.lock();
@@ -1120,7 +1124,7 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
 			log(LL_DEBUG, "short write on response header");
 	}
-	else if (strcmp(path, "/snapshot-img/") == 0) {
+	else if (strcmp(path, "snapshot-img/") == 0) {
 		std::string reply = http_200_header + "???";
 
 		if (take_a_picture(s, snapshot_dir, quality))
@@ -1131,7 +1135,7 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
 			log(LL_DEBUG, "short write on response header");
 	}
-	else if (strcmp(path, "/snapshot-video/") == 0) {
+	else if (strcmp(path, "snapshot-video/") == 0) {
 		interface *i = start_a_video(s, snapshot_dir, quality);
 
 		std::string reply = http_200_header + "???";
@@ -1149,7 +1153,7 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
 			log(LL_DEBUG, "short write on response header");
 	}
-	else if (strncmp(path, "/favicon.ico", 6) == 0) {
+	else if (strncmp(path, "favicon.ico", 11) == 0) {
 		struct stat st;
 		if (stat("favicon.ico", &st) == 0)
 			send_file(cfd, "./", "favicon.ico");
@@ -1160,8 +1164,8 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 				log(LL_DEBUG, "short write on response header");
 		}
 	}
-	else if (strncmp(path, "/rest/", 6) == 0) {
-		std::string reply = run_rest(cfg, &path[6], pars ? pars : "", quality, snapshot_dir, s);
+	else if (strncmp(path, "rest/", 5) == 0) {
+		std::string reply = run_rest(cfg, &path[5], pars ? pars : "", quality, snapshot_dir, s);
 
 		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
 			log(LL_DEBUG, "short write on response");
@@ -1174,7 +1178,7 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 			log(LL_DEBUG, "short write on response header");
 	}
 
-	free(path);
+	free(Path);
 	free(pars);
 
 	close(cfd);
