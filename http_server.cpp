@@ -951,8 +951,10 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 	}
 
 	char *path = Path;
-	while(*path == '/')
-		path++;
+	if (!motion_compatible) {
+		while(*path == '/')
+			path++;
+	}
 
 	char *pars = NULL;
 
