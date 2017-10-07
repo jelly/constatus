@@ -469,15 +469,11 @@ static AVFrame *get_video_frame(OutputStream *ost, source *const s, uint64_t *co
 	}
 
 	uint8_t *work = NULL;
+	size_t work_len = 0;
 	int w = -1, h = -1;
 
-	if (!*pre_record) {
-		for(;;) {
-			size_t work_len = 0;
-			if (s -> get_frame(E_RGB, -1, prev_ts, &w, &h, &work, &work_len))
-				break;
-		}
-	}
+	if (!*pre_record)
+		s -> get_frame(E_RGB, -1, prev_ts, &w, &h, &work, &work_len);
 	else {
 		if (!(*pre_record) -> empty()) {
 			work = (*pre_record) -> front().data;

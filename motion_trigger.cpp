@@ -86,8 +86,6 @@ void motion_trigger::operator()()
 		size_t work_len = 0;
 		if (!s -> get_frame(E_RGB, -1, &prev_ts, &w, &h, &work, &work_len))
 			continue;
-		if (work == NULL || work_len == 0)
-			continue;
 
 		apply_filters(filters, prev_frame, work, prev_ts, w, h);
 

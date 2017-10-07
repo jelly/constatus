@@ -86,10 +86,6 @@ void send_mjpeg_stream(int cfd, source *s, double fps, int quality, bool get, in
 		uint8_t *work = NULL;
 		size_t work_len = 0;
 		s -> get_frame(filters -> empty() && !sc ? E_JPEG : E_RGB, quality, &prev, &w, &h, &work, &work_len);
-		if (work == NULL || work_len == 0) {
-			log(LL_ERR, "did not get a frame");
-			continue;
-		}
 
 		// send header
                 const char term[] = "\r\n";
@@ -226,13 +222,7 @@ void send_mpng_stream(int cfd, source *s, double fps, bool get, const int time_l
 		int w = -1, h = -1;
 		uint8_t *work = NULL;
 		size_t work_len = 0;
-		if (!s -> get_frame(E_RGB, -1, &prev, &w, &h, &work, &work_len))
-			continue;
-
-		if (work == NULL || work_len == 0) {
-			log(LL_ERR, "did not get a frame");
-			continue;
-		}
+		s -> get_frame(E_RGB, -1, &prev, &w, &h, &work, &work_len);
 
 		apply_filters(filters, prev_frame, work, prev, w, h);
 
@@ -336,11 +326,6 @@ void send_png_frame(int cfd, source *s, bool get, const std::vector<filter *> *c
 	size_t work_len = 0;
 	s -> get_frame(E_RGB, -1, &prev_ts, &w, &h, &work, &work_len);
 
-	if (work == NULL || work_len == 0) {
-		log(LL_ERR, "did not get a frame");
-		return;
-	}
-
 	char *data_out = NULL;
 	size_t data_out_len = 0;
 
@@ -408,11 +393,6 @@ void send_jpg_frame(int cfd, source *s, bool get, int quality, const std::vector
 	uint8_t *work = NULL;
 	size_t work_len = 0;
 	s -> get_frame(filters -> empty() && !sc ? E_JPEG : E_RGB, quality, &prev_ts, &w, &h, &work, &work_len);
-
-	if (work == NULL || work_len == 0) {
-		log(LL_DEBUG, "did not get a frame");
-		return;
-	}
 
 	char *data_out = NULL;
 	size_t data_out_len = 0;
@@ -564,11 +544,6 @@ bool take_a_picture(source *const s, const std::string & snapshot_dir, const int
 	uint8_t *work = NULL;
 	size_t work_len = 0;
 	s -> get_frame(E_JPEG, quality, &prev_ts, &w, &h, &work, &work_len);
-
-	if (work == NULL || work_len == 0) {
-		log(LL_DEBUG, "did not get a frame");
-		return false;
-	}
 
 	std::string name = gen_filename(snapshot_dir, "snapshot-", "jpg", get_us(), 0);
 

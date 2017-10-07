@@ -781,11 +781,8 @@ bool send_screen(int fd, source *s, bool incremental, int xpos, int ypos, int w,
 	uint8_t *work_temp = NULL;
 	size_t work_len = 0;
 
-	for(;;) {
-		int wt, ht;
-		if (s -> get_frame(E_RGB, -1, prev_ts, &wt, &ht, &work_temp, &work_len))
-			break;
-	}
+	int wt, ht;
+	s -> get_frame(E_RGB, -1, prev_ts, &wt, &ht, &work_temp, &work_len);
 
 	memcpy(work, work_temp, work_len);
 	free(work_temp);

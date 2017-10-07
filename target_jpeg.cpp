@@ -65,13 +65,7 @@ void target_jpeg::operator()()
 		int w = -1, h = -1;
 		uint8_t *work = NULL;
 		size_t work_len = 0;
-		if (!s -> get_frame(filters -> empty() ? E_JPEG : E_RGB, quality, &prev_ts, &w, &h, &work, &work_len))
-			continue;
-
-		if (work == NULL || work_len == 0) {
-			log(LL_INFO, "did not get a frame");
-			continue;
-		}
+		s -> get_frame(filters -> empty() ? E_JPEG : E_RGB, quality, &prev_ts, &w, &h, &work, &work_len);
 
 		name = gen_filename(store_path, prefix, "jpg", get_us(), f_nr++);
 

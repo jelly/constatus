@@ -118,7 +118,8 @@ bool source::get_frame(const encoding_t pe, const int jpeg_quality, uint64_t *ts
 		}
 	}
 
-	if (err) {
+	if (err || (!frame_rgb && !frame_jpeg)) {
+fail:
 		if (this -> width <= 0) {
 			*width = 352;
 			*height = 288;
@@ -148,21 +149,19 @@ bool source::get_frame(const encoding_t pe, const int jpeg_quality, uint64_t *ts
 
 		free(fail);
 
-		return true;
+		return false;
 	}
 
 	*ts = this -> ts;
 
-	bool rc = true;
-
 	*width = this -> width;
 	*height = this -> height;
 
-	if (!frame_rgb && !frame_jpeg)
-		rc = false;
-	else if (pe == E_RGB) {
+	if (pe == E_RGB) {
 		if (!frame_rgb) {
-			rc = read_JPEG_memory(frame_jpeg, frame_jpeg_len, width, height, &frame_rgb);
+			if (!read_JPEG_memory(frame_jpeg, frame_jpeg_len, width, height, &frame_rgb))
+				goto fail;
+
 			frame_rgb_len = *width * *height * 3;
 		}
 
@@ -181,7 +180,7 @@ bool source::get_frame(const encoding_t pe, const int jpeg_quality, uint64_t *ts
 
 	pthread_mutex_unlock(&lock);
 
-	return rc;
+	return true;
 }
 
 void source::set_scaled_frame(const uint8_t *const in, const int sourcew, const int sourceh)
