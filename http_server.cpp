@@ -1039,7 +1039,7 @@ void handle_http_client(int cfd, source *s, double fps, int quality, int time_li
 		if (WRITE(cfd, reply.c_str(), reply.size()) <= 0)
 			log(LL_DEBUG, "short write on response header");
 	}
-	else if (strncmp(path, "send-file", 9) == 0 && (archive_acces || allow_admin)) {
+	else if ((strncmp(path, "view-snapshots/send-file", 24) == 0 || strncmp(path, "send-file", 9) == 0) && (archive_acces || allow_admin)) {
 		char *file = un_url_escape(pars ? pars : "FAIL");
 
 		if (pars && validate_file(snapshot_dir, file)) {
