@@ -3,13 +3,13 @@
 
 #include <cairo/cairo.h>
 
-cairo_surface_t * rgb_to_cairo(const uint8_t *const in, const int w, const int h)
+cairo_surface_t * rgb_to_cairo(const uint8_t *const in, const int w, const int h, uint32_t **temp)
 {
 	size_t n = w * h;
-	uint32_t *temp = (uint32_t *)valloc(n * 4);
+	*temp = (uint32_t *)valloc(n * 4);
 
 	const uint8_t *win = in;
-	uint32_t *wout = temp;
+	uint32_t *wout = *temp;
 
 	for(size_t i=0; i<n; i++) {
 		uint8_t r = *win++;
@@ -18,7 +18,7 @@ cairo_surface_t * rgb_to_cairo(const uint8_t *const in, const int w, const int h
 		*wout++ = (255 << 24) | (r << 16) | (g << 8) | b;
 	}
 
-	return cairo_image_surface_create_for_data((unsigned char *)temp, CAIRO_FORMAT_RGB24, w, h, 4 * w);
+	return cairo_image_surface_create_for_data((unsigned char *)*temp, CAIRO_FORMAT_RGB24, w, h, 4 * w);
 }
 
 void cairo_to_rgb(cairo_surface_t *const cs, const int w, const int h, uint8_t *out)

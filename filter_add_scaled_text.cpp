@@ -22,7 +22,8 @@ void filter_add_scaled_text::apply_io(const uint64_t ts, const int w, const int 
 {
 	std::string text_out = unescape(what, ts, s);
 
-	cairo_surface_t *const cs = rgb_to_cairo(in, w, h);
+	uint32_t *temp = NULL;
+	cairo_surface_t *const cs = rgb_to_cairo(in, w, h, &temp);
 	cairo_t *const cr = cairo_create(cs);
 
 	///
@@ -57,4 +58,5 @@ void filter_add_scaled_text::apply_io(const uint64_t ts, const int w, const int 
 
 	cairo_destroy(cr);
 	cairo_surface_destroy(cs);
+	free(temp);
 }
