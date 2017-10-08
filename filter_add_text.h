@@ -20,6 +20,7 @@ typedef enum
 } text_pos_t;
 
 void find_text_dim(const char *const in, int *const n_lines, int *const n_cols);
+std::string unescape(const std::string & in, const uint64_t ts, source *const s);
 
 class filter_add_text : public filter
 {

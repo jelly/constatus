@@ -291,7 +291,7 @@ std::vector<filter *> *load_filters(const Setting & in, source *const s)
 			int g = cfg_int(ae, "g", "green component of text color", true, 0);
 			int b = cfg_int(ae, "b", "blue component of text color", true, 0);
 
-			filters -> push_back(new filter_add_scaled_text(s_text, font, x, y, fs, r, g, b));
+			filters -> push_back(new filter_add_scaled_text(s_text, font, x, y, fs, r, g, b, s));
 		}
 		else {
 			error_exit(false, "Filter %s is not known", s_type.c_str());

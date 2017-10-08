@@ -8,6 +8,7 @@
 #include "error.h"
 #include "picio.h"
 #include "filter.h"
+#include "log.h"
 #include "filter_add_text.h"
 
 source::source(const std::string & id, const double max_fps, resize *const r, const int resize_w, const int resize_h, const int loglevel) : interface(id), max_fps(max_fps), r(r), resize_w(resize_w), resize_h(resize_h), loglevel(loglevel)
@@ -120,6 +121,7 @@ bool source::get_frame(const encoding_t pe, const int jpeg_quality, uint64_t *ts
 
 	if (err || (!frame_rgb && !frame_jpeg)) {
 fail:
+log(LL_ERR, "frame fail");
 		if (this -> width <= 0) {
 			*width = 352;
 			*height = 288;
