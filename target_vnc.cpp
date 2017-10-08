@@ -1147,7 +1147,7 @@ void target_vnc::operator()()
 				i++;
 		}
 
-		get_meta() -> setInt("$vnc-viewers$", std::pair<uint64_t, int>(0, handles.size()));
+		get_meta() -> set_int("$vnc-viewers$", std::pair<uint64_t, int>(0, handles.size()));
 
 		pauseCheck();
 

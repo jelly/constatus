@@ -51,7 +51,7 @@ bool meta::get_int(const std::string & key, std::pair<uint64_t, int> *const val)
 	return rc;
 }
 
-void meta::setInt(const std::string & key, const std::pair<uint64_t, int> & v)
+void meta::set_int(const std::string & key, const std::pair<uint64_t, int> & v)
 {
 	m_int_lock.lock();
 	m_int.erase(key);
@@ -78,7 +78,7 @@ bool meta::get_double(const std::string & key, std::pair<uint64_t, double> *cons
 	return rc;
 }
 
-void meta::setDouble(const std::string & key, const std::pair<uint64_t, double> & v)
+void meta::set_double(const std::string & key, const std::pair<uint64_t, double> & v)
 {
 	m_double_lock.lock();
 	m_double.erase(key);
@@ -105,7 +105,7 @@ bool meta::get_string(const std::string & key, std::pair<uint64_t, std::string> 
 	return rc;
 }
 
-void meta::setString(const std::string & key, const std::pair<uint64_t, std::string> & v)
+void meta::set_string(const std::string & key, const std::pair<uint64_t, std::string> & v)
 {
 	m_string_lock.lock();
 	m_string.erase(key);

@@ -36,13 +36,13 @@ public:
 	void add_plugin(const std::string & filename, const std::string & parameter);
 
 	bool get_int(const std::string & key, std::pair<uint64_t, int> *const val);
-	void setInt(const std::string & key, const std::pair<uint64_t, int> & v);
+	void set_int(const std::string & key, const std::pair<uint64_t, int> & v);
 
 	bool get_double(const std::string & key, std::pair<uint64_t, double> *const val);
-	void setDouble(const std::string & key, const std::pair<uint64_t, double> & v);
+	void set_double(const std::string & key, const std::pair<uint64_t, double> & v);
 
 	bool get_string(const std::string & key, std::pair<uint64_t, std::string> *const val);
-	void setString(const std::string & key, const std::pair<uint64_t, std::string> & v);
+	void set_string(const std::string & key, const std::pair<uint64_t, std::string> & v);
 };
 
 #endif

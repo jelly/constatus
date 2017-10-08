@@ -89,8 +89,8 @@ void filter_marker_simple::apply(const uint64_t ts, const int w, const int h, co
 	cx /= cn;
 	cy /= cn;
 
-	m -> setInt("$motion-center-x$", std::pair<uint64_t, int>(0, cx));
-	m -> setInt("$motion-center-y$", std::pair<uint64_t, int>(0, cy));
+	m -> set_int("$motion-center-x$", std::pair<uint64_t, int>(0, cx));
+	m -> set_int("$motion-center-y$", std::pair<uint64_t, int>(0, cy));
 
 	int xdist = 0, ydist = 0;
 
@@ -109,8 +109,8 @@ void filter_marker_simple::apply(const uint64_t ts, const int w, const int h, co
 	xdist /= cn;
 	ydist /= cn;
 
-	m -> setInt("$motion-width$", std::pair<uint64_t, int>(0, xdist));
-	m -> setInt("$motion-height$", std::pair<uint64_t, int>(0, ydist));
+	m -> set_int("$motion-width$", std::pair<uint64_t, int>(0, xdist));
+	m -> set_int("$motion-height$", std::pair<uint64_t, int>(0, ydist));
 
 	int xmin = std::max(0, cx - xdist), xmax = std::min(w - 1, cx + xdist);
 	int ymin = std::max(0, cy - ydist), ymax = std::min(h - 1, cy + ydist);

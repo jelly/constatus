@@ -1211,7 +1211,7 @@ void http_server::operator()()
 				i++;
 		}
 
-		get_meta() -> setInt("$http-viewers$", std::pair<uint64_t, int>(0, handles.size()));
+		get_meta() -> set_int("$http-viewers$", std::pair<uint64_t, int>(0, handles.size()));
 
 		pauseCheck();
 
