@@ -131,8 +131,14 @@ fail:
 		log(LL_INFO, "frame fail");
 
 		if (this -> width <= 0) {
-			*width = 352;
-			*height = 288;
+			if (this -> resize_w != -1) {
+				*width = this -> resize_w;
+				*height = this -> resize_h;
+			}
+			else {
+				*width = 352;
+				*height = 288;
+			}
 		}
 		else {
 			*width = this -> width;
