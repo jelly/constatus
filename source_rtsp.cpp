@@ -105,7 +105,7 @@ void source_rtsp::operator()()
 		av_dict_set(&opts, "user-agent", NAME " " VERSION, 0);
 
 		char to_buf[32];
-		snprintf(to_buf, sizeof to_buf, "%ld", timeout * 1000 * 1000);
+		snprintf(to_buf, sizeof to_buf, "%ld", long(timeout * 1000 * 1000));
 		av_dict_set(&opts, "stimeout", to_buf, 0);
 
 		// open RTSP
