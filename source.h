@@ -19,6 +19,7 @@ protected:
 	const double max_fps;
 	resize *const r;
 	const int resize_w, resize_h, loglevel;
+	const double timeout;
 
 	pthread_mutex_t lock;
 	pthread_cond_t cond;
@@ -29,7 +30,7 @@ protected:
 	std::atomic_int user_count;
 
 public:
-	source(const std::string & id, const double max_fps, resize *const r, const int resize_w, const int resize_h, const int loglevel);
+	source(const std::string & id, const double max_fps, resize *const r, const int resize_w, const int resize_h, const int loglevel, const double timeout);
 	virtual ~source();
 
 	bool get_frame(const encoding_t pe, const int jpeg_quality, uint64_t *ts, int *width, int *height, uint8_t **frame, size_t *frame_len);

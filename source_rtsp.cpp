@@ -19,7 +19,7 @@ extern "C" {
 
 static bool v = false;
 
-source_rtsp::source_rtsp(const std::string & id, const std::string & url, const bool tcp, const double max_fps, resize *const r, const int resize_w, const int resize_h, const int loglevel) : source(id, max_fps, r, resize_w, resize_h, loglevel), url(url), tcp(tcp)
+source_rtsp::source_rtsp(const std::string & id, const std::string & url, const bool tcp, const double max_fps, resize *const r, const int resize_w, const int resize_h, const int loglevel, const double timeout) : source(id, max_fps, r, resize_w, resize_h, loglevel, timeout), url(url), tcp(tcp)
 {
 	v = loglevel >= LL_DEBUG;
 	d = url;
@@ -103,6 +103,10 @@ void source_rtsp::operator()()
 		av_dict_set(&opts, "analyzeduration", "5000000", 0);
 		av_dict_set(&opts, "probesize", "32000000", 0);
 		av_dict_set(&opts, "user-agent", NAME " " VERSION, 0);
+
+		char to_buf[32];
+		snprintf(to_buf, sizeof to_buf, "%ld", timeout * 1000 * 1000);
+		av_dict_set(&opts, "stimeout", to_buf, 0);
 
 		// open RTSP
 		if ((err = avformat_open_input(&format_ctx, url.c_str(), NULL, &opts)) != 0) {

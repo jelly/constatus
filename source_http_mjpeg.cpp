@@ -18,6 +18,7 @@ typedef struct
 	uint8_t *data;
 	size_t len;
 	char *boundary;
+	uint64_t latest_io;
 } work_header_t;
 
 static size_t write_headers(void *ptr, size_t size, size_t nmemb, void *mypt)
@@ -48,6 +49,8 @@ static size_t write_headers(void *ptr, size_t size, size_t nmemb, void *mypt)
 		}
 	}
 
+	pctx -> latest_io = get_us();
+
 	return n;
 }
 
@@ -68,8 +71,15 @@ static int xfer_callback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, cu
 {
 	work_data_t *w = (work_data_t *)clientp;
 
-	if (*w -> stop_flag)
+	if (*w -> stop_flag) {
+		log(LL_DEBUG, "MJPEG stream aborted by stop flag");
 		return 1;
+	}
+
+	if (get_us() - w -> headers -> latest_io >= 9000000) { // *FIXME* hardcoded t/o
+		log(LL_INFO, "MJPEG camera fell asleep?");
+		return 1;
+	}
 
 	return 0;
 }
@@ -87,7 +97,9 @@ static size_t write_data(void *ptr, size_t size, size_t nmemb, void *mypt)
 	w -> n += full_size;
 	w -> data[w -> n] = 0x00;
 
-	// printf("h:%d  n:%zu req:%zu\n", w -> header, w -> n, w -> req_len);
+	w -> headers -> latest_io = get_us();
+
+	printf("h:%d  n:%zu req:%zu\n", w -> header, w -> n, w -> req_len);
 
 process:
 	if (w -> header) {
@@ -203,7 +215,7 @@ process:
 }
 
 
-source_http_mjpeg::source_http_mjpeg(const std::string & id, const std::string & urlIn, const bool ic, const double max_fps, resize *const r, const int resize_w, const int resize_h, const int loglevel) : source(id, max_fps, r, resize_w, resize_h, loglevel), url(urlIn), ignore_cert(ic)
+source_http_mjpeg::source_http_mjpeg(const std::string & id, const std::string & urlIn, const bool ic, const double max_fps, resize *const r, const int resize_w, const int resize_h, const int loglevel, const double timeout) : source(id, max_fps, r, resize_w, resize_h, loglevel, timeout), url(urlIn), ignore_cert(ic)
 {
 	d = url;
 }
@@ -255,7 +267,7 @@ void source_http_mjpeg::operator()()
 				error_exit(false, "curl_easy_setopt(CURLOPT_SSL_VERIFYHOST) failed: %s", error);
 		}
 
-		work_header_t wh = { NULL, 0, NULL };
+		work_header_t wh = { NULL, 0, NULL, get_us() };
 		curl_easy_setopt(ch, CURLOPT_HEADERDATA, &wh);
 		curl_easy_setopt(ch, CURLOPT_HEADERFUNCTION, write_headers);
 

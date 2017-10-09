@@ -36,7 +36,6 @@ bool interface::pause()
 	if (paused)
 		return false;
 
-
 	if (!pause_lock.try_lock_for(std::chrono::milliseconds(1000))) // try 1 second; FIXME hardcoded?
 		return false;
 
