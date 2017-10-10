@@ -58,9 +58,9 @@ void * thread(void *arg)
 
 				const uint64_t discard_ts = get_us() + 1000000;
 
-				md -> m -> setDouble("$latitude$", std::pair<uint64_t, double>(discard_ts, gps_data.fix.latitude));
-				md -> m -> setDouble("$longitude$", std::pair<uint64_t, double>(discard_ts, gps_data.fix.longitude));
-				md -> m -> setDouble("$altitude$", std::pair<uint64_t, double>(discard_ts, gps_data.fix.altitude));
+				md -> m -> set_double("$latitude$", std::pair<uint64_t, double>(discard_ts, gps_data.fix.latitude));
+				md -> m -> set_double("$longitude$", std::pair<uint64_t, double>(discard_ts, gps_data.fix.longitude));
+				md -> m -> set_double("$altitude$", std::pair<uint64_t, double>(discard_ts, gps_data.fix.altitude));
 			}
 		}
 
