@@ -1,13 +1,14 @@
 // (C) 2017 by folkert van heusden, released under AGPL v3.0
 #include "filter.h"
+#include "selection_mask.h"
 
 class filter_apply_mask : public filter
 {
 private:
-	const uint8_t *pixel_select_bitmap;
+	selection_mask *const psb;
 
 public:
-	filter_apply_mask(const uint8_t *const pixel_select_bitmap);
+	filter_apply_mask(selection_mask *const pixel_select_bitmap);
 	~filter_apply_mask();
 
 	bool uses_in_out() const { return false; }
