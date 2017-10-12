@@ -85,11 +85,13 @@ static void reconnect(const std::string & host, const int port, const std::strin
 				if (len <= 0)
 					break;
 
-				char *msg = new char[len];
+				char *msg = new char[len + 1];
 				if (READ(*fd, msg, len) != len) {
 					delete [] msg;
 					break;
 				}
+
+				msg[len] = 0x00;
 
 				reason = msg;
 				delete [] msg;
@@ -273,8 +275,8 @@ bool draw_vnc(const int cur_fd, const unsigned int vnc_width, const unsigned int
 			if (READ(cur_fd, reinterpret_cast<char *>(src), 4) != 4)
 				return false;
 
-			unsigned int src_x = get_card16(&src[0]);
-			unsigned int src_y = get_card16(&src[2]);
+			unsigned int src_x = std::min(vnc_width, (unsigned int)get_card16(&src[0]));
+			unsigned int src_y = std::min(vnc_height, (unsigned int)get_card16(&src[2]));
 			//printf("%d,%d %dx%d from %d,%d\n", cur_xo, cur_yo, cur_w, cur_h, src_x, src_y);
 
 			for(unsigned int y=0; y<cur_h; y++)
@@ -585,11 +587,6 @@ void * thread(void *arg)
 
 		free(fb3);
 		fb3 = NULL;
-
-		if (fd != -1) {
-			close(fd);
-			fd = -1;
-		}
 	}
 
 	log(LL_INFO, "source plugin for VNC client thread ending");

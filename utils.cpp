@@ -415,7 +415,7 @@ int connect_to(std::string hostname, int port, std::atomic_bool *abort)
 		/* connect to peer */
 		if (connect(fd, rp -> ai_addr, rp -> ai_addrlen) == 0) {
 			/* connection made, return */
-			fcntl(fd, F_SETFL, old_flags);
+			(void)fcntl(fd, F_SETFL, old_flags);
 			freeaddrinfo(result);
 			return fd;
 		}
