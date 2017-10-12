@@ -7,14 +7,15 @@
 #include "filter_motion_only.h"
 #include "log.h"
 
-filter_motion_only::filter_motion_only(const uint8_t *pixel_select_bitmap, const int noise_level) : psb(pixel_select_bitmap), noise_level(noise_level)
+filter_motion_only::filter_motion_only(selection_mask *const pixel_select_bitmap, const int noise_level) : pixel_select_bitmap(pixel_select_bitmap), noise_level(noise_level)
 {
 	prev1 = prev2 = NULL;
 }
 
 filter_motion_only::~filter_motion_only()
 {
-	free((void *)psb);
+	delete pixel_select_bitmap;
+
 	free(prev1);
 	free(prev2);
 }
@@ -34,6 +35,8 @@ void filter_motion_only::apply(const uint64_t ts, const int w, const int h, cons
 	memcpy(prev1, in_out, n);
 
 	const int nl3 = noise_level * 3;
+
+	uint8_t *psb = pixel_select_bitmap ? pixel_select_bitmap -> get_mask(w, h) : NULL;
 
 	if (psb) {
 		for(int i=0; i<w*h; i++) {

@@ -7,13 +7,13 @@
 #include "filter_marker_simple.h"
 #include "log.h"
 
-filter_marker_simple::filter_marker_simple(const sm_mode_t modeIn, const uint8_t *const pixel_select_bitmap, meta *const m, const int noise_level, const double percentage_pixels_changed) : mode(modeIn), psb(pixel_select_bitmap), m(m), noise_level(noise_level), percentage_pixels_changed(percentage_pixels_changed)
+filter_marker_simple::filter_marker_simple(const sm_mode_t modeIn, selection_mask *const sb, meta *const m, const int noise_level, const double percentage_pixels_changed) : mode(modeIn), pixel_select_bitmap(sb), m(m), noise_level(noise_level), percentage_pixels_changed(percentage_pixels_changed)
 {
 }
 
 filter_marker_simple::~filter_marker_simple()
 {
-	free((void *)psb);
+	delete pixel_select_bitmap;
 }
 
 void filter_marker_simple::updatePixel(uint8_t *const out, const int x, const int y, const int w)
@@ -45,6 +45,8 @@ void filter_marker_simple::apply(const uint64_t ts, const int w, const int h, co
 	bool *diffs = new bool[w * h];
 
 	const int nl3 = noise_level * 3;
+
+	uint8_t *psb = pixel_select_bitmap ? pixel_select_bitmap -> get_mask(w, h) : NULL;
 
 	if (psb) {
 		for(int i=0; i<w*h; i++) {

@@ -50,7 +50,9 @@ using namespace libconfig;
 #include "log.h"
 #include "cfg.h"
 #include "resize_cairo.h"
+#include "resize_crop.h"
 #include "filter_motion_only.h"
+#include "selection_mask.h"
 
 std::string cfg_str(const Config & cfg, const char *const key, const char *descr, const bool optional, const std::string & def)
 {
@@ -133,24 +135,6 @@ void add_filters(std::vector<filter *> *af, const std::vector<filter *> *const i
 		af -> push_back(f);
 }
 
-uint8_t *load_selection_bitmap(const std::string & selection_bitmap)
-{
-	uint8_t *sb = NULL;
-
-	if (!selection_bitmap.empty()) {
-		FILE *fh = fopen(selection_bitmap.c_str(), "rb");
-		if (!fh)
-			error_exit(true, "Cannot open file \"%s\"", selection_bitmap.c_str());
-
-		int w, h;
-		load_PBM_file(fh, &w, &h, &sb);
-
-		fclose(fh);
-	}
-
-	return sb;
-}
-
 bool find_interval_or_fps(const Setting & cfg, double *const interval, const std::string & fps_name, double *const fps)
 {
 	bool have_interval = cfg.lookupValue("interval", *interval);
@@ -184,7 +168,7 @@ bool find_interval_or_fps(const Setting & cfg, double *const interval, const std
 	return true;
 }
 
-std::vector<filter *> *load_filters(const Setting & in, source *const s)
+std::vector<filter *> *load_filters(const Setting & in, source *const s, resize *const r)
 {
 	std::vector<filter *> *const filters = new std::vector<filter *>();
 
@@ -224,24 +208,24 @@ std::vector<filter *> *load_filters(const Setting & in, source *const s)
 				sm = m_invert;
 
 			std::string selection_bitmap = cfg_str(ae, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.", true, "");
-			const uint8_t *sb = load_selection_bitmap(selection_bitmap);
+			selection_mask *psm = selection_bitmap.empty() ? NULL : new selection_mask(r, selection_bitmap);
 			int noise_level = cfg_int(ae, "noise-factor", "at what difference levell is the pixel considered to be changed", true, 32);
 			double pixels_changed_perctange = cfg_float(ae, "pixels-changed-percentage", "what %% of pixels need to be changed before the marker is drawn", false, 1.0);
 
-			filters -> push_back(new filter_marker_simple(sm, sb, s -> get_meta(), noise_level, pixels_changed_perctange));
+			filters -> push_back(new filter_marker_simple(sm, psm, s -> get_meta(), noise_level, pixels_changed_perctange));
 		}
 		else if (s_type == "apply-mask") {
 			std::string selection_bitmap = cfg_str(ae, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.", false, "");
-			const uint8_t *sb = load_selection_bitmap(selection_bitmap);
+			selection_mask *sm = selection_bitmap.empty() ? NULL : new selection_mask(r, selection_bitmap);
 
-			filters -> push_back(new filter_apply_mask(sb));
+			filters -> push_back(new filter_apply_mask(sm));
 		}
 		else if (s_type == "motion-only") {
 			std::string selection_bitmap = cfg_str(ae, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.", true, "");
-			const uint8_t *sb = load_selection_bitmap(selection_bitmap);
+			selection_mask *sm = selection_bitmap.empty() ? NULL : new selection_mask(r, selection_bitmap);
 			int noise_level = cfg_int(ae, "noise-factor", "at what difference levell is the pixel considered to be changed", true, 32);
 
-			filters -> push_back(new filter_motion_only(sb, noise_level));
+			filters -> push_back(new filter_motion_only(sm, noise_level));
 		}
 		else if (s_type == "boost-contrast")
 			filters -> push_back(new filter_boost_contrast());
@@ -329,7 +313,7 @@ void interval_fps_error(const char *const name, const char *what, const char *id
 	error_exit(false, "Interval/%s %s not set or invalid (e.g. 0) for target (%s). Make sure that you use a float-value for the fps/interval, e.g. 13.0 instead of 13", name, what, id);
 }
 
-target * load_target(const Setting & in, source *const s)
+target * load_target(const Setting & in, source *const s, resize *const r)
 {
 	target *t = NULL;
 
@@ -360,7 +344,7 @@ target * load_target(const Setting & in, source *const s)
 	std::vector<filter *> *filters = NULL;
 	try {
 		const Setting & f = in.lookup("filters");
-		filters = load_filters(f, s);
+		filters = load_filters(f, s, r);
 	}
 	catch(SettingNotFoundException & snfe) {
 	}
@@ -519,7 +503,7 @@ int main(int argc, char *argv[])
 	configuration_t cfg;
 	cfg.lock.lock();
 
-	std::string resize_type = cfg_str(lc_cfg, "resize-type", "can be regular or cairo. selects what method will be used for resizing the video stream (if requested).", true, "");
+	std::string resize_type = cfg_str(lc_cfg, "resize-type", "can be regular, crop or cairo. This selects what method will be used for resizing the video stream (if requested).", true, "");
 
 	resize *r = NULL;
 	if (resize_type == "cairo") {
@@ -530,6 +514,9 @@ int main(int argc, char *argv[])
 
 		if (resize_type == "")
 			log(LL_INFO, "No resizer/scaler selected (\"resize-type\"); assuming default");
+	}
+	else if (resize_type == "crop") {
+		r = new resize_crop();
 	}
 	else {
 		error_exit(false, "Scaler/resizer of type \"%s\" is not known", resize_type.c_str());
@@ -661,7 +648,7 @@ int main(int argc, char *argv[])
 			std::vector<filter *> *http_filters = NULL;
 			try {
 				const Setting & f = server.lookup("filters");
-				http_filters = load_filters(f, s);
+				http_filters = load_filters(f, s, r);
 			}
 			catch(SettingNotFoundException & snfe) {
 			}
@@ -699,7 +686,7 @@ int main(int argc, char *argv[])
 		std::vector<filter *> *filters = NULL;
 		try {
 			const Setting & f = o_vlb.lookup("filters");
-			filters = load_filters(f, s);
+			filters = load_filters(f, s, r);
 		}
 		catch(SettingNotFoundException & snfe) {
 		}
@@ -742,12 +729,12 @@ int main(int argc, char *argv[])
 				error_exit(false, "Motion triggers: max-fps must be either > 0 or -1.0. Use -1.0 for no FPS limit.");
 
 			std::string selection_bitmap = cfg_str(trigger, "selection-bitmap", "bitmaps indicating which pixels to look at. must be same size as webcam image and must be a .pbm-file. leave empty to disable.", true, "");
-			const uint8_t *sb = load_selection_bitmap(selection_bitmap);
+			selection_mask *sm = selection_bitmap.empty() ? NULL : new selection_mask(r, selection_bitmap);
 
 			std::vector<filter *> *filters_detection = NULL;
 			try {
 				const Setting & f = trigger.lookup("filters-detection");
-				filters_detection = load_filters(f, s);
+				filters_detection = load_filters(f, s, r);
 			}
 			catch(SettingNotFoundException & snfe) {
 			}
@@ -767,7 +754,7 @@ int main(int argc, char *argv[])
 				for(size_t i=0; i<n_t; i++) {
 					const Setting & ct = t[i];
 
-					motion_targets -> push_back(load_target(ct, s));
+					motion_targets -> push_back(load_target(ct, s, r));
 				}
 			}
 			catch(SettingNotFoundException & snfe) {
@@ -787,7 +774,7 @@ int main(int argc, char *argv[])
 				et -> uninit_motion_trigger = (uninit_motion_trigger_t)find_symbol(et -> library, "uninit_motion_trigger", "motion detection plugin", file.c_str());
 			}
 
-			interface *m = new motion_trigger(id, s, noise_level, pixels_changed_perctange, min_duration, mute_duration, warmup_duration, pre_motion_record_duration, filters_detection, motion_targets, sb, et, max_fps);
+			interface *m = new motion_trigger(id, s, noise_level, pixels_changed_perctange, min_duration, mute_duration, warmup_duration, pre_motion_record_duration, filters_detection, motion_targets, sm, et, max_fps);
 			cfg.interfaces.push_back(m);
 		}
 	}
@@ -809,7 +796,7 @@ int main(int argc, char *argv[])
 		for(size_t i=0; i<n_t; i++) {
 			const Setting & ct = t[i];
 
-			interface *target = load_target(ct, s);
+			interface *target = load_target(ct, s, r);
 			cfg.interfaces.push_back(target);
 		}
 	}
