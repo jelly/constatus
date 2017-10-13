@@ -71,62 +71,86 @@ std::string cfg_str(const Config & cfg, const char *const key, const char *descr
 
 std::string cfg_str(const Setting & cfg, const char *const key, const char *descr, const bool optional, const std::string & def)
 {
-	std::string v;
+	std::string v = def;
 
-	if (cfg.lookupValue(key, v))
-		return v;
+	try {
+		v = (const char *)cfg.lookup(key);
+	}
+	catch(const SettingNotFoundException &nfex) {
+		if (!optional)
+			error_exit(false, "\"%s\" not found (%s)", key, descr);
 
-	if (optional)
 		log(LL_DEBUG, "\"%s\" not found (%s), assuming default (%s)", key, descr, def.c_str());
-	else
-		error_exit(false, "\"%s\" not found (%s)", key, descr);
+	}
 
-	return def; // field is optional
+	catch(const SettingTypeException & ste) {
+		error_exit(false, "Expected a string value for \"%s\" (%s) at line %d but got something else", key, descr, cfg.getSourceLine());
+	}
+
+	return v;
 }
 
 double cfg_float(const Setting & cfg, const char *const key, const char *descr, const bool optional, const double def=-1.0)
 {
 	double v = def;
 
-	if (cfg.lookupValue(key, v))
-		return v;
+	try {
+		v = cfg.lookup(key);
+	}
+	catch(const SettingNotFoundException &nfex) {
+		if (!optional)
+			error_exit(false, "\"%s\" not found (%s)", key, descr);
 
-	if (optional)
 		log(LL_DEBUG, "\"%s\" not found (%s), assuming default (%f)", key, descr, def);
-	else
-		error_exit(false, "\"%s\" not found (%s)", key, descr);
+	}
 
-	return def; // field is optional
+	catch(const SettingTypeException & ste) {
+		error_exit(false, "Expected a float value for \"%s\" (%s) at line %d but got something else (did you forget to add \".0\"?)", key, descr, cfg.getSourceLine());
+	}
+
+	return v;
 }
 
 int cfg_int(const Setting & cfg, const char *const key, const char *descr, const bool optional, const int def=-1)
 {
 	int v = def;
 
-	if (cfg.lookupValue(key, v))
-		return v;
+	try {
+		v = cfg.lookup(key);
+	}
+	catch(const SettingNotFoundException &nfex) {
+		if (!optional)
+			error_exit(false, "\"%s\" not found (%s)", key, descr);
 
-	if (optional)
-		log(LL_DEBUG, "\"%s\" not found (%s), assuming default (%d)", key, descr, def);
-	else
-		error_exit(false, "\"%s\" not found (%s)", key, descr);
+		log(LL_DEBUG, "\"%s\" not found (%s), assuming default (%f)", key, descr, def);
+	}
 
-	return def; // field is optional
+	catch(const SettingTypeException & ste) {
+		error_exit(false, "Expected an int value for \"%s\" (%s) at line %d but got something else", key, descr, cfg.getSourceLine());
+	}
+
+	return v;
 }
 
-bool cfg_bool(const Setting & cfg, const char *const key, const char *descr, const bool optional, const bool def=false)
+int cfg_bool(const Setting & cfg, const char *const key, const char *descr, const bool optional, const bool def=false)
 {
 	bool v = def;
 
-	if (cfg.lookupValue(key, v))
-		return v;
+	try {
+		v = cfg.lookup(key);
+	}
+	catch(const SettingNotFoundException &nfex) {
+		if (!optional)
+			error_exit(false, "\"%s\" not found (%s)", key, descr);
 
-	if (optional)
-		log(LL_DEBUG, "\"%s\" not found (%s), assuming default (%s)", key, descr, def ? "true" : "false");
-	else
-		error_exit(false, "\"%s\" not found (%s)", key, descr);
+		log(LL_DEBUG, "\"%s\" not found (%s), assuming default (%f)", key, descr, def);
+	}
 
-	return def; // field is optional
+	catch(const SettingTypeException & ste) {
+		error_exit(false, "Expected a boolean value for \"%s\" (%s) at line %d but got something else", key, descr, cfg.getSourceLine());
+	}
+
+	return v;
 }
 
 void add_filters(std::vector<filter *> *af, const std::vector<filter *> *const in)
