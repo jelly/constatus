@@ -190,7 +190,7 @@ process:
 		w -> header = true;
 	}
 	// for broken cameras that don't include a content-length in their headers
-	else {
+	else if (w -> headers -> boundary) {
 		ssize_t bl = strlen(w -> headers -> boundary);
 
 		for(ssize_t i=0; i<w -> n - bl; i++) {
