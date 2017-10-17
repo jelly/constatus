@@ -8,8 +8,9 @@ VERSION=0.1
 OBJS1=demo.o
 OBJS2=demo2.o
 OBJS3=demoocv.o
+OBJS4=demoocv2.o
 
-all: lib1 lib2 # lib3
+all: lib1 lib2 lib3 lib4
 
 lib1: $(OBJS1)
 	ar -r demo.a $(OBJS1)
@@ -22,6 +23,10 @@ lib2: $(OBJS2)
 lib3: $(OBJS3)
 	ar -r demoocv.a $(OBJS3)
 	ld -g -x -lm `pkg-config --libs opencv` -shared -soname demoocv.so.2 -o demoocv.so.$(VERSION) --whole-archive demoocv.a
+
+lib4: $(OBJS4)
+	ar -r demoocv2.a $(OBJS4)
+	ld -g -x -lm `pkg-config --libs opencv` -shared -soname demoocv2.so.2 -o demoocv2.so.$(VERSION) --whole-archive demoocv2.a 
 
 install: all
 	cp demo.so.* demo2.so.* demoocv.so.* $(INSTALL_PREFIX)/lib
